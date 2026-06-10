@@ -54,10 +54,60 @@ int main()
     assert(wallEastTile != nullptr);
     assert(wallTile->wallObject.has_value());
     assert(wallTile->wallObject->id == 42);
-    assert(wallTile->wallObject->direction == osrssim::CardinalDirection::East);
+    assert(wallTile->wallObject->directionCount == 1);
+    assert(wallTile->wallObject->HasDirection(osrssim::CardinalDirection::East));
     assert(wallEastTile->wallObject == std::nullopt);
     assert(wallTile->HasFlag(osrssim::TileFlag::BlockMovementEast));
     assert(wallEastTile->HasFlag(osrssim::TileFlag::BlockMovementWest));
+
+    osrssim::CollisionProfile movementCollision;
+    movementCollision.blocksMovement = true;
+
+    osrssim::CollisionProfile lineOfSightCollision;
+    lineOfSightCollision.blocksLineOfSight = true;
+
+    osrssim::SceneCoordinate cornerCoordinate{30, 30, 0};
+    osrssim::SceneCoordinate cornerEast{31, 30, 0};
+    osrssim::SceneCoordinate cornerNorth{30, 31, 0};
+
+    assert(scene.PlaceWallObject(
+        cornerCoordinate,
+        43,
+        osrssim::CardinalDirection::East,
+        movementCollision,
+        osrssim::CardinalDirection::North,
+        lineOfSightCollision));
+
+    const osrssim::Tile* cornerTile = scene.TryGetTile(cornerCoordinate);
+    const osrssim::Tile* cornerEastTile = scene.TryGetTile(cornerEast);
+    const osrssim::Tile* cornerNorthTile = scene.TryGetTile(cornerNorth);
+
+    assert(cornerTile != nullptr);
+    assert(cornerEastTile != nullptr);
+    assert(cornerNorthTile != nullptr);
+    assert(cornerTile->wallObject.has_value());
+    assert(cornerTile->wallObject->id == 43);
+    assert(cornerTile->wallObject->directionCount == 2);
+    assert(cornerTile->wallObject->HasDirection(osrssim::CardinalDirection::East));
+    assert(cornerTile->wallObject->HasDirection(osrssim::CardinalDirection::North));
+    assert(cornerEastTile->wallObject == std::nullopt);
+    assert(cornerNorthTile->wallObject == std::nullopt);
+    assert(cornerTile->HasFlag(osrssim::TileFlag::BlockMovementEast));
+    assert(cornerEastTile->HasFlag(osrssim::TileFlag::BlockMovementWest));
+    assert(!cornerTile->HasFlag(osrssim::TileFlag::BlockMovementNorth));
+    assert(!cornerNorthTile->HasFlag(osrssim::TileFlag::BlockMovementSouth));
+    assert(cornerTile->HasFlag(osrssim::TileFlag::BlockLineOfSightNorth));
+    assert(cornerNorthTile->HasFlag(osrssim::TileFlag::BlockLineOfSightSouth));
+    assert(!cornerTile->HasFlag(osrssim::TileFlag::BlockLineOfSightEast));
+    assert(!cornerEastTile->HasFlag(osrssim::TileFlag::BlockLineOfSightWest));
+
+    assert(!scene.PlaceWallObject(
+        {40, 40, 0},
+        44,
+        osrssim::CardinalDirection::East,
+        movementCollision,
+        osrssim::CardinalDirection::East,
+        lineOfSightCollision));
 
     osrssim::Engine engine;
     assert(engine.GetScene().Contains({0, 0, 0}));

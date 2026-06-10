@@ -30,6 +30,13 @@ public:
         EntityId id,
         CardinalDirection direction,
         const CollisionProfile& collisionProfile);
+    bool PlaceWallObject(
+        SceneCoordinate coordinate,
+        EntityId id,
+        CardinalDirection firstDirection,
+        const CollisionProfile& firstCollisionProfile,
+        CardinalDirection secondDirection,
+        const CollisionProfile& secondCollisionProfile);
     Tile* TryGetTile(SceneCoordinate coordinate);
     const Tile* TryGetTile(SceneCoordinate coordinate) const;
 
@@ -41,6 +48,11 @@ private:
     static TileFlag GetMovementFlag(CardinalDirection direction);
     static TileFlag GetLineOfSightFlag(CardinalDirection direction);
     static CardinalDirection GetOppositeDirection(CardinalDirection direction);
+    static void ApplyWallEdgeCollision(
+        Tile& tile,
+        Tile& adjacentTile,
+        CardinalDirection direction,
+        const CollisionProfile& collisionProfile);
 };
 
 }  // namespace osrssim

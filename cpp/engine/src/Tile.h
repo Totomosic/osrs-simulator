@@ -2,6 +2,7 @@
 
 #include "Types.h"
 
+#include <array>
 #include <cstdint>
 #include <optional>
 
@@ -72,7 +73,12 @@ struct CollisionProfile
 struct WallObject
 {
     EntityId id = 0;
-    CardinalDirection direction = CardinalDirection::North;
+    std::array<CardinalDirection, 2> directions{
+        CardinalDirection::North,
+        CardinalDirection::North};
+    int directionCount = 0;
+
+    bool HasDirection(CardinalDirection direction) const;
 };
 
 struct Tile

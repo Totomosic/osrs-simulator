@@ -114,5 +114,63 @@ int main()
         assert(pathing.CanMove(origin, south));
     }
 
+    {
+        osrssim::Scene scene;
+        osrssim::Pathing pathing(scene);
+
+        osrssim::SceneCoordinate origin{10, 10, 0};
+        osrssim::SceneCoordinate east{11, 10, 0};
+        osrssim::SceneCoordinate north{10, 11, 0};
+        osrssim::SceneCoordinate south{10, 9, 0};
+
+        osrssim::CollisionProfile eastCollision;
+        eastCollision.blocksMovement = true;
+
+        osrssim::CollisionProfile northCollision;
+        northCollision.blocksMovement = true;
+
+        assert(scene.PlaceWallObject(
+            origin,
+            101,
+            osrssim::CardinalDirection::East,
+            eastCollision,
+            osrssim::CardinalDirection::North,
+            northCollision));
+
+        assert(!pathing.CanMove(origin, east));
+        assert(!pathing.CanMove(east, origin));
+        assert(!pathing.CanMove(origin, north));
+        assert(!pathing.CanMove(north, origin));
+        assert(pathing.CanMove(origin, south));
+    }
+
+    {
+        osrssim::Scene scene;
+        osrssim::Pathing pathing(scene);
+
+        osrssim::SceneCoordinate origin{10, 10, 0};
+        osrssim::SceneCoordinate east{11, 10, 0};
+        osrssim::SceneCoordinate north{10, 11, 0};
+
+        osrssim::CollisionProfile eastCollision;
+        eastCollision.blocksLineOfSight = true;
+
+        osrssim::CollisionProfile northCollision;
+        northCollision.blocksMovement = true;
+
+        assert(scene.PlaceWallObject(
+            origin,
+            102,
+            osrssim::CardinalDirection::East,
+            eastCollision,
+            osrssim::CardinalDirection::North,
+            northCollision));
+
+        assert(pathing.CanMove(origin, east));
+        assert(pathing.CanMove(east, origin));
+        assert(!pathing.CanMove(origin, north));
+        assert(!pathing.CanMove(north, origin));
+    }
+
     return 0;
 }

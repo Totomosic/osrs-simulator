@@ -52,19 +52,57 @@ bool Scene::PlaceWallObject(
         return false;
     }
 
-    tile->wallObject = WallObject{id, direction};
+    WallObject wallObject;
+    wallObject.id = id;
+    wallObject.directions[0] = direction;
+    wallObject.directionCount = 1;
+    tile->wallObject = wallObject;
 
-    if (collisionProfile.blocksMovement)
+    ApplyWallEdgeCollision(*tile, *adjacentTile, direction, collisionProfile);
+
+    return true;
+}
+
+bool Scene::PlaceWallObject(
+    SceneCoordinate coordinate,
+    EntityId id,
+    CardinalDirection firstDirection,
+    const CollisionProfile& firstCollisionProfile,
+    CardinalDirection secondDirection,
+    const CollisionProfile& secondCollisionProfile)
+{
+    SceneCoordinate firstAdjacentCoordinate =
+        GetAdjacentCoordinate(coordinate, firstDirection);
+    SceneCoordinate secondAdjacentCoordinate =
+        GetAdjacentCoordinate(coordinate, secondDirection);
+    Tile* tile = TryGetTile(coordinate);
+    Tile* firstAdjacentTile = TryGetTile(firstAdjacentCoordinate);
+    Tile* secondAdjacentTile = TryGetTile(secondAdjacentCoordinate);
+
+    if (tile == nullptr || firstAdjacentTile == nullptr ||
+        secondAdjacentTile == nullptr || tile->wallObject.has_value() ||
+        firstDirection == secondDirection)
     {
-        tile->AddFlag(GetMovementFlag(direction));
-        adjacentTile->AddFlag(GetMovementFlag(GetOppositeDirection(direction)));
+        return false;
     }
 
-    if (collisionProfile.blocksLineOfSight)
-    {
-        tile->AddFlag(GetLineOfSightFlag(direction));
-        adjacentTile->AddFlag(GetLineOfSightFlag(GetOppositeDirection(direction)));
-    }
+    WallObject wallObject;
+    wallObject.id = id;
+    wallObject.directions[0] = firstDirection;
+    wallObject.directions[1] = secondDirection;
+    wallObject.directionCount = 2;
+    tile->wallObject = wallObject;
+
+    ApplyWallEdgeCollision(
+        *tile,
+        *firstAdjacentTile,
+        firstDirection,
+        firstCollisionProfile);
+    ApplyWallEdgeCollision(
+        *tile,
+        *secondAdjacentTile,
+        secondDirection,
+        secondCollisionProfile);
 
     return true;
 }
@@ -165,6 +203,27 @@ CardinalDirection Scene::GetOppositeDirection(CardinalDirection direction)
     }
 
     return direction;
+}
+
+void Scene::ApplyWallEdgeCollision(
+    Tile& tile,
+    Tile& adjacentTile,
+    CardinalDirection direction,
+    const CollisionProfile& collisionProfile)
+{
+    CardinalDirection oppositeDirection = GetOppositeDirection(direction);
+
+    if (collisionProfile.blocksMovement)
+    {
+        tile.AddFlag(GetMovementFlag(direction));
+        adjacentTile.AddFlag(GetMovementFlag(oppositeDirection));
+    }
+
+    if (collisionProfile.blocksLineOfSight)
+    {
+        tile.AddFlag(GetLineOfSightFlag(direction));
+        adjacentTile.AddFlag(GetLineOfSightFlag(oppositeDirection));
+    }
 }
 
 }  // namespace osrssim
