@@ -3,6 +3,7 @@
 #include "Types.h"
 
 #include <cstdint>
+#include <optional>
 
 namespace osrssim
 {
@@ -54,10 +55,31 @@ constexpr TileFlags operator&(TileFlags lhs, TileFlag rhs)
     return lhs & ToTileFlags(rhs);
 }
 
+enum class CardinalDirection
+{
+    North,
+    East,
+    South,
+    West,
+};
+
+struct CollisionProfile
+{
+    bool blocksMovement = false;
+    bool blocksLineOfSight = false;
+};
+
+struct WallObject
+{
+    EntityId id = 0;
+    CardinalDirection direction = CardinalDirection::North;
+};
+
 struct Tile
 {
     SceneCoordinate coordinate;
     TileFlags flags = ToTileFlags(TileFlag::None);
+    std::optional<WallObject> wallObject;
 
     bool HasFlag(TileFlag flag) const;
     void AddFlag(TileFlag flag);

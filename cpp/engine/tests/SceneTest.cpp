@@ -35,6 +35,30 @@ int main()
 
     assert(scene.TryGetTile({104, 0, 0}) == nullptr);
 
+    osrssim::CollisionProfile wallCollision;
+    wallCollision.blocksMovement = true;
+
+    osrssim::SceneCoordinate wallCoordinate{20, 20, 0};
+    osrssim::SceneCoordinate wallEast{21, 20, 0};
+
+    assert(scene.PlaceWallObject(
+        wallCoordinate,
+        42,
+        osrssim::CardinalDirection::East,
+        wallCollision));
+
+    const osrssim::Tile* wallTile = scene.TryGetTile(wallCoordinate);
+    const osrssim::Tile* wallEastTile = scene.TryGetTile(wallEast);
+
+    assert(wallTile != nullptr);
+    assert(wallEastTile != nullptr);
+    assert(wallTile->wallObject.has_value());
+    assert(wallTile->wallObject->id == 42);
+    assert(wallTile->wallObject->direction == osrssim::CardinalDirection::East);
+    assert(wallEastTile->wallObject == std::nullopt);
+    assert(wallTile->HasFlag(osrssim::TileFlag::BlockMovementEast));
+    assert(wallEastTile->HasFlag(osrssim::TileFlag::BlockMovementWest));
+
     osrssim::Engine engine;
     assert(engine.GetScene().Contains({0, 0, 0}));
 

@@ -25,11 +25,22 @@ public:
     int GetBaseX() const;
     int GetBaseY() const;
     bool Contains(SceneCoordinate coordinate) const;
+    bool PlaceWallObject(
+        SceneCoordinate coordinate,
+        EntityId id,
+        CardinalDirection direction,
+        const CollisionProfile& collisionProfile);
     Tile* TryGetTile(SceneCoordinate coordinate);
     const Tile* TryGetTile(SceneCoordinate coordinate) const;
 
 private:
     static std::size_t GetIndex(SceneCoordinate coordinate);
+    static SceneCoordinate GetAdjacentCoordinate(
+        SceneCoordinate coordinate,
+        CardinalDirection direction);
+    static TileFlag GetMovementFlag(CardinalDirection direction);
+    static TileFlag GetLineOfSightFlag(CardinalDirection direction);
+    static CardinalDirection GetOppositeDirection(CardinalDirection direction);
 };
 
 }  // namespace osrssim
