@@ -9,13 +9,13 @@ using Tick = std::uint64_t;
 using EntityId = std::uint64_t;
 using Seed = std::uint64_t;
 
-struct Tile
+struct SceneCoordinate
 {
     int x = 0;
     int y = 0;
     int plane = 0;
 
-    friend constexpr bool operator==(const Tile&, const Tile&) = default;
+    friend constexpr bool operator==(const SceneCoordinate&, const SceneCoordinate&) = default;
 };
 
 }  // namespace osrssim
