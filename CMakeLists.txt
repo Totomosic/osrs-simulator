@@ -13,4 +13,3 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 include(CTest)
 
 add_subdirectory(cpp)
-add_subdirectory(apps/osrs-sim-cli)

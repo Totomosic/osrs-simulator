@@ -1,6 +1,6 @@
 # Simulation Model
 
-The engine should be deterministic for a given initial state, input stream, and RNG seed.
+Future engine code should be deterministic for a given initial state, input stream, and RNG seed.
 
 Core engine concepts should model OSRS terms directly:
 
@@ -13,4 +13,4 @@ Core engine concepts should model OSRS terms directly:
 - combat state
 - random rolls
 
-The simulator layer should treat the engine as a deterministic component and add repetition, sampling, statistics, optimization, and persistence.
+Future simulator code should treat the engine as a deterministic component and add repetition, sampling, statistics, optimization, and persistence.

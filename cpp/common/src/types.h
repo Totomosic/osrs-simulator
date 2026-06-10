@@ -11,9 +11,9 @@ using Seed = std::uint64_t;
 
 struct Tile
 {
-    int m_X = 0;
-    int m_Y = 0;
-    int m_Plane = 0;
+    int x = 0;
+    int y = 0;
+    int plane = 0;
 
     friend constexpr bool operator==(const Tile&, const Tile&) = default;
 };

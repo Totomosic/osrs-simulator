@@ -1,13 +1,10 @@
 # OSRS Simulator
 
-Monorepo for deterministic Old School RuneScape simulation, repeated execution, optimization, and future visualization tooling.
+Monorepo scaffold for deterministic Old School RuneScape simulation, repeated execution, optimization, and future visualization tooling.
 
 ## Project Layout
 
-- `cpp/common`: shared C++ primitives used by engine and simulator packages.
-- `cpp/engine`: deterministic OSRS world/action/rules engine.
-- `cpp/sim`: repeated execution, optimization, aggregation, and statistics.
-- `apps/osrs-sim-cli`: command-line simulator entry point.
+- `cpp/common`: shared C++ primitives.
 - `web`: future TypeScript result viewer.
 - `tools`: support scripts and developer tooling.
 - `docs`: architecture notes and ADRs.
@@ -22,7 +19,8 @@ ctest --test-dir build
 
 ## Boundary Rules
 
-- `cpp/engine` owns deterministic simulation correctness.
-- `cpp/sim` depends on `cpp/engine` and owns repetition, aggregation, and statistics.
-- Apps are thin adapters over libraries.
+- `cpp/common` should stay limited to stable shared primitives.
+- Future engine code should own deterministic simulation correctness.
+- Future simulator code should depend on the engine and own repetition, aggregation, and statistics.
+- Future apps should be thin adapters over libraries.
 - Frontend code should remain separate from C++ implementation details.
