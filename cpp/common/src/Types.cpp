@@ -1,4 +1,4 @@
-#include "types.h"
+#include "Types.h"
 
 namespace osrssim
 {

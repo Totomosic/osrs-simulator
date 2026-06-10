@@ -12,9 +12,19 @@ Monorepo scaffold for deterministic Old School RuneScape simulation, repeated ex
 ## Build
 
 ```sh
-cmake -S . -B build
-cmake --build build
-ctest --test-dir build
+tools/build.sh
+```
+
+## C++ Logging
+
+`cpp/common/src/Logging.h` provides the shared logger and convenience macros:
+
+```cpp
+#include "Logging.h"
+
+LOG_INFO("Loaded {} entities", entityCount);
+LOG_ERROR("Failed to load {}", path);
+LOG_ASSERT(entityCount > 0, "Expected at least one entity");
 ```
 
 ## Boundary Rules

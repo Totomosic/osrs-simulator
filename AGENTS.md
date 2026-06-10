@@ -20,6 +20,7 @@ Use these conventions for all new C++ code and when touching existing C++ files:
 
 - Use `.h` headers, not `.hpp`.
 - Keep each `.h` file next to its corresponding `.cpp` file under the relevant `src/` directory.
+- Use PascalCase for `.h` and `.cpp` file names.
 - Use PascalCase for class names.
 - Use PascalCase for method names.
 - Use `m_<Name>` for private class member variables, with PascalCase after the `m_` prefix.
