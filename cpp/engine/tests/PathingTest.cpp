@@ -285,5 +285,38 @@ int main()
         assert(pathing.CanMove(origin, covered));
     }
 
+    {
+        osrssim::Scene scene;
+        osrssim::Pathing pathing(scene);
+
+        osrssim::SceneCoordinate origin{10, 10, 0};
+        osrssim::SceneCoordinate east{11, 10, 0};
+        osrssim::SceneCoordinate invalidWall{103, 10, 0};
+        osrssim::SceneCoordinate invalidObject{11, 10, 0};
+
+        osrssim::CollisionProfile wallCollision;
+        wallCollision.blocksMovement = true;
+
+        osrssim::CollisionProfile objectCollision;
+        objectCollision.blocksMovement = true;
+
+        assert(pathing.CanMove(origin, east));
+        assert(!scene.PlaceWallObject(
+            invalidWall,
+            400,
+            osrssim::CardinalDirection::East,
+            wallCollision));
+        assert(pathing.CanMove(origin, east));
+
+        assert(!scene.PlaceGameObject(
+            invalidObject,
+            401,
+            osrssim::CardinalDirection::North,
+            104,
+            1,
+            objectCollision));
+        assert(pathing.CanMove(origin, east));
+    }
+
     return 0;
 }
