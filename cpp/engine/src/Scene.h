@@ -42,6 +42,13 @@ public:
         EntityId id,
         CardinalDirection direction,
         const CollisionProfile& collisionProfile);
+    bool PlaceGameObject(
+        SceneCoordinate coordinate,
+        EntityId id,
+        CardinalDirection direction,
+        int sizeX,
+        int sizeY,
+        const CollisionProfile& collisionProfile);
     Tile* TryGetTile(SceneCoordinate coordinate);
     const Tile* TryGetTile(SceneCoordinate coordinate) const;
 
@@ -53,6 +60,14 @@ private:
     static TileFlag GetMovementFlag(CardinalDirection direction);
     static TileFlag GetLineOfSightFlag(CardinalDirection direction);
     static CardinalDirection GetOppositeDirection(CardinalDirection direction);
+    static int GetFootprintWidth(
+        CardinalDirection direction,
+        int sizeX,
+        int sizeY);
+    static int GetFootprintHeight(
+        CardinalDirection direction,
+        int sizeX,
+        int sizeY);
     static void ApplyWallEdgeCollision(
         Tile& tile,
         Tile& adjacentTile,

@@ -216,5 +216,55 @@ int main()
         assert(pathing.CanMove(origin, east));
     }
 
+    {
+        osrssim::Scene scene;
+        osrssim::Pathing pathing(scene);
+
+        osrssim::SceneCoordinate origin{10, 10, 0};
+        osrssim::SceneCoordinate coveredSouthWest{11, 10, 0};
+        osrssim::SceneCoordinate coveredNorthEast{13, 11, 0};
+
+        osrssim::CollisionProfile objectCollision;
+        objectCollision.blocksMovement = true;
+
+        assert(scene.PlaceGameObject(
+            coveredSouthWest,
+            300,
+            osrssim::CardinalDirection::East,
+            2,
+            3,
+            objectCollision));
+
+        assert(!pathing.CanMove(origin, coveredSouthWest));
+        assert(!pathing.CanMove({13, 12, 0}, coveredNorthEast));
+        assert(pathing.CanMove(coveredSouthWest, origin));
+    }
+
+    {
+        osrssim::Scene scene;
+        osrssim::Pathing pathing(scene);
+
+        osrssim::SceneCoordinate origin{10, 10, 0};
+        osrssim::SceneCoordinate covered{11, 10, 0};
+
+        osrssim::CollisionProfile objectCollision;
+        objectCollision.blocksLineOfSight = true;
+
+        assert(scene.PlaceGameObject(
+            covered,
+            301,
+            osrssim::CardinalDirection::West,
+            2,
+            3,
+            objectCollision));
+
+        const osrssim::Tile* tile = scene.TryGetTile({13, 11, 0});
+
+        assert(tile != nullptr);
+        assert(tile->HasFlag(osrssim::TileFlag::BlockLineOfSightFull));
+        assert(!tile->HasFlag(osrssim::TileFlag::BlockMovementObject));
+        assert(pathing.CanMove(origin, covered));
+    }
+
     return 0;
 }

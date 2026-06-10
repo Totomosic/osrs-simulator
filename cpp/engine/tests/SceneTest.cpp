@@ -127,6 +127,8 @@ int main()
     assert(gameObjectTile->gameObject.has_value());
     assert(gameObjectTile->gameObject->id == 200);
     assert(gameObjectTile->gameObject->direction == osrssim::CardinalDirection::South);
+    assert(gameObjectTile->gameObject->sizeX == 1);
+    assert(gameObjectTile->gameObject->sizeY == 1);
     assert(gameObjectTile->HasFlag(osrssim::TileFlag::BlockMovementObject));
     assert(gameObjectTile->HasFlag(osrssim::TileFlag::BlockLineOfSightFull));
     assert(!gameObjectTile->HasFlag(osrssim::TileFlag::Occupied));
@@ -135,6 +137,40 @@ int main()
         201,
         osrssim::CardinalDirection::North,
         gameObjectCollision));
+
+    osrssim::SceneCoordinate largeObjectCoordinate{60, 60, 0};
+
+    assert(scene.PlaceGameObject(
+        largeObjectCoordinate,
+        300,
+        osrssim::CardinalDirection::East,
+        2,
+        3,
+        gameObjectCollision));
+
+    for (int dx = 0; dx < 3; ++dx)
+    {
+        for (int dy = 0; dy < 2; ++dy)
+        {
+            const osrssim::Tile* coveredTile = scene.TryGetTile(
+                {largeObjectCoordinate.x + dx, largeObjectCoordinate.y + dy, 0});
+
+            assert(coveredTile != nullptr);
+            assert(coveredTile->gameObject.has_value());
+            assert(coveredTile->gameObject->id == 300);
+            assert(
+                coveredTile->gameObject->direction ==
+                osrssim::CardinalDirection::East);
+            assert(coveredTile->gameObject->sizeX == 2);
+            assert(coveredTile->gameObject->sizeY == 3);
+            assert(coveredTile->HasFlag(osrssim::TileFlag::BlockMovementObject));
+            assert(coveredTile->HasFlag(osrssim::TileFlag::BlockLineOfSightFull));
+        }
+    }
+
+    const osrssim::Tile* outsideRotatedFootprint = scene.TryGetTile({62, 62, 0});
+    assert(outsideRotatedFootprint != nullptr);
+    assert(outsideRotatedFootprint->gameObject == std::nullopt);
 
     osrssim::Engine engine;
     assert(engine.GetScene().Contains({0, 0, 0}));

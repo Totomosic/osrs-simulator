@@ -85,6 +85,8 @@ struct GameObject
 {
     EntityId id = 0;
     CardinalDirection direction = CardinalDirection::North;
+    int sizeX = 1;
+    int sizeY = 1;
 };
 
 struct Tile

@@ -113,19 +113,56 @@ bool Scene::PlaceGameObject(
     CardinalDirection direction,
     const CollisionProfile& collisionProfile)
 {
-    Tile* tile = TryGetTile(coordinate);
+    return PlaceGameObject(coordinate, id, direction, 1, 1, collisionProfile);
+}
 
-    if (tile == nullptr || tile->gameObject.has_value())
+bool Scene::PlaceGameObject(
+    SceneCoordinate coordinate,
+    EntityId id,
+    CardinalDirection direction,
+    int sizeX,
+    int sizeY,
+    const CollisionProfile& collisionProfile)
+{
+    if (sizeX <= 0 || sizeY <= 0)
     {
         return false;
+    }
+
+    const int footprintWidth = GetFootprintWidth(direction, sizeX, sizeY);
+    const int footprintHeight = GetFootprintHeight(direction, sizeX, sizeY);
+
+    for (int dx = 0; dx < footprintWidth; ++dx)
+    {
+        for (int dy = 0; dy < footprintHeight; ++dy)
+        {
+            Tile* tile = TryGetTile(
+                {coordinate.x + dx, coordinate.y + dy, coordinate.plane});
+
+            if (tile == nullptr || tile->gameObject.has_value())
+            {
+                return false;
+            }
+        }
     }
 
     GameObject gameObject;
     gameObject.id = id;
     gameObject.direction = direction;
-    tile->gameObject = gameObject;
+    gameObject.sizeX = sizeX;
+    gameObject.sizeY = sizeY;
 
-    ApplyGameObjectCollision(*tile, collisionProfile);
+    for (int dx = 0; dx < footprintWidth; ++dx)
+    {
+        for (int dy = 0; dy < footprintHeight; ++dy)
+        {
+            Tile* tile = TryGetTile(
+                {coordinate.x + dx, coordinate.y + dy, coordinate.plane});
+
+            tile->gameObject = gameObject;
+            ApplyGameObjectCollision(*tile, collisionProfile);
+        }
+    }
 
     return true;
 }
@@ -226,6 +263,42 @@ CardinalDirection Scene::GetOppositeDirection(CardinalDirection direction)
     }
 
     return direction;
+}
+
+int Scene::GetFootprintWidth(
+    CardinalDirection direction,
+    int sizeX,
+    int sizeY)
+{
+    switch (direction)
+    {
+        case CardinalDirection::North:
+        case CardinalDirection::South:
+            return sizeX;
+        case CardinalDirection::East:
+        case CardinalDirection::West:
+            return sizeY;
+    }
+
+    return sizeX;
+}
+
+int Scene::GetFootprintHeight(
+    CardinalDirection direction,
+    int sizeX,
+    int sizeY)
+{
+    switch (direction)
+    {
+        case CardinalDirection::North:
+        case CardinalDirection::South:
+            return sizeY;
+        case CardinalDirection::East:
+        case CardinalDirection::West:
+            return sizeX;
+    }
+
+    return sizeY;
 }
 
 void Scene::ApplyWallEdgeCollision(
