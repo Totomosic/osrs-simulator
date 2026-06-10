@@ -6,7 +6,9 @@ Keep tooling separate from core engine and simulator code unless it becomes part
 
 ## Ralph Agent Loop
 
-`ralph_once.sh` runs one non-interactive Codex pass against the repo. By default it asks Codex to find one open GitHub issue labelled `ready-for-agent`, implement it, run focused verification, create a local commit, and report the result without pushing or opening a PR.
+`ralph_once.sh` runs one non-interactive Codex pass against the repo. By default it finds one open non-PRD GitHub issue labelled `ready-for-agent`, asks Codex to implement it, runs focused verification, creates a local commit, closes the issue, and reports the result without pushing or opening a PR.
+
+PRD issues are planning records, not implementation tasks. Ralph skips PRD issues, and when no non-PRD issues remain it closes open PRD issues and outputs `RALPH_NO_VALID_ISSUES`. `ralph_afk.sh` exits when it sees that token.
 
 ```sh
 tools/ralph_once.sh
@@ -28,6 +30,8 @@ Useful environment variables:
 - `RALPH_SANDBOX`: Codex sandbox mode. Defaults to `danger-full-access` so the AFK issue loop can reach GitHub through `gh`.
 - `RALPH_APPROVAL_POLICY`: Codex approval mode. Defaults to `never`.
 - `RALPH_GITHUB_PREFLIGHT`: set to `0` to skip the default prompt's `gh issue list` connectivity check.
+- `RALPH_ISSUE_LIMIT`: max open GitHub issues to inspect. Defaults to `200`.
+- `RALPH_NO_VALID_ISSUES_TOKEN`: token emitted by `ralph_once.sh` and watched by `ralph_afk.sh`. Defaults to `RALPH_NO_VALID_ISSUES`.
 - `RALPH_PROMPT`: prompt for `ralph_once.sh`. Positional arguments also replace the default prompt.
 - `ralph_afk.sh` treats a leading numeric argument as `RALPH_MAX_ITERATIONS`; remaining positional arguments replace the default prompt.
 - `RALPH_EXTRA_ARGS`: additional whitespace-separated arguments passed to `codex exec`.
