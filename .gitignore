@@ -1,0 +1,12 @@
+build/
+cmake-build-*/
+out/
+
+web/node_modules/
+web/dist/
+web/.vite/
+
+*.user
+*.swp
+*.swo
+*~
