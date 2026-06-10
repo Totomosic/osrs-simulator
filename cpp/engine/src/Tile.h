@@ -81,11 +81,18 @@ struct WallObject
     bool HasDirection(CardinalDirection direction) const;
 };
 
+struct GameObject
+{
+    EntityId id = 0;
+    CardinalDirection direction = CardinalDirection::North;
+};
+
 struct Tile
 {
     SceneCoordinate coordinate;
     TileFlags flags = ToTileFlags(TileFlag::None);
     std::optional<WallObject> wallObject;
+    std::optional<GameObject> gameObject;
 
     bool HasFlag(TileFlag flag) const;
     void AddFlag(TileFlag flag);

@@ -107,6 +107,29 @@ bool Scene::PlaceWallObject(
     return true;
 }
 
+bool Scene::PlaceGameObject(
+    SceneCoordinate coordinate,
+    EntityId id,
+    CardinalDirection direction,
+    const CollisionProfile& collisionProfile)
+{
+    Tile* tile = TryGetTile(coordinate);
+
+    if (tile == nullptr || tile->gameObject.has_value())
+    {
+        return false;
+    }
+
+    GameObject gameObject;
+    gameObject.id = id;
+    gameObject.direction = direction;
+    tile->gameObject = gameObject;
+
+    ApplyGameObjectCollision(*tile, collisionProfile);
+
+    return true;
+}
+
 Tile* Scene::TryGetTile(SceneCoordinate coordinate)
 {
     if (!Contains(coordinate))
@@ -223,6 +246,21 @@ void Scene::ApplyWallEdgeCollision(
     {
         tile.AddFlag(GetLineOfSightFlag(direction));
         adjacentTile.AddFlag(GetLineOfSightFlag(oppositeDirection));
+    }
+}
+
+void Scene::ApplyGameObjectCollision(
+    Tile& tile,
+    const CollisionProfile& collisionProfile)
+{
+    if (collisionProfile.blocksMovement)
+    {
+        tile.AddFlag(TileFlag::BlockMovementObject);
+    }
+
+    if (collisionProfile.blocksLineOfSight)
+    {
+        tile.AddFlag(TileFlag::BlockLineOfSightFull);
     }
 }
 

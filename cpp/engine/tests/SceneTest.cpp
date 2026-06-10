@@ -109,6 +109,33 @@ int main()
         osrssim::CardinalDirection::East,
         lineOfSightCollision));
 
+    osrssim::CollisionProfile gameObjectCollision;
+    gameObjectCollision.blocksMovement = true;
+    gameObjectCollision.blocksLineOfSight = true;
+
+    osrssim::SceneCoordinate gameObjectCoordinate{50, 50, 0};
+
+    assert(scene.PlaceGameObject(
+        gameObjectCoordinate,
+        200,
+        osrssim::CardinalDirection::South,
+        gameObjectCollision));
+
+    const osrssim::Tile* gameObjectTile = scene.TryGetTile(gameObjectCoordinate);
+
+    assert(gameObjectTile != nullptr);
+    assert(gameObjectTile->gameObject.has_value());
+    assert(gameObjectTile->gameObject->id == 200);
+    assert(gameObjectTile->gameObject->direction == osrssim::CardinalDirection::South);
+    assert(gameObjectTile->HasFlag(osrssim::TileFlag::BlockMovementObject));
+    assert(gameObjectTile->HasFlag(osrssim::TileFlag::BlockLineOfSightFull));
+    assert(!gameObjectTile->HasFlag(osrssim::TileFlag::Occupied));
+    assert(!scene.PlaceGameObject(
+        gameObjectCoordinate,
+        201,
+        osrssim::CardinalDirection::North,
+        gameObjectCollision));
+
     osrssim::Engine engine;
     assert(engine.GetScene().Contains({0, 0, 0}));
 

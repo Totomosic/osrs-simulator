@@ -37,6 +37,11 @@ public:
         const CollisionProfile& firstCollisionProfile,
         CardinalDirection secondDirection,
         const CollisionProfile& secondCollisionProfile);
+    bool PlaceGameObject(
+        SceneCoordinate coordinate,
+        EntityId id,
+        CardinalDirection direction,
+        const CollisionProfile& collisionProfile);
     Tile* TryGetTile(SceneCoordinate coordinate);
     const Tile* TryGetTile(SceneCoordinate coordinate) const;
 
@@ -52,6 +57,9 @@ private:
         Tile& tile,
         Tile& adjacentTile,
         CardinalDirection direction,
+        const CollisionProfile& collisionProfile);
+    static void ApplyGameObjectCollision(
+        Tile& tile,
         const CollisionProfile& collisionProfile);
 };
 
