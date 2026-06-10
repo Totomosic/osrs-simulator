@@ -56,6 +56,18 @@ constexpr TileFlags operator&(TileFlags lhs, TileFlag rhs)
     return lhs & ToTileFlags(rhs);
 }
 
+enum class CompassDirection
+{
+    NorthWest,
+    North,
+    NorthEast,
+    East,
+    SouthEast,
+    South,
+    SouthWest,
+    West,
+};
+
 enum class CardinalDirection
 {
     North,

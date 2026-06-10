@@ -3,6 +3,10 @@
 #include "Tile.h"
 
 #include <cassert>
+#include <type_traits>
+
+static_assert(
+    !std::is_same_v<osrssim::CompassDirection, osrssim::CardinalDirection>);
 
 int main()
 {
