@@ -5,7 +5,8 @@ namespace osrssim
 
 Scene::Scene(int baseX, int baseY)
     : m_BaseX(baseX),
-      m_BaseY(baseY)
+      m_BaseY(baseY),
+      m_Tiles(PlaneCount * Width * Height)
 {
     for (int plane = 0; plane < PlaneCount; ++plane)
     {
@@ -47,7 +48,8 @@ bool Scene::PlaceWallObject(
     Tile* tile = TryGetTile(coordinate);
     Tile* adjacentTile = TryGetTile(adjacentCoordinate);
 
-    if (tile == nullptr || adjacentTile == nullptr || tile->wallObject.has_value())
+    if (tile == nullptr || adjacentTile == nullptr || tile->wallObject.has_value() ||
+        !CanApplyWallEdgeCollision(*tile, *adjacentTile, direction, collisionProfile))
     {
         return false;
     }
@@ -55,6 +57,7 @@ bool Scene::PlaceWallObject(
     WallObject wallObject;
     wallObject.id = id;
     wallObject.directions[0] = direction;
+    wallObject.collisionProfiles[0] = collisionProfile;
     wallObject.directionCount = 1;
     tile->wallObject = wallObject;
 
@@ -81,7 +84,17 @@ bool Scene::PlaceWallObject(
 
     if (tile == nullptr || firstAdjacentTile == nullptr ||
         secondAdjacentTile == nullptr || tile->wallObject.has_value() ||
-        firstDirection == secondDirection)
+        firstDirection == secondDirection ||
+        !CanApplyWallEdgeCollision(
+            *tile,
+            *firstAdjacentTile,
+            firstDirection,
+            firstCollisionProfile) ||
+        !CanApplyWallEdgeCollision(
+            *tile,
+            *secondAdjacentTile,
+            secondDirection,
+            secondCollisionProfile))
     {
         return false;
     }
@@ -90,6 +103,8 @@ bool Scene::PlaceWallObject(
     wallObject.id = id;
     wallObject.directions[0] = firstDirection;
     wallObject.directions[1] = secondDirection;
+    wallObject.collisionProfiles[0] = firstCollisionProfile;
+    wallObject.collisionProfiles[1] = secondCollisionProfile;
     wallObject.directionCount = 2;
     tile->wallObject = wallObject;
 
@@ -139,7 +154,8 @@ bool Scene::PlaceGameObject(
             Tile* tile = TryGetTile(
                 {coordinate.x + dx, coordinate.y + dy, coordinate.plane});
 
-            if (tile == nullptr || tile->gameObject.has_value())
+            if (tile == nullptr || tile->gameObject.has_value() ||
+                !CanApplyGameObjectCollision(*tile, collisionProfile))
             {
                 return false;
             }
@@ -148,9 +164,11 @@ bool Scene::PlaceGameObject(
 
     GameObject gameObject;
     gameObject.id = id;
+    gameObject.origin = coordinate;
     gameObject.direction = direction;
     gameObject.sizeX = sizeX;
     gameObject.sizeY = sizeY;
+    gameObject.collisionProfile = collisionProfile;
 
     for (int dx = 0; dx < footprintWidth; ++dx)
     {
@@ -161,6 +179,101 @@ bool Scene::PlaceGameObject(
 
             tile->gameObject = gameObject;
             ApplyGameObjectCollision(*tile, collisionProfile);
+        }
+    }
+
+    return true;
+}
+
+bool Scene::RemoveWallObject(SceneCoordinate coordinate)
+{
+    Tile* tile = TryGetTile(coordinate);
+
+    if (tile == nullptr || !tile->wallObject.has_value())
+    {
+        return false;
+    }
+
+    WallObject wallObject = *tile->wallObject;
+
+    for (int index = 0; index < wallObject.directionCount; ++index)
+    {
+        CardinalDirection direction =
+            wallObject.directions[static_cast<std::size_t>(index)];
+        SceneCoordinate adjacentCoordinate = GetAdjacentCoordinate(coordinate, direction);
+        Tile* adjacentTile = TryGetTile(adjacentCoordinate);
+
+        if (adjacentTile == nullptr)
+        {
+            return false;
+        }
+    }
+
+    for (int index = 0; index < wallObject.directionCount; ++index)
+    {
+        CardinalDirection direction =
+            wallObject.directions[static_cast<std::size_t>(index)];
+        SceneCoordinate adjacentCoordinate = GetAdjacentCoordinate(coordinate, direction);
+        Tile* adjacentTile = TryGetTile(adjacentCoordinate);
+
+        RemoveWallEdgeCollision(
+            *tile,
+            *adjacentTile,
+            direction,
+            wallObject.collisionProfiles[static_cast<std::size_t>(index)]);
+    }
+
+    tile->wallObject = std::nullopt;
+
+    return true;
+}
+
+bool Scene::RemoveGameObject(SceneCoordinate coordinate)
+{
+    const Tile* selectedTile = TryGetTile(coordinate);
+
+    if (selectedTile == nullptr || !selectedTile->gameObject.has_value())
+    {
+        return false;
+    }
+
+    GameObject gameObject = *selectedTile->gameObject;
+    const int footprintWidth =
+        GetFootprintWidth(gameObject.direction, gameObject.sizeX, gameObject.sizeY);
+    const int footprintHeight =
+        GetFootprintHeight(gameObject.direction, gameObject.sizeX, gameObject.sizeY);
+
+    for (int dx = 0; dx < footprintWidth; ++dx)
+    {
+        for (int dy = 0; dy < footprintHeight; ++dy)
+        {
+            SceneCoordinate coveredCoordinate{
+                gameObject.origin.x + dx,
+                gameObject.origin.y + dy,
+                gameObject.origin.plane};
+            Tile* tile = TryGetTile(coveredCoordinate);
+
+            if (tile == nullptr || !tile->gameObject.has_value() ||
+                tile->gameObject->id != gameObject.id ||
+                !(tile->gameObject->origin == gameObject.origin))
+            {
+                return false;
+            }
+        }
+    }
+
+    for (int dx = 0; dx < footprintWidth; ++dx)
+    {
+        for (int dy = 0; dy < footprintHeight; ++dy)
+        {
+            SceneCoordinate coveredCoordinate{
+                gameObject.origin.x + dx,
+                gameObject.origin.y + dy,
+                gameObject.origin.plane};
+            Tile* tile = TryGetTile(coveredCoordinate);
+
+            RemoveGameObjectCollision(*tile, gameObject.collisionProfile);
+            tile->gameObject = std::nullopt;
         }
     }
 
@@ -322,6 +435,52 @@ void Scene::ApplyWallEdgeCollision(
     }
 }
 
+bool Scene::CanApplyWallEdgeCollision(
+    const Tile& tile,
+    const Tile& adjacentTile,
+    CardinalDirection direction,
+    const CollisionProfile& collisionProfile)
+{
+    CardinalDirection oppositeDirection = GetOppositeDirection(direction);
+
+    if (collisionProfile.blocksMovement &&
+        (tile.HasFlag(GetMovementFlag(direction)) ||
+         adjacentTile.HasFlag(GetMovementFlag(oppositeDirection))))
+    {
+        return false;
+    }
+
+    if (collisionProfile.blocksLineOfSight &&
+        (tile.HasFlag(GetLineOfSightFlag(direction)) ||
+         adjacentTile.HasFlag(GetLineOfSightFlag(oppositeDirection))))
+    {
+        return false;
+    }
+
+    return true;
+}
+
+void Scene::RemoveWallEdgeCollision(
+    Tile& tile,
+    Tile& adjacentTile,
+    CardinalDirection direction,
+    const CollisionProfile& collisionProfile)
+{
+    CardinalDirection oppositeDirection = GetOppositeDirection(direction);
+
+    if (collisionProfile.blocksMovement)
+    {
+        tile.RemoveFlag(GetMovementFlag(direction));
+        adjacentTile.RemoveFlag(GetMovementFlag(oppositeDirection));
+    }
+
+    if (collisionProfile.blocksLineOfSight)
+    {
+        tile.RemoveFlag(GetLineOfSightFlag(direction));
+        adjacentTile.RemoveFlag(GetLineOfSightFlag(oppositeDirection));
+    }
+}
+
 void Scene::ApplyGameObjectCollision(
     Tile& tile,
     const CollisionProfile& collisionProfile)
@@ -334,6 +493,40 @@ void Scene::ApplyGameObjectCollision(
     if (collisionProfile.blocksLineOfSight)
     {
         tile.AddFlag(TileFlag::BlockLineOfSightFull);
+    }
+}
+
+bool Scene::CanApplyGameObjectCollision(
+    const Tile& tile,
+    const CollisionProfile& collisionProfile)
+{
+    if (collisionProfile.blocksMovement &&
+        tile.HasFlag(TileFlag::BlockMovementObject))
+    {
+        return false;
+    }
+
+    if (collisionProfile.blocksLineOfSight &&
+        tile.HasFlag(TileFlag::BlockLineOfSightFull))
+    {
+        return false;
+    }
+
+    return true;
+}
+
+void Scene::RemoveGameObjectCollision(
+    Tile& tile,
+    const CollisionProfile& collisionProfile)
+{
+    if (collisionProfile.blocksMovement)
+    {
+        tile.RemoveFlag(TileFlag::BlockMovementObject);
+    }
+
+    if (collisionProfile.blocksLineOfSight)
+    {
+        tile.RemoveFlag(TileFlag::BlockLineOfSightFull);
     }
 }
 

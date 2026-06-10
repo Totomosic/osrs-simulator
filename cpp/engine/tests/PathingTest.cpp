@@ -112,6 +112,10 @@ int main()
         assert(!pathing.CanMove(east, origin));
         assert(pathing.CanMove(origin, north));
         assert(pathing.CanMove(origin, south));
+
+        assert(scene.RemoveWallObject(origin));
+        assert(pathing.CanMove(origin, east));
+        assert(pathing.CanMove(east, origin));
     }
 
     {
@@ -142,6 +146,12 @@ int main()
         assert(!pathing.CanMove(origin, north));
         assert(!pathing.CanMove(north, origin));
         assert(pathing.CanMove(origin, south));
+
+        assert(scene.RemoveWallObject(origin));
+        assert(pathing.CanMove(origin, east));
+        assert(pathing.CanMove(east, origin));
+        assert(pathing.CanMove(origin, north));
+        assert(pathing.CanMove(north, origin));
     }
 
     {
@@ -190,6 +200,10 @@ int main()
 
         assert(!pathing.CanMove(origin, east));
         assert(pathing.CanMove(east, origin));
+
+        assert(scene.RemoveGameObject(east));
+        assert(pathing.CanMove(origin, east));
+        assert(pathing.CanMove(east, origin));
     }
 
     {
@@ -237,6 +251,11 @@ int main()
 
         assert(!pathing.CanMove(origin, coveredSouthWest));
         assert(!pathing.CanMove({13, 12, 0}, coveredNorthEast));
+        assert(pathing.CanMove(coveredSouthWest, origin));
+
+        assert(scene.RemoveGameObject(coveredNorthEast));
+        assert(pathing.CanMove(origin, coveredSouthWest));
+        assert(pathing.CanMove({13, 12, 0}, coveredNorthEast));
         assert(pathing.CanMove(coveredSouthWest, origin));
     }
 

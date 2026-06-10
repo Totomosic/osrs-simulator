@@ -172,6 +172,75 @@ int main()
     assert(outsideRotatedFootprint != nullptr);
     assert(outsideRotatedFootprint->gameObject == std::nullopt);
 
+    assert(scene.RemoveWallObject(wallCoordinate));
+    assert(!wallTile->wallObject.has_value());
+    assert(!wallTile->HasFlag(osrssim::TileFlag::BlockMovementEast));
+    assert(!wallEastTile->HasFlag(osrssim::TileFlag::BlockMovementWest));
+    assert(!scene.RemoveWallObject(wallCoordinate));
+
+    assert(scene.RemoveWallObject(cornerCoordinate));
+    assert(!cornerTile->wallObject.has_value());
+    assert(!cornerTile->HasFlag(osrssim::TileFlag::BlockMovementEast));
+    assert(!cornerEastTile->HasFlag(osrssim::TileFlag::BlockMovementWest));
+    assert(!cornerTile->HasFlag(osrssim::TileFlag::BlockLineOfSightNorth));
+    assert(!cornerNorthTile->HasFlag(osrssim::TileFlag::BlockLineOfSightSouth));
+
+    assert(scene.RemoveGameObject(gameObjectCoordinate));
+    assert(!gameObjectTile->gameObject.has_value());
+    assert(!gameObjectTile->HasFlag(osrssim::TileFlag::BlockMovementObject));
+    assert(!gameObjectTile->HasFlag(osrssim::TileFlag::BlockLineOfSightFull));
+    assert(!scene.RemoveGameObject(gameObjectCoordinate));
+
+    assert(scene.RemoveGameObject({61, 61, 0}));
+
+    for (int dx = 0; dx < 3; ++dx)
+    {
+        for (int dy = 0; dy < 2; ++dy)
+        {
+            const osrssim::Tile* coveredTile = scene.TryGetTile(
+                {largeObjectCoordinate.x + dx, largeObjectCoordinate.y + dy, 0});
+
+            assert(coveredTile != nullptr);
+            assert(coveredTile->gameObject == std::nullopt);
+            assert(!coveredTile->HasFlag(osrssim::TileFlag::BlockMovementObject));
+            assert(!coveredTile->HasFlag(osrssim::TileFlag::BlockLineOfSightFull));
+        }
+    }
+
+    osrssim::Scene overlapScene;
+    assert(overlapScene.PlaceWallObject(
+        {10, 10, 0},
+        400,
+        osrssim::CardinalDirection::East,
+        movementCollision));
+    assert(!overlapScene.PlaceWallObject(
+        {11, 10, 0},
+        401,
+        osrssim::CardinalDirection::West,
+        movementCollision));
+    assert(overlapScene.TryGetTile({11, 10, 0})->wallObject == std::nullopt);
+    assert(overlapScene.TryGetTile({10, 10, 0})
+               ->HasFlag(osrssim::TileFlag::BlockMovementEast));
+    assert(overlapScene.TryGetTile({11, 10, 0})
+               ->HasFlag(osrssim::TileFlag::BlockMovementWest));
+
+    osrssim::Scene objectOverlapScene;
+    assert(objectOverlapScene.PlaceGameObject(
+        {20, 20, 0},
+        500,
+        osrssim::CardinalDirection::North,
+        gameObjectCollision));
+    assert(!objectOverlapScene.PlaceGameObject(
+        {20, 20, 0},
+        501,
+        osrssim::CardinalDirection::North,
+        gameObjectCollision));
+    assert(objectOverlapScene.TryGetTile({20, 20, 0})->gameObject->id == 500);
+    assert(objectOverlapScene.TryGetTile({20, 20, 0})
+               ->HasFlag(osrssim::TileFlag::BlockMovementObject));
+    assert(objectOverlapScene.TryGetTile({20, 20, 0})
+               ->HasFlag(osrssim::TileFlag::BlockLineOfSightFull));
+
     osrssim::Engine engine;
     assert(engine.GetScene().Contains({0, 0, 0}));
 

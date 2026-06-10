@@ -76,6 +76,7 @@ struct WallObject
     std::array<CardinalDirection, 2> directions{
         CardinalDirection::North,
         CardinalDirection::North};
+    std::array<CollisionProfile, 2> collisionProfiles{};
     int directionCount = 0;
 
     bool HasDirection(CardinalDirection direction) const;
@@ -84,9 +85,11 @@ struct WallObject
 struct GameObject
 {
     EntityId id = 0;
+    SceneCoordinate origin;
     CardinalDirection direction = CardinalDirection::North;
     int sizeX = 1;
     int sizeY = 1;
+    CollisionProfile collisionProfile;
 };
 
 struct Tile

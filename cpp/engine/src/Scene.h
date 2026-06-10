@@ -2,8 +2,8 @@
 
 #include "Tile.h"
 
-#include <array>
 #include <cstddef>
+#include <vector>
 
 namespace osrssim
 {
@@ -13,7 +13,7 @@ class Scene
 private:
     int m_BaseX = 0;
     int m_BaseY = 0;
-    std::array<Tile, 4 * 104 * 104> m_Tiles;
+    std::vector<Tile> m_Tiles;
 
 public:
     static constexpr int PlaneCount = 4;
@@ -49,6 +49,8 @@ public:
         int sizeX,
         int sizeY,
         const CollisionProfile& collisionProfile);
+    bool RemoveWallObject(SceneCoordinate coordinate);
+    bool RemoveGameObject(SceneCoordinate coordinate);
     Tile* TryGetTile(SceneCoordinate coordinate);
     const Tile* TryGetTile(SceneCoordinate coordinate) const;
 
@@ -73,7 +75,23 @@ private:
         Tile& adjacentTile,
         CardinalDirection direction,
         const CollisionProfile& collisionProfile);
+    static bool CanApplyWallEdgeCollision(
+        const Tile& tile,
+        const Tile& adjacentTile,
+        CardinalDirection direction,
+        const CollisionProfile& collisionProfile);
+    static void RemoveWallEdgeCollision(
+        Tile& tile,
+        Tile& adjacentTile,
+        CardinalDirection direction,
+        const CollisionProfile& collisionProfile);
     static void ApplyGameObjectCollision(
+        Tile& tile,
+        const CollisionProfile& collisionProfile);
+    static bool CanApplyGameObjectCollision(
+        const Tile& tile,
+        const CollisionProfile& collisionProfile);
+    static void RemoveGameObjectCollision(
         Tile& tile,
         const CollisionProfile& collisionProfile);
 };
