@@ -154,5 +154,95 @@ int main()
                (osrssim::SceneCoordinate{10, 10, 0}));
     }
 
+    {
+        osrssim::World world;
+        osrssim::Scene* scene = world.TryGetScene(world.GetDefaultSceneId());
+        osrssim::ActorId movingPlayerId = world.CreatePlayer(1, 1);
+        osrssim::ActorId occupyingPlayerId = world.CreatePlayer(1, 1);
+
+        assert(scene != nullptr);
+        assert(world.PlaceActor(
+            movingPlayerId,
+            world.GetDefaultSceneId(),
+            {10, 10, 0}));
+        assert(world.PlaceActor(
+            occupyingPlayerId,
+            world.GetDefaultSceneId(),
+            {11, 10, 0}));
+
+        assert(world.MoveActorByDelta(movingPlayerId, 1, 0));
+        assert(world.GetSceneMembership(movingPlayerId)->coordinate ==
+               (osrssim::SceneCoordinate{11, 10, 0}));
+        assert(world.GetSceneMembership(occupyingPlayerId)->coordinate ==
+               (osrssim::SceneCoordinate{11, 10, 0}));
+        assert(!scene->TryGetTile({10, 10, 0})->IsOccupied());
+        assert(scene->TryGetTile({11, 10, 0})->IsOccupied());
+    }
+
+    {
+        osrssim::World world;
+        osrssim::Scene* scene = world.TryGetScene(world.GetDefaultSceneId());
+        osrssim::ActorId npcId = world.CreateNpc(1, 1);
+        osrssim::ActorId occupyingPlayerId = world.CreatePlayer(1, 1);
+
+        assert(scene != nullptr);
+        assert(world.PlaceActor(npcId, world.GetDefaultSceneId(), {10, 10, 0}));
+        assert(world.PlaceActor(
+            occupyingPlayerId,
+            world.GetDefaultSceneId(),
+            {11, 10, 0}));
+
+        assert(!world.MoveActorByDelta(npcId, 1, 0));
+        assert(world.GetSceneMembership(npcId)->coordinate ==
+               (osrssim::SceneCoordinate{10, 10, 0}));
+        assert(world.GetSceneMembership(occupyingPlayerId)->coordinate ==
+               (osrssim::SceneCoordinate{11, 10, 0}));
+        assert(scene->TryGetTile({10, 10, 0})->IsOccupied());
+        assert(scene->TryGetTile({11, 10, 0})->IsOccupied());
+    }
+
+    {
+        osrssim::World world;
+        osrssim::Scene* scene = world.TryGetScene(world.GetDefaultSceneId());
+        osrssim::ActorId npcId = world.CreateNpc(1, 2);
+        osrssim::ActorId occupyingPlayerId = world.CreatePlayer(1, 1);
+
+        assert(scene != nullptr);
+        assert(world.PlaceActor(npcId, world.GetDefaultSceneId(), {10, 10, 0}));
+        assert(world.PlaceActor(
+            occupyingPlayerId,
+            world.GetDefaultSceneId(),
+            {11, 10, 0}));
+
+        assert(world.MoveActorByDelta(npcId, 2, 0));
+        assert(world.GetSceneMembership(npcId)->coordinate ==
+               (osrssim::SceneCoordinate{12, 10, 0}));
+        assert(!scene->TryGetTile({10, 10, 0})->IsOccupied());
+        assert(scene->TryGetTile({11, 10, 0})->IsOccupied());
+        assert(scene->TryGetTile({12, 10, 0})->IsOccupied());
+    }
+
+    {
+        osrssim::World world;
+        osrssim::Scene* scene = world.TryGetScene(world.GetDefaultSceneId());
+        osrssim::ActorId npcId = world.CreateNpc(1, 1);
+        osrssim::ActorId occupyingPlayerId = world.CreatePlayer(1, 1);
+
+        assert(scene != nullptr);
+        assert(world.PlaceActor(npcId, world.GetDefaultSceneId(), {10, 10, 0}));
+        assert(world.PlaceActor(
+            occupyingPlayerId,
+            world.GetDefaultSceneId(),
+            {10, 10, 0}));
+
+        assert(world.MoveActorByDelta(npcId, 1, 0));
+        assert(world.GetSceneMembership(npcId)->coordinate ==
+               (osrssim::SceneCoordinate{11, 10, 0}));
+        assert(world.GetSceneMembership(occupyingPlayerId)->coordinate ==
+               (osrssim::SceneCoordinate{10, 10, 0}));
+        assert(!scene->TryGetTile({10, 10, 0})->IsOccupied());
+        assert(scene->TryGetTile({11, 10, 0})->IsOccupied());
+    }
+
     return 0;
 }
