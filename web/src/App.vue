@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from "vue";
+import { computed, onMounted, ref } from "vue";
 import {
     buildRenderTiles,
     getSceneScreenCoordinate,
@@ -10,6 +10,7 @@ import {
     type ScenarioId,
     type ScenarioResult,
 } from "./scenarios";
+import { loadEngineModule } from "./wasm/EngineModule";
 
 interface SvgTile extends RenderTile {
     screenX: number;
@@ -28,6 +29,9 @@ interface SvgEdge {
 }
 
 const tileSize = 10;
+const engineModuleStatus = ref<"loading" | "loaded" | "failed">("loading");
+const engineLoadedTick = ref<number | null>(null);
+const defaultSceneId = ref<number | null>(null);
 const selectedScenarioId = ref<ScenarioId>("empty-world");
 const selectedPlane = ref(0);
 const scenario = computed<ScenarioResult>(() => runScenario(selectedScenarioId.value));
@@ -76,6 +80,32 @@ const sceneContentSummary = computed(() => {
 
     return [...wallObjects, ...gameObjects].join(" | ") || "None";
 });
+const engineModuleStatusLabel = computed(() => {
+    switch (engineModuleStatus.value) {
+        case "loaded":
+            return `Engine wasm loaded | Tick ${engineLoadedTick.value} | Scene #${defaultSceneId.value}`;
+        case "failed":
+            return "Engine wasm unavailable";
+        case "loading":
+            return "Loading engine wasm";
+    }
+});
+
+onMounted(async () => {
+    try {
+        const module = await loadEngineModule();
+        const engine = new module.Engine();
+        const world = new module.World();
+
+        engine.Step();
+        engineLoadedTick.value = engine.GetCurrentTick();
+        defaultSceneId.value = world.GetDefaultSceneId();
+        engineModuleStatus.value = "loaded";
+    } catch (error) {
+        console.error("Failed to load engine wasm module", error);
+        engineModuleStatus.value = "failed";
+    }
+});
 
 function selectScenario(id: ScenarioId): void {
     selectedScenarioId.value = id;
@@ -123,6 +153,9 @@ function buildEdge(
       <div>
         <p class="eyebrow">Development viewer</p>
         <h1>OSRS Simulator</h1>
+        <p :class="['engine-status', engineModuleStatus]">
+          {{ engineModuleStatusLabel }}
+        </p>
       </div>
 
       <div class="control-stack">
@@ -307,6 +340,21 @@ p {
 h1 {
     font-size: 2rem;
     line-height: 1.1;
+}
+
+.engine-status {
+    color: #4d5763;
+    font-size: 0.92rem;
+    font-weight: 700;
+    margin-top: 10px;
+}
+
+.engine-status.loaded {
+    color: #1d4f45;
+}
+
+.engine-status.failed {
+    color: #9b2c2c;
 }
 
 h2 {

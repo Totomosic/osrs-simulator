@@ -18,6 +18,34 @@ target_link_libraries(osrssim_engine
     osrssim::common
 )
 
+if(EMSCRIPTEN)
+  add_executable(osrssim_engine_wasm
+    src/EngineBindings.cpp
+  )
+
+  target_link_libraries(osrssim_engine_wasm
+    PRIVATE
+      osrssim::engine
+  )
+
+  set_target_properties(osrssim_engine_wasm
+    PROPERTIES
+      OUTPUT_NAME EngineModule
+      RUNTIME_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/web/public/wasm
+      SUFFIX ".js"
+  )
+
+  target_link_options(osrssim_engine_wasm
+    PRIVATE
+      --bind
+      -sALLOW_MEMORY_GROWTH=1
+      -sENVIRONMENT=web
+      -sEXPORT_ES6=1
+      -sEXPORT_NAME=createGeneratedEngineModule
+      -sMODULARIZE=1
+  )
+endif()
+
 if(BUILD_TESTING)
   add_executable(osrssim_engine_scene_test
     tests/SceneTest.cpp
