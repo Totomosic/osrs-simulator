@@ -21,7 +21,14 @@ export interface EngineModule {
     World: new () => World;
 }
 
-const generatedModulePath = "/wasm/EngineModule.js";
+const generatedModuleUrl = new URL(
+    "./generated/EngineModule.js",
+    import.meta.url,
+).href;
+const generatedWasmUrl = new URL(
+    "./generated/EngineModule.wasm",
+    import.meta.url,
+).href;
 
 export function loadEngineModule(
     factory?: EngineModuleFactory,
@@ -30,13 +37,14 @@ export function loadEngineModule(
         return createEngineModule(factory);
     }
 
-    return import(/* @vite-ignore */ generatedModulePath).then((generatedModule) =>
+    return import(/* @vite-ignore */ generatedModuleUrl).then((generatedModule) =>
         createEngineModule(generatedModule.default as EngineModuleFactory),
     );
 }
 
 function createEngineModule(factory: EngineModuleFactory): Promise<EngineModule> {
     return factory({
-        locateFile: (path) => `/wasm/${path}`,
+        locateFile: (path) =>
+            path === "EngineModule.wasm" ? generatedWasmUrl : path,
     });
 }

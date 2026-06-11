@@ -31,7 +31,7 @@ if(EMSCRIPTEN)
   set_target_properties(osrssim_engine_wasm
     PROPERTIES
       OUTPUT_NAME EngineModule
-      RUNTIME_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/web/public/wasm
+      RUNTIME_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/web/src/wasm/generated
       SUFFIX ".js"
   )
 

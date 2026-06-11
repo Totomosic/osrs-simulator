@@ -62,5 +62,5 @@ engine.Step();
 assert.equal(engine.GetCurrentTick(), 1);
 assert.equal(engine.GetWorld().GetDefaultSceneId(), 1);
 assert.equal(world.GetDefaultSceneId(), 1);
-assert.equal(locateFileResult, "/wasm/EngineModule.wasm");
+assert.match(locateFileResult, /\/generated\/EngineModule\.wasm$/);
 await writeFile(`${outfile}.stamp`, new Date().toISOString());
