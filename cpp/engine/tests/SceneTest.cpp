@@ -7,6 +7,16 @@
 
 static_assert(
     !std::is_same_v<osrssim::CompassDirection, osrssim::CardinalDirection>);
+static_assert(requires(osrssim::Engine engine) { engine.GetWorld(); });
+static_assert(requires(const osrssim::Engine engine) { engine.GetWorld(); });
+
+template <typename T>
+concept HasGetScene = requires(T engine)
+{
+    engine.GetScene();
+};
+
+static_assert(!HasGetScene<osrssim::Engine>);
 
 int main()
 {
@@ -353,7 +363,11 @@ int main()
     assert(!conflictTile->HasFlag(osrssim::TileFlag::BlockLineOfSightFull));
 
     osrssim::Engine engine;
-    assert(engine.GetScene().Contains({0, 0, 0}));
+    osrssim::World& world = engine.GetWorld();
+    osrssim::Scene* engineScene = world.TryGetScene(world.GetDefaultSceneId());
+
+    assert(engineScene != nullptr);
+    assert(engineScene->Contains({0, 0, 0}));
 
     return 0;
 }

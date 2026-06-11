@@ -17,8 +17,6 @@ public:
     Tick GetCurrentTick() const;
     World& GetWorld();
     const World& GetWorld() const;
-    Scene& GetScene();
-    const Scene& GetScene() const;
 };
 
 }  // namespace osrssim

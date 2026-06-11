@@ -23,14 +23,4 @@ const World& Engine::GetWorld() const
     return m_World;
 }
 
-Scene& Engine::GetScene()
-{
-    return *m_World.TryGetScene(m_World.GetDefaultSceneId());
-}
-
-const Scene& Engine::GetScene() const
-{
-    return *m_World.TryGetScene(m_World.GetDefaultSceneId());
-}
-
 }  // namespace osrssim
