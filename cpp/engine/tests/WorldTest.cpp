@@ -7,6 +7,32 @@ int main()
 {
     {
         osrssim::World world;
+        osrssim::ActorId playerId = world.CreatePlayer(0, -1);
+        osrssim::ActorId npcId = world.CreateNpc(2, 3);
+
+        assert(playerId != npcId);
+        assert(world.GetPlayer(playerId) != nullptr);
+        assert(world.GetNpc(playerId) == nullptr);
+        assert(world.GetNpc(npcId) != nullptr);
+        assert(world.GetPlayer(npcId) == nullptr);
+        assert(world.GetSceneMembership(playerId) == nullptr);
+        assert(world.GetSceneMembership(npcId) == nullptr);
+
+        const osrssim::ActorCore* playerActor = world.GetActorCore(playerId);
+        const osrssim::ActorCore* npcActor = world.GetActorCore(npcId);
+
+        assert(playerActor != nullptr);
+        assert(playerActor->id == playerId);
+        assert(playerActor->size == 1);
+        assert(playerActor->speed == 0);
+        assert(npcActor != nullptr);
+        assert(npcActor->id == npcId);
+        assert(npcActor->size == 2);
+        assert(npcActor->speed == 3);
+    }
+
+    {
+        osrssim::World world;
         osrssim::Scene* scene = world.TryGetScene(world.GetDefaultSceneId());
 
         assert(scene != nullptr);
@@ -264,6 +290,19 @@ int main()
         assert(scene->TryGetTile({20, 20, 0})->IsOccupied());
         assert(!scene->TryGetTile({11, 10, 0})->IsOccupied());
         assert(!scene->TryGetTile({22, 20, 0})->IsOccupied());
+    }
+
+    {
+        osrssim::World world;
+        osrssim::ActorId actorId = world.CreatePlayer(1, 1);
+
+        assert(world.SetActorSpeed(actorId, 3));
+        assert(world.GetActorCore(actorId)->speed == 3);
+
+        assert(world.SetActorSpeed(actorId, -4));
+        assert(world.GetActorCore(actorId)->speed == 0);
+
+        assert(!world.SetActorSpeed(999, 2));
     }
 
     {

@@ -65,6 +65,20 @@ const SceneMembership* World::GetSceneMembership(ActorId actorId) const
     return found == m_SceneMemberships.end() ? nullptr : &found->second;
 }
 
+bool World::SetActorSpeed(ActorId actorId, int speed)
+{
+    ActorCore* actor = TryGetActorCore(actorId);
+
+    if (actor == nullptr)
+    {
+        return false;
+    }
+
+    actor->speed = ClampSpeed(speed);
+
+    return true;
+}
+
 bool World::PlaceActor(
     ActorId actorId,
     SceneId sceneId,

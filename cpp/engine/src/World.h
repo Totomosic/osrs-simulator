@@ -52,6 +52,7 @@ public:
     const Npc* GetNpc(ActorId actorId) const;
     const ActorCore* GetActorCore(ActorId actorId) const;
     const SceneMembership* GetSceneMembership(ActorId actorId) const;
+    bool SetActorSpeed(ActorId actorId, int speed);
     bool PlaceActor(ActorId actorId, SceneId sceneId, SceneCoordinate coordinate);
     bool RemoveActorSceneMembership(ActorId actorId);
     bool RemoveActor(ActorId actorId);
