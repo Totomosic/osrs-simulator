@@ -1,4 +1,5 @@
 export type ScenarioId =
+    | "actor-occupancy"
     | "npc-movement"
     | "game-object-blocker"
     | "wall-blocker";
@@ -14,6 +15,7 @@ export interface ActorSnapshot {
     kind: "NPC" | "Player";
     size: number;
     speed: number;
+    sceneId: number;
     coordinate: SceneCoordinate;
     footprint: SceneCoordinate[];
 }
@@ -44,6 +46,7 @@ interface ActorRecord {
     kind: "NPC" | "Player";
     size: number;
     speed: number;
+    sceneId?: number;
     coordinate?: SceneCoordinate;
 }
 
@@ -72,12 +75,13 @@ interface WorldApi {
         direction: "East" | "West",
         label: string,
     ): boolean;
-    getActor(actorId: number): ActorSnapshot | undefined;
+    getActors(): ActorSnapshot[];
     getOccupiedTiles(): SceneCoordinate[];
     getBlockers(): BlockerSnapshot[];
 }
 
 export const scenarioOptions: Array<{ id: ScenarioId; title: string }> = [
+    { id: "actor-occupancy", title: "Actor Occupancy" },
     { id: "npc-movement", title: "NPC Movement" },
     { id: "game-object-blocker", title: "Game Object Blocker" },
     { id: "wall-blocker", title: "Wall Object Blocker" },
@@ -85,6 +89,8 @@ export const scenarioOptions: Array<{ id: ScenarioId; title: string }> = [
 
 export function runScenario(id: ScenarioId): ScenarioResult {
     switch (id) {
+        case "actor-occupancy":
+            return runActorOccupancyScenario();
         case "game-object-blocker":
             return runGameObjectBlockerScenario();
         case "wall-blocker":
@@ -93,6 +99,22 @@ export function runScenario(id: ScenarioId): ScenarioResult {
         default:
             return runNpcMovementScenario();
     }
+}
+
+function runActorOccupancyScenario(): ScenarioResult {
+    const world = createWorld();
+    const sceneId = world.getDefaultSceneId();
+
+    world.placeActor(world.createPlayer(1, 1), sceneId, { x: 10, y: 10, plane: 0 });
+    world.placeActor(world.createNpc(2, 1), sceneId, { x: 13, y: 10, plane: 0 });
+
+    return buildResult(world, {
+        id: "actor-occupancy",
+        title: "Actor Occupancy",
+        description: "A Player and size 2 NPC are placed through world Actor APIs.",
+        movementOutcome: "World actor enumeration discovered both Scene Memberships.",
+        focus: { minX: 9, maxX: 16, minY: 9, maxY: 13 },
+    });
 }
 
 function runNpcMovementScenario(): ScenarioResult {
@@ -110,7 +132,6 @@ function runNpcMovementScenario(): ScenarioResult {
         movementOutcome: moved
             ? "MoveActorByDelta returned true; Actor Footprint and Actor Occupancy moved east."
             : "MoveActorByDelta returned false.",
-        actorIds: [npcId],
         focus: { minX: 9, maxX: 15, minY: 9, maxY: 13 },
     });
 }
@@ -131,7 +152,6 @@ function runGameObjectBlockerScenario(): ScenarioResult {
         movementOutcome: moved
             ? "MoveActorByDelta returned true."
             : "MoveActorByDelta returned false; the NPC stayed west of the blocker.",
-        actorIds: [npcId],
         focus: { minX: 9, maxX: 13, minY: 9, maxY: 11 },
     });
 }
@@ -152,7 +172,6 @@ function runWallBlockerScenario(): ScenarioResult {
         movementOutcome: moved
             ? "MoveActorByDelta returned true."
             : "MoveActorByDelta returned false; the wall object blocked the east step.",
-        actorIds: [npcId],
         focus: { minX: 9, maxX: 12, minY: 9, maxY: 11 },
     });
 }
@@ -164,7 +183,6 @@ function buildResult(
         title: string;
         description: string;
         movementOutcome: string;
-        actorIds: number[];
         focus: ScenarioResult["focus"];
     },
 ): ScenarioResult {
@@ -173,9 +191,7 @@ function buildResult(
         title: options.title,
         description: options.description,
         movementOutcome: options.movementOutcome,
-        actors: options.actorIds
-            .map((actorId) => world.getActor(actorId))
-            .filter((actor): actor is ActorSnapshot => actor !== undefined),
+        actors: world.getActors(),
         occupiedTiles: world.getOccupiedTiles(),
         blockers: world.getBlockers(),
         focus: options.focus,
@@ -223,6 +239,7 @@ class InMemoryWorldApi implements WorldApi {
             this.setActorOccupancy(actor.coordinate, actor.size, false);
         }
 
+        actor.sceneId = sceneId;
         actor.coordinate = coordinate;
         this.setActorOccupancy(coordinate, actor.size, true);
 
@@ -328,21 +345,24 @@ class InMemoryWorldApi implements WorldApi {
         return true;
     }
 
-    public getActor(actorId: number): ActorSnapshot | undefined {
-        const actor = this.m_Actors.get(actorId);
-
-        if (actor === undefined || actor.coordinate === undefined) {
-            return undefined;
-        }
-
-        return {
-            id: actor.id,
-            kind: actor.kind,
-            size: actor.size,
-            speed: actor.speed,
-            coordinate: actor.coordinate,
-            footprint: getFootprint(actor.coordinate, actor.size),
-        };
+    public getActors(): ActorSnapshot[] {
+        return [...this.m_Actors.values()]
+            .filter(
+                (actor): actor is ActorRecord & {
+                    sceneId: number;
+                    coordinate: SceneCoordinate;
+                } => actor.sceneId !== undefined && actor.coordinate !== undefined,
+            )
+            .map((actor) => ({
+                id: actor.id,
+                kind: actor.kind,
+                size: actor.size,
+                speed: actor.speed,
+                sceneId: actor.sceneId,
+                coordinate: actor.coordinate,
+                footprint: getFootprint(actor.coordinate, actor.size),
+            }))
+            .sort((a, b) => a.id - b.id);
     }
 
     public getOccupiedTiles(): SceneCoordinate[] {

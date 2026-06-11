@@ -33,6 +33,43 @@ int main()
 
     {
         osrssim::World world;
+        osrssim::ActorId playerId = world.CreatePlayer(1, 2);
+        osrssim::ActorId npcId = world.CreateNpc(2, 1);
+
+        assert(world.PlaceActor(
+            playerId,
+            world.GetDefaultSceneId(),
+            {10, 10, 0}));
+        assert(world.PlaceActor(npcId, world.GetDefaultSceneId(), {20, 20, 1}));
+
+        const auto& players = world.GetPlayers();
+        const auto& npcs = world.GetNpcs();
+        const auto& sceneMemberships = world.GetSceneMemberships();
+
+        assert(players.size() == 1);
+        assert(npcs.size() == 1);
+        assert(sceneMemberships.size() == 2);
+        assert(players.at(playerId).actor.id == playerId);
+        assert(players.at(playerId).actor.size == 1);
+        assert(players.at(playerId).actor.speed == 2);
+        assert(npcs.at(npcId).actor.id == npcId);
+        assert(npcs.at(npcId).actor.size == 2);
+        assert(npcs.at(npcId).actor.speed == 1);
+        assert(sceneMemberships.at(playerId).sceneId == world.GetDefaultSceneId());
+        assert(sceneMemberships.at(playerId).coordinate ==
+               (osrssim::SceneCoordinate{10, 10, 0}));
+        assert(sceneMemberships.at(npcId).sceneId == world.GetDefaultSceneId());
+        assert(sceneMemberships.at(npcId).coordinate ==
+               (osrssim::SceneCoordinate{20, 20, 1}));
+
+        assert(world.RemoveActor(playerId));
+        assert(world.GetPlayers().empty());
+        assert(world.GetSceneMemberships().size() == 1);
+        assert(world.GetSceneMemberships().contains(npcId));
+    }
+
+    {
+        osrssim::World world;
         osrssim::Scene* scene = world.TryGetScene(world.GetDefaultSceneId());
 
         assert(scene != nullptr);

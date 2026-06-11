@@ -42,6 +42,22 @@ ActorId World::CreateNpc(int size, int speed)
     return actorId;
 }
 
+const std::unordered_map<ActorId, Player>& World::GetPlayers() const
+{
+    return m_Players;
+}
+
+const std::unordered_map<ActorId, Npc>& World::GetNpcs() const
+{
+    return m_Npcs;
+}
+
+const std::unordered_map<ActorId, SceneMembership>&
+World::GetSceneMemberships() const
+{
+    return m_SceneMemberships;
+}
+
 const Player* World::GetPlayer(ActorId actorId) const
 {
     const auto found = m_Players.find(actorId);

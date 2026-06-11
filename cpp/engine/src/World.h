@@ -48,6 +48,9 @@ public:
     const Scene* TryGetScene(SceneId sceneId) const;
     ActorId CreatePlayer(int size, int speed);
     ActorId CreateNpc(int size, int speed);
+    const std::unordered_map<ActorId, Player>& GetPlayers() const;
+    const std::unordered_map<ActorId, Npc>& GetNpcs() const;
+    const std::unordered_map<ActorId, SceneMembership>& GetSceneMemberships() const;
     const Player* GetPlayer(ActorId actorId) const;
     const Npc* GetNpc(ActorId actorId) const;
     const ActorCore* GetActorCore(ActorId actorId) const;

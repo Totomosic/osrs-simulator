@@ -12,12 +12,13 @@ interface RenderTile {
     key: string;
     coordinate: SceneCoordinate;
     actorLabel?: string;
+    actorKind?: "NPC" | "Player";
     occupied: boolean;
     blocked: boolean;
     blockerLabel?: string;
 }
 
-const selectedScenarioId = ref<ScenarioId>("npc-movement");
+const selectedScenarioId = ref<ScenarioId>("actor-occupancy");
 const scenario = computed<ScenarioResult>(() => runScenario(selectedScenarioId.value));
 const rows = computed<RenderTile[][]>(() => buildRows(scenario.value));
 
@@ -26,7 +27,7 @@ function selectScenario(id: ScenarioId): void {
 }
 
 function buildRows(result: ScenarioResult): RenderTile[][] {
-    const actorTiles = new Map<string, string>();
+    const actorTiles = new Map<string, { label: string; kind: "NPC" | "Player" }>();
     const occupiedTiles = new Set(result.occupiedTiles.map(getKey));
     const blockers = new Map(
         result.blockers.map((blocker) => [getKey(blocker.coordinate), blocker.label]),
@@ -34,7 +35,7 @@ function buildRows(result: ScenarioResult): RenderTile[][] {
 
     for (const actor of result.actors) {
         for (const coordinate of actor.footprint) {
-            actorTiles.set(getKey(coordinate), actor.kind);
+            actorTiles.set(getKey(coordinate), { label: actor.kind, kind: actor.kind });
         }
     }
 
@@ -47,11 +48,13 @@ function buildRows(result: ScenarioResult): RenderTile[][] {
             const coordinate = { x, y, plane: 0 };
             const key = getKey(coordinate);
             const blockerLabel = blockers.get(key);
+            const actorTile = actorTiles.get(key);
 
             row.push({
                 key,
                 coordinate,
-                actorLabel: actorTiles.get(key),
+                actorLabel: actorTile?.label,
+                actorKind: actorTile?.kind,
                 occupied: occupiedTiles.has(key),
                 blocked: blockerLabel !== undefined,
                 blockerLabel,
@@ -102,6 +105,8 @@ function getKey(coordinate: SceneCoordinate): string {
                 occupied: tile.occupied,
                 blocked: tile.blocked,
                 actor: tile.actorLabel !== undefined,
+                'actor-player': tile.actorKind === 'Player',
+                'actor-npc': tile.actorKind === 'NPC',
               }"
               :title="`Plane ${tile.coordinate.plane}, x ${tile.coordinate.x}, y ${tile.coordinate.y}`"
             >
@@ -130,7 +135,7 @@ function getKey(coordinate: SceneCoordinate): string {
             <dt>Actor Footprint</dt>
             <dd>
               <span v-for="actor in scenario.actors" :key="actor.id">
-                {{ actor.kind }} #{{ actor.id }}:
+                {{ actor.kind }} #{{ actor.id }} on Scene #{{ actor.sceneId }}:
                 {{ actor.footprint.map((tile) => `${tile.x},${tile.y}`).join(" | ") }}
               </span>
             </dd>
@@ -286,9 +291,17 @@ button.selected {
 }
 
 .tile.actor {
+    color: #ffffff;
+}
+
+.tile.actor-player {
     background: #2f6f62;
     border-color: #1d4f45;
-    color: #ffffff;
+}
+
+.tile.actor-npc {
+    background: #3b5f9f;
+    border-color: #244276;
 }
 
 .tile-label {
