@@ -4,6 +4,27 @@ export type ScenarioId =
     | "game-object-blocker"
     | "wall-blocker";
 
+export type CardinalDirection = "North" | "East" | "South" | "West";
+
+export type TileFlag =
+    | "Occupied"
+    | "BlockMovementNorth"
+    | "BlockMovementEast"
+    | "BlockMovementSouth"
+    | "BlockMovementWest"
+    | "BlockMovementFull"
+    | "BlockMovementObject"
+    | "BlockLineOfSightNorth"
+    | "BlockLineOfSightEast"
+    | "BlockLineOfSightSouth"
+    | "BlockLineOfSightWest"
+    | "BlockLineOfSightFull";
+
+export interface CollisionProfile {
+    blocksMovement: boolean;
+    blocksLineOfSight: boolean;
+}
+
 export interface SceneCoordinate {
     x: number;
     y: number;
@@ -20,9 +41,48 @@ export interface ActorSnapshot {
     footprint: SceneCoordinate[];
 }
 
-export interface BlockerSnapshot {
+export interface TileSnapshot {
     coordinate: SceneCoordinate;
-    label: string;
+    flags: TileFlag[];
+    wallObject?: WallObjectSnapshot;
+    gameObject?: GameObjectSnapshot;
+}
+
+export interface WallObjectSnapshot {
+    id: number;
+    coordinate: SceneCoordinate;
+    directions: CardinalDirection[];
+    collisionProfiles: CollisionProfile[];
+}
+
+export interface GameObjectSnapshot {
+    id: number;
+    origin: SceneCoordinate;
+    direction: CardinalDirection;
+    sizeX: number;
+    sizeY: number;
+    footprint: SceneCoordinate[];
+    collisionProfile: CollisionProfile;
+}
+
+export interface SceneSnapshot {
+    sceneId: number;
+    width: number;
+    height: number;
+    planeCount: number;
+    tiles: TileSnapshot[];
+}
+
+export interface RenderTile {
+    key: string;
+    coordinate: SceneCoordinate;
+    flags: TileFlag[];
+    movementEdges: CardinalDirection[];
+    wallEdges: CardinalDirection[];
+    actorLabel?: string;
+    actorKind?: "NPC" | "Player";
+    wallObject?: WallObjectSnapshot;
+    gameObject?: GameObjectSnapshot;
 }
 
 export interface ScenarioResult {
@@ -30,9 +90,10 @@ export interface ScenarioResult {
     title: string;
     description: string;
     movementOutcome: string;
+    scene: SceneSnapshot;
     actors: ActorSnapshot[];
-    occupiedTiles: SceneCoordinate[];
-    blockers: BlockerSnapshot[];
+    wallObjects: WallObjectSnapshot[];
+    gameObjects: GameObjectSnapshot[];
     focus: {
         minX: number;
         maxX: number;
@@ -51,11 +112,10 @@ interface ActorRecord {
 }
 
 interface TileRecord {
-    occupied: boolean;
-    blockMovementObject: boolean;
-    blockMovementEast: boolean;
-    blockMovementWest: boolean;
-    blockerLabel?: string;
+    coordinate: SceneCoordinate;
+    flags: Set<TileFlag>;
+    wallObject?: WallObjectSnapshot;
+    gameObject?: GameObjectSnapshot;
 }
 
 interface WorldApi {
@@ -66,19 +126,51 @@ interface WorldApi {
     moveActorByDelta(actorId: number, dx: number, dy: number): boolean;
     placeGameObject(
         coordinate: SceneCoordinate,
-        label: string,
+        id: number,
+        direction: CardinalDirection,
         sizeX: number,
         sizeY: number,
+        collisionProfile: CollisionProfile,
     ): boolean;
     placeWallObject(
         coordinate: SceneCoordinate,
-        direction: "East" | "West",
-        label: string,
+        id: number,
+        direction: CardinalDirection,
+        collisionProfile: CollisionProfile,
     ): boolean;
     getActors(): ActorSnapshot[];
-    getOccupiedTiles(): SceneCoordinate[];
-    getBlockers(): BlockerSnapshot[];
+    getScene(): SceneSnapshot;
+    getWallObjects(): WallObjectSnapshot[];
+    getGameObjects(): GameObjectSnapshot[];
 }
+
+export const cardinalDirections: CardinalDirection[] = [
+    "North",
+    "East",
+    "South",
+    "West",
+];
+
+export const collisionProfiles = {
+    movementBlocker: { blocksMovement: true, blocksLineOfSight: false },
+    fullBlocker: { blocksMovement: true, blocksLineOfSight: true },
+    neutral: { blocksMovement: false, blocksLineOfSight: false },
+} satisfies Record<string, CollisionProfile>;
+
+export const tileFlags: TileFlag[] = [
+    "Occupied",
+    "BlockMovementNorth",
+    "BlockMovementEast",
+    "BlockMovementSouth",
+    "BlockMovementWest",
+    "BlockMovementFull",
+    "BlockMovementObject",
+    "BlockLineOfSightNorth",
+    "BlockLineOfSightEast",
+    "BlockLineOfSightSouth",
+    "BlockLineOfSightWest",
+    "BlockLineOfSightFull",
+];
 
 export const scenarioOptions: Array<{ id: ScenarioId; title: string }> = [
     { id: "actor-occupancy", title: "Actor Occupancy" },
@@ -99,6 +191,35 @@ export function runScenario(id: ScenarioId): ScenarioResult {
         default:
             return runNpcMovementScenario();
     }
+}
+
+export function buildRenderTiles(result: ScenarioResult, plane: number): RenderTile[] {
+    const actorTiles = new Map<string, { label: string; kind: "NPC" | "Player" }>();
+
+    for (const actor of result.actors) {
+        for (const coordinate of actor.footprint) {
+            actorTiles.set(getKey(coordinate), { label: actor.kind, kind: actor.kind });
+        }
+    }
+
+    return result.scene.tiles
+        .filter((tile) => tile.coordinate.plane === plane)
+        .map((tile) => {
+            const actorTile = actorTiles.get(getKey(tile.coordinate));
+
+            return {
+                key: getKey(tile.coordinate),
+                coordinate: tile.coordinate,
+                flags: tile.flags,
+                movementEdges: getMovementEdges(tile.flags),
+                wallEdges: tile.wallObject?.directions ?? [],
+                actorLabel: actorTile?.label,
+                actorKind: actorTile?.kind,
+                wallObject: tile.wallObject,
+                gameObject: tile.gameObject,
+            };
+        })
+        .sort((a, b) => a.coordinate.y - b.coordinate.y || a.coordinate.x - b.coordinate.x);
 }
 
 function runActorOccupancyScenario(): ScenarioResult {
@@ -141,18 +262,25 @@ function runGameObjectBlockerScenario(): ScenarioResult {
     const sceneId = world.getDefaultSceneId();
     const npcId = world.createNpc(1, 2);
 
-    world.placeGameObject({ x: 12, y: 10, plane: 0 }, "Crate", 1, 1);
+    world.placeGameObject(
+        { x: 12, y: 10, plane: 0 },
+        200,
+        "North",
+        2,
+        2,
+        collisionProfiles.fullBlocker,
+    );
     world.placeActor(npcId, sceneId, { x: 10, y: 10, plane: 0 });
     const moved = world.moveActorByDelta(npcId, 2, 0);
 
     return buildResult(world, {
         id: "game-object-blocker",
         title: "Game Object Blocker",
-        description: "A blocking game object prevents the NPC from crossing the tile.",
+        description: "A blocking Game Object footprint prevents the NPC from crossing.",
         movementOutcome: moved
             ? "MoveActorByDelta returned true."
-            : "MoveActorByDelta returned false; the NPC stayed west of the blocker.",
-        focus: { minX: 9, maxX: 13, minY: 9, maxY: 11 },
+            : "MoveActorByDelta returned false; the NPC stayed west of the Game Object.",
+        focus: { minX: 9, maxX: 14, minY: 9, maxY: 12 },
     });
 }
 
@@ -161,17 +289,22 @@ function runWallBlockerScenario(): ScenarioResult {
     const sceneId = world.getDefaultSceneId();
     const npcId = world.createNpc(1, 1);
 
-    world.placeWallObject({ x: 10, y: 10, plane: 0 }, "East", "East wall");
+    world.placeWallObject(
+        { x: 10, y: 10, plane: 0 },
+        100,
+        "East",
+        collisionProfiles.movementBlocker,
+    );
     world.placeActor(npcId, sceneId, { x: 10, y: 10, plane: 0 });
     const moved = world.moveActorByDelta(npcId, 1, 0);
 
     return buildResult(world, {
         id: "wall-blocker",
         title: "Wall Object Blocker",
-        description: "A wall object blocks eastward movement between adjacent tiles.",
+        description: "A Wall Object blocks eastward movement between adjacent tiles.",
         movementOutcome: moved
             ? "MoveActorByDelta returned true."
-            : "MoveActorByDelta returned false; the wall object blocked the east step.",
+            : "MoveActorByDelta returned false; the Wall Object blocked the east step.",
         focus: { minX: 9, maxX: 12, minY: 9, maxY: 11 },
     });
 }
@@ -191,9 +324,10 @@ function buildResult(
         title: options.title,
         description: options.description,
         movementOutcome: options.movementOutcome,
+        scene: world.getScene(),
         actors: world.getActors(),
-        occupiedTiles: world.getOccupiedTiles(),
-        blockers: world.getBlockers(),
+        wallObjects: world.getWallObjects(),
+        gameObjects: world.getGameObjects(),
         focus: options.focus,
     };
 }
@@ -207,6 +341,8 @@ class InMemoryWorldApi implements WorldApi {
     private m_NextActorId = 1;
     private readonly m_Actors = new Map<number, ActorRecord>();
     private readonly m_Tiles = new Map<string, TileRecord>();
+    private readonly m_WallObjects = new Map<number, WallObjectSnapshot>();
+    private readonly m_GameObjects = new Map<number, GameObjectSnapshot>();
 
     public getDefaultSceneId(): number {
         return this.m_DefaultSceneId;
@@ -284,63 +420,67 @@ class InMemoryWorldApi implements WorldApi {
 
     public placeGameObject(
         coordinate: SceneCoordinate,
-        label: string,
+        id: number,
+        direction: CardinalDirection,
         sizeX: number,
         sizeY: number,
+        collisionProfile: CollisionProfile,
     ): boolean {
-        for (let offsetX = 0; offsetX < sizeX; offsetX += 1) {
-            for (let offsetY = 0; offsetY < sizeY; offsetY += 1) {
-                const tile = this.getTile({
-                    x: coordinate.x + offsetX,
-                    y: coordinate.y + offsetY,
-                    plane: coordinate.plane,
-                });
+        const footprint = getObjectFootprint(coordinate, direction, sizeX, sizeY);
 
-                if (tile.blockMovementObject) {
-                    return false;
-                }
-            }
+        if (
+            sizeX <= 0 ||
+            sizeY <= 0 ||
+            footprint.some((tileCoordinate) => this.getTile(tileCoordinate).gameObject)
+        ) {
+            return false;
         }
 
-        for (let offsetX = 0; offsetX < sizeX; offsetX += 1) {
-            for (let offsetY = 0; offsetY < sizeY; offsetY += 1) {
-                const tile = this.getTile({
-                    x: coordinate.x + offsetX,
-                    y: coordinate.y + offsetY,
-                    plane: coordinate.plane,
-                });
+        const gameObject = {
+            id,
+            origin: coordinate,
+            direction,
+            sizeX,
+            sizeY,
+            footprint,
+            collisionProfile,
+        };
 
-                tile.blockMovementObject = true;
-                tile.blockerLabel = label;
-            }
+        for (const tileCoordinate of footprint) {
+            const tile = this.getTile(tileCoordinate);
+            tile.gameObject = gameObject;
+            applyGameObjectCollision(tile, collisionProfile);
         }
+
+        this.m_GameObjects.set(id, gameObject);
 
         return true;
     }
 
     public placeWallObject(
         coordinate: SceneCoordinate,
-        direction: "East" | "West",
-        label: string,
+        id: number,
+        direction: CardinalDirection,
+        collisionProfile: CollisionProfile,
     ): boolean {
-        const adjacent = {
-            x: coordinate.x + (direction === "East" ? 1 : -1),
-            y: coordinate.y,
-            plane: coordinate.plane,
-        };
+        const adjacent = getAdjacentCoordinate(coordinate, direction);
         const tile = this.getTile(coordinate);
         const adjacentTile = this.getTile(adjacent);
 
-        if (direction === "East") {
-            tile.blockMovementEast = true;
-            adjacentTile.blockMovementWest = true;
-        } else {
-            tile.blockMovementWest = true;
-            adjacentTile.blockMovementEast = true;
+        if (tile.wallObject !== undefined) {
+            return false;
         }
 
-        tile.blockerLabel = label;
-        adjacentTile.blockerLabel = label;
+        const wallObject = {
+            id,
+            coordinate,
+            directions: [direction],
+            collisionProfiles: [collisionProfile],
+        };
+
+        tile.wallObject = wallObject;
+        applyWallCollision(tile, adjacentTile, direction, collisionProfile);
+        this.m_WallObjects.set(id, wallObject);
 
         return true;
     }
@@ -360,25 +500,29 @@ class InMemoryWorldApi implements WorldApi {
                 speed: actor.speed,
                 sceneId: actor.sceneId,
                 coordinate: actor.coordinate,
-                footprint: getFootprint(actor.coordinate, actor.size),
+                footprint: getActorFootprint(actor.coordinate, actor.size),
             }))
             .sort((a, b) => a.id - b.id);
     }
 
-    public getOccupiedTiles(): SceneCoordinate[] {
-        return this.getCoordinates((tile) => tile.occupied);
+    public getScene(): SceneSnapshot {
+        return {
+            sceneId: this.m_DefaultSceneId,
+            width: 104,
+            height: 104,
+            planeCount: 4,
+            tiles: [...this.m_Tiles.entries()]
+                .map(([, tile]) => toTileSnapshot(tile))
+                .sort((a, b) => a.coordinate.y - b.coordinate.y || a.coordinate.x - b.coordinate.x),
+        };
     }
 
-    public getBlockers(): BlockerSnapshot[] {
-        return this.getCoordinates(
-            (tile) =>
-                tile.blockMovementObject ||
-                tile.blockMovementEast ||
-                tile.blockMovementWest,
-        ).map((coordinate) => ({
-            coordinate,
-            label: this.getTile(coordinate).blockerLabel ?? "Blocker",
-        }));
+    public getWallObjects(): WallObjectSnapshot[] {
+        return [...this.m_WallObjects.values()].sort((a, b) => a.id - b.id);
+    }
+
+    public getGameObjects(): GameObjectSnapshot[] {
+        return [...this.m_GameObjects.values()].sort((a, b) => a.id - b.id);
     }
 
     private createActor(kind: "NPC" | "Player", size: number, speed: number): number {
@@ -397,9 +541,12 @@ class InMemoryWorldApi implements WorldApi {
         coordinate: SceneCoordinate,
         actorSize: number,
     ): boolean {
-        return getFootprint(coordinate, actorSize).every((tileCoordinate) => {
+        return getActorFootprint(coordinate, actorSize).every((tileCoordinate) => {
             const tile = this.getTile(tileCoordinate);
-            return !tile.blockMovementObject;
+            return (
+                !tile.flags.has("BlockMovementObject") &&
+                !tile.flags.has("BlockMovementFull")
+            );
         });
     }
 
@@ -454,8 +601,8 @@ class InMemoryWorldApi implements WorldApi {
                 };
 
                 return (
-                    !this.getTile(eastEdge).blockMovementEast &&
-                    !this.getTile(nextTile).blockMovementWest
+                    !this.getTile(eastEdge).flags.has("BlockMovementEast") &&
+                    !this.getTile(nextTile).flags.has("BlockMovementWest")
                 );
             });
         }
@@ -474,8 +621,8 @@ class InMemoryWorldApi implements WorldApi {
                 };
 
                 return (
-                    !this.getTile(westEdge).blockMovementWest &&
-                    !this.getTile(nextTile).blockMovementEast
+                    !this.getTile(westEdge).flags.has("BlockMovementWest") &&
+                    !this.getTile(nextTile).flags.has("BlockMovementEast")
                 );
             });
         }
@@ -488,12 +635,12 @@ class InMemoryWorldApi implements WorldApi {
         destination: SceneCoordinate,
         actorSize: number,
     ): boolean {
-        return getFootprint(destination, actorSize).some((coordinate) => {
+        return getActorFootprint(destination, actorSize).some((coordinate) => {
             if (isInsideFootprint(coordinate, current, actorSize)) {
                 return false;
             }
 
-            return this.getTile(coordinate).occupied;
+            return this.getTile(coordinate).flags.has("Occupied");
         });
     }
 
@@ -502,8 +649,14 @@ class InMemoryWorldApi implements WorldApi {
         actorSize: number,
         occupied: boolean,
     ): void {
-        for (const tileCoordinate of getFootprint(coordinate, actorSize)) {
-            this.getTile(tileCoordinate).occupied = occupied;
+        for (const tileCoordinate of getActorFootprint(coordinate, actorSize)) {
+            const tile = this.getTile(tileCoordinate);
+
+            if (occupied) {
+                tile.flags.add("Occupied");
+            } else {
+                tile.flags.delete("Occupied");
+            }
         }
     }
 
@@ -516,26 +669,118 @@ class InMemoryWorldApi implements WorldApi {
         }
 
         const tile = {
-            occupied: false,
-            blockMovementObject: false,
-            blockMovementEast: false,
-            blockMovementWest: false,
+            coordinate,
+            flags: new Set<TileFlag>(),
         };
 
         this.m_Tiles.set(key, tile);
 
         return tile;
     }
+}
 
-    private getCoordinates(predicate: (tile: TileRecord) => boolean): SceneCoordinate[] {
-        return [...this.m_Tiles.entries()]
-            .filter(([, tile]) => predicate(tile))
-            .map(([key]) => parseKey(key))
-            .sort((a, b) => a.y - b.y || a.x - b.x || a.plane - b.plane);
+function toTileSnapshot(tile: TileRecord): TileSnapshot {
+    return {
+        coordinate: tile.coordinate,
+        flags: [...tile.flags].sort(),
+        wallObject: tile.wallObject,
+        gameObject: tile.gameObject,
+    };
+}
+
+function applyGameObjectCollision(
+    tile: TileRecord,
+    collisionProfile: CollisionProfile,
+): void {
+    if (collisionProfile.blocksMovement) {
+        tile.flags.add("BlockMovementObject");
+    }
+
+    if (collisionProfile.blocksLineOfSight) {
+        tile.flags.add("BlockLineOfSightFull");
     }
 }
 
-function getFootprint(coordinate: SceneCoordinate, actorSize: number): SceneCoordinate[] {
+function applyWallCollision(
+    tile: TileRecord,
+    adjacentTile: TileRecord,
+    direction: CardinalDirection,
+    collisionProfile: CollisionProfile,
+): void {
+    if (!collisionProfile.blocksMovement) {
+        return;
+    }
+
+    tile.flags.add(getMovementFlag(direction));
+    adjacentTile.flags.add(getMovementFlag(getOppositeDirection(direction)));
+}
+
+function getMovementEdges(flags: TileFlag[]): CardinalDirection[] {
+    return cardinalDirections.filter((direction) =>
+        flags.includes(getMovementFlag(direction)),
+    );
+}
+
+function getMovementFlag(direction: CardinalDirection): TileFlag {
+    return `BlockMovement${direction}` as TileFlag;
+}
+
+function getOppositeDirection(direction: CardinalDirection): CardinalDirection {
+    switch (direction) {
+        case "North":
+            return "South";
+        case "East":
+            return "West";
+        case "South":
+            return "North";
+        case "West":
+            return "East";
+    }
+}
+
+function getAdjacentCoordinate(
+    coordinate: SceneCoordinate,
+    direction: CardinalDirection,
+): SceneCoordinate {
+    switch (direction) {
+        case "North":
+            return { x: coordinate.x, y: coordinate.y + 1, plane: coordinate.plane };
+        case "East":
+            return { x: coordinate.x + 1, y: coordinate.y, plane: coordinate.plane };
+        case "South":
+            return { x: coordinate.x, y: coordinate.y - 1, plane: coordinate.plane };
+        case "West":
+            return { x: coordinate.x - 1, y: coordinate.y, plane: coordinate.plane };
+    }
+}
+
+function getObjectFootprint(
+    coordinate: SceneCoordinate,
+    direction: CardinalDirection,
+    sizeX: number,
+    sizeY: number,
+): SceneCoordinate[] {
+    const footprint: SceneCoordinate[] = [];
+    const width = direction === "East" || direction === "West" ? sizeY : sizeX;
+    const height = direction === "East" || direction === "West" ? sizeX : sizeY;
+
+    for (let offsetY = 0; offsetY < height; offsetY += 1) {
+        for (let offsetX = 0; offsetX < width; offsetX += 1) {
+            footprint.push({
+                x: coordinate.x + offsetX,
+                y: coordinate.y + offsetY,
+                plane: coordinate.plane,
+            });
+        }
+    }
+
+    return footprint;
+}
+
+function getActorFootprint(
+    coordinate: SceneCoordinate,
+    actorSize: number,
+): SceneCoordinate[] {
     const footprint: SceneCoordinate[] = [];
 
     for (let offsetY = 0; offsetY < actorSize; offsetY += 1) {
@@ -595,10 +840,4 @@ function isInsideFootprint(
 
 function getKey(coordinate: SceneCoordinate): string {
     return `${coordinate.plane}:${coordinate.x}:${coordinate.y}`;
-}
-
-function parseKey(key: string): SceneCoordinate {
-    const [plane, x, y] = key.split(":").map(Number);
-
-    return { plane, x, y };
 }

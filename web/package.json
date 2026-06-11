@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "test": "node test/scenarios.test.mjs",
     "typecheck": "vue-tsc --noEmit",
     "build": "yarn typecheck && vite build"
   },

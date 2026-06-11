@@ -1,74 +1,110 @@
 <script setup lang="ts">
 import { computed, ref } from "vue";
 import {
+    buildRenderTiles,
     runScenario,
     scenarioOptions,
+    type CardinalDirection,
+    type RenderTile,
     type ScenarioId,
     type ScenarioResult,
-    type SceneCoordinate,
 } from "./scenarios";
 
-interface RenderTile {
-    key: string;
-    coordinate: SceneCoordinate;
-    actorLabel?: string;
-    actorKind?: "NPC" | "Player";
-    occupied: boolean;
-    blocked: boolean;
-    blockerLabel?: string;
+interface SvgTile extends RenderTile {
+    screenX: number;
+    screenY: number;
+    hasObjectBlocker: boolean;
+    hasFullBlocker: boolean;
 }
 
-const selectedScenarioId = ref<ScenarioId>("actor-occupancy");
+interface SvgEdge {
+    key: string;
+    x1: number;
+    y1: number;
+    x2: number;
+    y2: number;
+    wall: boolean;
+}
+
+const tileSize = 10;
+const selectedScenarioId = ref<ScenarioId>("wall-blocker");
+const selectedPlane = ref(0);
 const scenario = computed<ScenarioResult>(() => runScenario(selectedScenarioId.value));
-const rows = computed<RenderTile[][]>(() => buildRows(scenario.value));
+const viewBox = computed(
+    () =>
+        `0 0 ${scenario.value.scene.width * tileSize} ${
+            scenario.value.scene.height * tileSize
+        }`,
+);
+const renderTiles = computed<SvgTile[]>(() =>
+    buildRenderTiles(scenario.value, selectedPlane.value).map((tile) => ({
+        ...tile,
+        screenX: tile.coordinate.x * tileSize,
+        screenY: (scenario.value.scene.height - tile.coordinate.y - 1) * tileSize,
+        hasObjectBlocker: tile.flags.includes("BlockMovementObject"),
+        hasFullBlocker:
+            tile.flags.includes("BlockMovementFull") ||
+            tile.flags.includes("BlockLineOfSightFull"),
+    })),
+);
+const objectTiles = computed(() =>
+    renderTiles.value.filter((tile) => tile.hasObjectBlocker || tile.hasFullBlocker),
+);
+const actorTiles = computed(() =>
+    renderTiles.value.filter((tile) => tile.actorLabel !== undefined),
+);
+const movementEdges = computed(() => buildEdges(renderTiles.value, false));
+const wallEdges = computed(() => buildEdges(renderTiles.value, true));
+const sceneContentSummary = computed(() => {
+    const wallObjects = scenario.value.wallObjects.map(
+        (wallObject) =>
+            `Wall Object #${wallObject.id} at ${wallObject.coordinate.x},${wallObject.coordinate.y} facing ${wallObject.directions.join("/")}`,
+    );
+    const gameObjects = scenario.value.gameObjects.map(
+        (gameObject) =>
+            `Game Object #${gameObject.id} at ${gameObject.origin.x},${gameObject.origin.y}, size ${gameObject.sizeX}x${gameObject.sizeY}`,
+    );
+
+    return [...wallObjects, ...gameObjects].join(" | ") || "None";
+});
 
 function selectScenario(id: ScenarioId): void {
     selectedScenarioId.value = id;
 }
 
-function buildRows(result: ScenarioResult): RenderTile[][] {
-    const actorTiles = new Map<string, { label: string; kind: "NPC" | "Player" }>();
-    const occupiedTiles = new Set(result.occupiedTiles.map(getKey));
-    const blockers = new Map(
-        result.blockers.map((blocker) => [getKey(blocker.coordinate), blocker.label]),
-    );
-
-    for (const actor of result.actors) {
-        for (const coordinate of actor.footprint) {
-            actorTiles.set(getKey(coordinate), { label: actor.kind, kind: actor.kind });
-        }
-    }
-
-    const builtRows: RenderTile[][] = [];
-
-    for (let y = result.focus.maxY; y >= result.focus.minY; y -= 1) {
-        const row: RenderTile[] = [];
-
-        for (let x = result.focus.minX; x <= result.focus.maxX; x += 1) {
-            const coordinate = { x, y, plane: 0 };
-            const key = getKey(coordinate);
-            const blockerLabel = blockers.get(key);
-            const actorTile = actorTiles.get(key);
-
-            row.push({
-                key,
-                coordinate,
-                actorLabel: actorTile?.label,
-                actorKind: actorTile?.kind,
-                occupied: occupiedTiles.has(key),
-                blocked: blockerLabel !== undefined,
-                blockerLabel,
-            });
-        }
-
-        builtRows.push(row);
-    }
-
-    return builtRows;
+function selectPlane(plane: number): void {
+    selectedPlane.value = plane;
 }
 
-function getKey(coordinate: SceneCoordinate): string {
-    return `${coordinate.plane}:${coordinate.x}:${coordinate.y}`;
+function buildEdges(tiles: SvgTile[], wallOnly: boolean): SvgEdge[] {
+    return tiles.flatMap((tile) =>
+        (wallOnly ? tile.wallEdges : tile.movementEdges).map((direction) =>
+            buildEdge(tile, direction, wallOnly),
+        ),
+    );
+}
+
+function buildEdge(
+    tile: SvgTile,
+    direction: CardinalDirection,
+    wall: boolean,
+): SvgEdge {
+    const x = tile.screenX;
+    const y = tile.screenY;
+    const maxX = x + tileSize;
+    const maxY = y + tileSize;
+    const key = `${tile.key}:${wall ? "wall" : "movement"}:${direction}`;
+
+    switch (direction) {
+        case "North":
+            return { key, x1: x, y1: y, x2: maxX, y2: y, wall };
+        case "East":
+            return { key, x1: maxX, y1: y, x2: maxX, y2: maxY, wall };
+        case "South":
+            return { key, x1: x, y1: maxY, x2: maxX, y2: maxY, wall };
+        case "West":
+            return { key, x1: x, y1: y, x2: x, y2: maxY, wall };
+    }
 }
 </script>
 
@@ -80,45 +116,108 @@ function getKey(coordinate: SceneCoordinate): string {
         <h1>OSRS Simulator</h1>
       </div>
 
-      <div class="scenario-tabs" aria-label="Movement verification scenarios">
-        <button
-          v-for="option in scenarioOptions"
-          :key="option.id"
-          type="button"
-          :class="{ selected: option.id === selectedScenarioId }"
-          @click="selectScenario(option.id)"
-        >
-          {{ option.title }}
-        </button>
+      <div class="control-stack">
+        <div class="scenario-tabs" aria-label="Movement verification scenarios">
+          <button
+            v-for="option in scenarioOptions"
+            :key="option.id"
+            type="button"
+            :class="{ selected: option.id === selectedScenarioId }"
+            @click="selectScenario(option.id)"
+          >
+            {{ option.title }}
+          </button>
+        </div>
+
+        <div class="plane-tabs" aria-label="Scene plane">
+          <button
+            v-for="plane in scenario.scene.planeCount"
+            :key="plane - 1"
+            type="button"
+            :class="{ selected: plane - 1 === selectedPlane }"
+            @click="selectPlane(plane - 1)"
+          >
+            P{{ plane - 1 }}
+          </button>
+        </div>
       </div>
     </header>
 
     <section class="scenario-layout" aria-live="polite">
       <div class="viewport" aria-label="Scene tiles">
-        <div class="tile-grid">
-          <div v-for="row in rows" :key="row[0]?.key" class="tile-row">
-            <div
-              v-for="tile in row"
-              :key="tile.key"
-              class="tile"
-              :class="{
-                occupied: tile.occupied,
-                blocked: tile.blocked,
-                actor: tile.actorLabel !== undefined,
-                'actor-player': tile.actorKind === 'Player',
-                'actor-npc': tile.actorKind === 'NPC',
-              }"
-              :title="`Plane ${tile.coordinate.plane}, x ${tile.coordinate.x}, y ${tile.coordinate.y}`"
+        <svg class="scene-svg" :viewBox="viewBox" role="img">
+          <defs>
+            <pattern
+              id="scene-grid"
+              :width="tileSize"
+              :height="tileSize"
+              patternUnits="userSpaceOnUse"
             >
-              <span v-if="tile.actorLabel" class="tile-label">
-                {{ tile.actorLabel }}
-              </span>
-              <span v-else-if="tile.blockerLabel" class="tile-label">
-                {{ tile.blockerLabel }}
-              </span>
-            </div>
-          </div>
-        </div>
+              <path
+                :d="`M ${tileSize} 0 L 0 0 0 ${tileSize}`"
+                class="grid-line"
+              />
+            </pattern>
+          </defs>
+
+          <rect
+            class="scene-background"
+            x="0"
+            y="0"
+            :width="scenario.scene.width * tileSize"
+            :height="scenario.scene.height * tileSize"
+          />
+          <rect
+            class="scene-grid-fill"
+            x="0"
+            y="0"
+            :width="scenario.scene.width * tileSize"
+            :height="scenario.scene.height * tileSize"
+          />
+
+          <rect
+            v-for="tile in objectTiles"
+            :key="`${tile.key}:object`"
+            :x="tile.screenX"
+            :y="tile.screenY"
+            :width="tileSize"
+            :height="tileSize"
+            :class="[
+              'object-tile',
+              { 'full-blocker': tile.hasFullBlocker, 'game-object': tile.gameObject !== undefined },
+            ]"
+          />
+
+          <rect
+            v-for="tile in actorTiles"
+            :key="`${tile.key}:actor`"
+            :x="tile.screenX + 1"
+            :y="tile.screenY + 1"
+            :width="tileSize - 2"
+            :height="tileSize - 2"
+            :class="['actor-tile', tile.actorKind === 'Player' ? 'player' : 'npc']"
+          />
+
+          <line
+            v-for="edge in movementEdges"
+            :key="edge.key"
+            :x1="edge.x1"
+            :y1="edge.y1"
+            :x2="edge.x2"
+            :y2="edge.y2"
+            class="movement-edge"
+          />
+
+          <line
+            v-for="edge in wallEdges"
+            :key="edge.key"
+            :x1="edge.x1"
+            :y1="edge.y1"
+            :x2="edge.x2"
+            :y2="edge.y2"
+            class="wall-edge"
+          />
+        </svg>
       </div>
 
       <aside class="details" aria-labelledby="scenario-title">
@@ -141,23 +240,19 @@ function getKey(coordinate: SceneCoordinate): string {
             </dd>
           </div>
           <div>
-            <dt>Actor Occupancy</dt>
+            <dt>Tile Flags</dt>
             <dd>
-              {{ scenario.occupiedTiles.map((tile) => `${tile.x},${tile.y}`).join(" | ") }}
+              {{
+                renderTiles
+                  .filter((tile) => tile.flags.length > 0)
+                  .map((tile) => `${tile.coordinate.x},${tile.coordinate.y}: ${tile.flags.join("/")}`)
+                  .join(" | ") || "None"
+              }}
             </dd>
           </div>
           <div>
             <dt>Scene content</dt>
-            <dd>
-              <span v-if="scenario.blockers.length === 0">None</span>
-              <span v-else>
-                {{
-                  scenario.blockers
-                    .map((blocker) => `${blocker.label} at ${blocker.coordinate.x},${blocker.coordinate.y}`)
-                    .join(" | ")
-                }}
-              </span>
-            </dd>
+            <dd>{{ sceneContentSummary }}</dd>
           </div>
         </dl>
       </aside>
@@ -167,7 +262,7 @@ function getKey(coordinate: SceneCoordinate): string {
 
 <style scoped>
 .viewer-shell {
-    background: #f3f5f0;
+    background: #f4f6f1;
     color: #1f2933;
     font-family:
         Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
@@ -182,7 +277,7 @@ function getKey(coordinate: SceneCoordinate): string {
     gap: 24px;
     justify-content: space-between;
     margin: 0 auto 24px;
-    max-width: 1180px;
+    max-width: 1240px;
 }
 
 .eyebrow {
@@ -211,7 +306,14 @@ h2 {
     margin-bottom: 10px;
 }
 
-.scenario-tabs {
+.control-stack {
+    display: grid;
+    gap: 10px;
+    justify-items: end;
+}
+
+.scenario-tabs,
+.plane-tabs {
     display: flex;
     flex-wrap: wrap;
     gap: 8px;
@@ -231,6 +333,11 @@ button {
     padding: 0 14px;
 }
 
+.plane-tabs button {
+    min-width: 44px;
+    padding: 0 10px;
+}
+
 button.selected {
     background: #1d4f45;
     border-color: #1d4f45;
@@ -242,75 +349,80 @@ button.selected {
     gap: 24px;
     grid-template-columns: minmax(0, 1fr) 360px;
     margin: 0 auto;
-    max-width: 1180px;
+    max-width: 1240px;
 }
 
 .viewport {
     align-content: center;
-    background:
-        linear-gradient(90deg, rgba(31, 41, 51, 0.05) 1px, transparent 1px),
-        linear-gradient(rgba(31, 41, 51, 0.05) 1px, transparent 1px),
-        #d9dfd1;
-    background-size: 32px 32px;
-    min-height: 520px;
+    background: #d6ddd0;
+    min-height: 620px;
     overflow: auto;
-    padding: 24px;
+    padding: 20px;
 }
 
-.tile-grid {
-    display: grid;
-    gap: 6px;
-    justify-content: center;
-    min-width: max-content;
-}
-
-.tile-row {
-    display: flex;
-    gap: 6px;
-}
-
-.tile {
-    align-items: center;
-    aspect-ratio: 1;
+.scene-svg {
     background: #eef1ea;
-    border: 1px solid #bdc7b7;
-    display: flex;
-    flex: 0 0 64px;
-    justify-content: center;
-    position: relative;
+    display: block;
+    height: min(74vh, 920px);
+    min-height: 560px;
+    min-width: 820px;
+    width: 100%;
 }
 
-.tile.blocked {
-    background: #64564c;
-    border-color: #3f3731;
-    color: #ffffff;
+.scene-background {
+    fill: #eef1ea;
 }
 
-.tile.occupied {
-    box-shadow: inset 0 0 0 4px #d08a1d;
+.scene-grid-fill {
+    fill: url("#scene-grid");
 }
 
-.tile.actor {
-    color: #ffffff;
+.grid-line {
+    fill: none;
+    stroke: #b9c4b4;
+    stroke-width: 0.7;
 }
 
-.tile.actor-player {
-    background: #2f6f62;
-    border-color: #1d4f45;
+.object-tile {
+    fill: #7e6959;
+    opacity: 0.82;
+    stroke: #40352f;
+    stroke-width: 0.8;
 }
 
-.tile.actor-npc {
-    background: #3b5f9f;
-    border-color: #244276;
+.object-tile.full-blocker {
+    fill: #6a584c;
 }
 
-.tile-label {
-    font-size: clamp(0.62rem, 0.7rem, 0.78rem);
-    font-weight: 800;
-    line-height: 1.1;
-    max-width: 56px;
-    overflow-wrap: anywhere;
-    text-align: center;
+.object-tile.game-object {
+    stroke: #c07a2a;
+    stroke-width: 1.2;
+}
+
+.actor-tile {
+    opacity: 0.88;
+    stroke: #ffffff;
+    stroke-width: 0.6;
+}
+
+.actor-tile.player {
+    fill: #2f6f62;
+}
+
+.actor-tile.npc {
+    fill: #3b5f9f;
+}
+
+.movement-edge {
+    stroke: #1e2a35;
+    stroke-linecap: square;
+    stroke-width: 1.6;
+}
+
+.wall-edge {
+    stroke: #d2385a;
+    stroke-linecap: square;
+    stroke-width: 3;
 }
 
 .details {
@@ -348,7 +460,7 @@ dd {
     overflow-wrap: anywhere;
 }
 
-@media (max-width: 860px) {
+@media (max-width: 900px) {
     .viewer-shell {
         padding: 20px;
     }
@@ -358,7 +470,10 @@ dd {
         flex-direction: column;
     }
 
-    .scenario-tabs {
+    .control-stack,
+    .scenario-tabs,
+    .plane-tabs {
+        justify-items: start;
         justify-content: flex-start;
     }
 
@@ -367,12 +482,12 @@ dd {
     }
 
     .viewport {
-        min-height: 380px;
-        padding: 16px;
+        min-height: 460px;
+        padding: 14px;
     }
 
-    .tile {
-        flex-basis: 52px;
+    .scene-svg {
+        height: 560px;
     }
 }
 </style>
