@@ -2,9 +2,16 @@ build/
 cmake-build-*/
 out/
 
+node_modules/
 web/node_modules/
 web/dist/
 web/.vite/
+web/public/wasm/
+web/src/wasm/generated/
+web/**/*.wasm
+web/**/*.wasm.map
+web/**/*_wasm.js
+web/**/*_wasm.d.ts
 
 *.user
 *.swp

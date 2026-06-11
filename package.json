@@ -1,1 +1,17 @@
-{}
+{
+  "name": "osrs-simulator",
+  "version": "0.1.0",
+  "packageManager": "yarn@1.22.22",
+  "private": true,
+  "scripts": {
+    "web:dev": "yarn --cwd web dev",
+    "web:typecheck": "yarn --cwd web typecheck",
+    "web:build": "yarn --cwd web build",
+    "wasm:configure": "emcmake cmake -S . -B build/wasm -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=OFF",
+    "wasm:build": "yarn wasm:configure && cmake --build build/wasm",
+    "build": "yarn wasm:build && yarn web:build"
+  },
+  "workspaces": [
+    "web"
+  ]
+}
