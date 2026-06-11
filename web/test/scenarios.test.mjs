@@ -18,7 +18,32 @@ await build({
 });
 await writeFile(`${outfile}.stamp`, new Date().toISOString());
 
-const { buildRenderTiles, runScenario } = await import(pathToFileURL(outfile));
+const { buildRenderTiles, getSceneScreenCoordinate, runScenario } = await import(
+    pathToFileURL(outfile)
+);
+
+{
+    const scenario = runScenario("empty-world");
+    const renderTiles = buildRenderTiles(scenario, 0);
+
+    assert.equal(scenario.scene.width, 104);
+    assert.equal(scenario.scene.height, 104);
+    assert.equal(scenario.scene.planeCount, 4);
+    assert.equal(renderTiles.length, 104 * 104);
+    assert.deepEqual(renderTiles[0].coordinate, { x: 0, y: 0, plane: 0 });
+    assert.deepEqual(renderTiles.at(-1).coordinate, { x: 103, y: 103, plane: 0 });
+    assert.ok(renderTiles.every((tile) => tile.flags.length === 0));
+    assert.ok(renderTiles.every((tile) => tile.wallObject === undefined));
+    assert.ok(renderTiles.every((tile) => tile.gameObject === undefined));
+    assert.deepEqual(
+        getSceneScreenCoordinate({ x: 0, y: 0, plane: 0 }, scenario.scene, 10),
+        { x: 0, y: 1030 },
+    );
+    assert.deepEqual(
+        getSceneScreenCoordinate({ x: 103, y: 103, plane: 0 }, scenario.scene, 10),
+        { x: 1030, y: 0 },
+    );
+}
 
 {
     const scenario = runScenario("wall-blocker");

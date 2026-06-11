@@ -2,6 +2,7 @@
 import { computed, ref } from "vue";
 import {
     buildRenderTiles,
+    getSceneScreenCoordinate,
     runScenario,
     scenarioOptions,
     type CardinalDirection,
@@ -27,7 +28,7 @@ interface SvgEdge {
 }
 
 const tileSize = 10;
-const selectedScenarioId = ref<ScenarioId>("wall-blocker");
+const selectedScenarioId = ref<ScenarioId>("empty-world");
 const selectedPlane = ref(0);
 const scenario = computed<ScenarioResult>(() => runScenario(selectedScenarioId.value));
 const viewBox = computed(
@@ -37,15 +38,23 @@ const viewBox = computed(
         }`,
 );
 const renderTiles = computed<SvgTile[]>(() =>
-    buildRenderTiles(scenario.value, selectedPlane.value).map((tile) => ({
-        ...tile,
-        screenX: tile.coordinate.x * tileSize,
-        screenY: (scenario.value.scene.height - tile.coordinate.y - 1) * tileSize,
-        hasObjectBlocker: tile.flags.includes("BlockMovementObject"),
-        hasFullBlocker:
-            tile.flags.includes("BlockMovementFull") ||
-            tile.flags.includes("BlockLineOfSightFull"),
-    })),
+    buildRenderTiles(scenario.value, selectedPlane.value).map((tile) => {
+        const screenCoordinate = getSceneScreenCoordinate(
+            tile.coordinate,
+            scenario.value.scene,
+            tileSize,
+        );
+
+        return {
+            ...tile,
+            screenX: screenCoordinate.x,
+            screenY: screenCoordinate.y,
+            hasObjectBlocker: tile.flags.includes("BlockMovementObject"),
+            hasFullBlocker:
+                tile.flags.includes("BlockMovementFull") ||
+                tile.flags.includes("BlockLineOfSightFull"),
+        };
+    }),
 );
 const objectTiles = computed(() =>
     renderTiles.value.filter((tile) => tile.hasObjectBlocker || tile.hasFullBlocker),

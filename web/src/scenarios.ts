@@ -1,4 +1,5 @@
 export type ScenarioId =
+    | "empty-world"
     | "actor-occupancy"
     | "npc-movement"
     | "game-object-blocker"
@@ -173,6 +174,7 @@ export const tileFlags: TileFlag[] = [
 ];
 
 export const scenarioOptions: Array<{ id: ScenarioId; title: string }> = [
+    { id: "empty-world", title: "Empty Scene" },
     { id: "actor-occupancy", title: "Actor Occupancy" },
     { id: "npc-movement", title: "NPC Movement" },
     { id: "game-object-blocker", title: "Game Object Blocker" },
@@ -181,6 +183,8 @@ export const scenarioOptions: Array<{ id: ScenarioId; title: string }> = [
 
 export function runScenario(id: ScenarioId): ScenarioResult {
     switch (id) {
+        case "empty-world":
+            return runEmptyWorldScenario();
         case "actor-occupancy":
             return runActorOccupancyScenario();
         case "game-object-blocker":
@@ -220,6 +224,29 @@ export function buildRenderTiles(result: ScenarioResult, plane: number): RenderT
             };
         })
         .sort((a, b) => a.coordinate.y - b.coordinate.y || a.coordinate.x - b.coordinate.x);
+}
+
+export function getSceneScreenCoordinate(
+    coordinate: SceneCoordinate,
+    scene: Pick<SceneSnapshot, "height">,
+    tileSize: number,
+): { x: number; y: number } {
+    return {
+        x: coordinate.x * tileSize,
+        y: (scene.height - coordinate.y - 1) * tileSize,
+    };
+}
+
+function runEmptyWorldScenario(): ScenarioResult {
+    const world = createWorld();
+
+    return buildResult(world, {
+        id: "empty-world",
+        title: "Empty Scene",
+        description: "A neutral loaded Scene with no Actors or Scene Entities.",
+        movementOutcome: "No movement attempted.",
+        focus: { minX: 0, maxX: 103, minY: 0, maxY: 103 },
+    });
 }
 
 function runActorOccupancyScenario(): ScenarioResult {
@@ -506,14 +533,22 @@ class InMemoryWorldApi implements WorldApi {
     }
 
     public getScene(): SceneSnapshot {
+        const tiles: TileSnapshot[] = [];
+
+        for (let plane = 0; plane < 4; plane += 1) {
+            for (let y = 0; y < 104; y += 1) {
+                for (let x = 0; x < 104; x += 1) {
+                    tiles.push(toTileSnapshot(this.getTile({ x, y, plane })));
+                }
+            }
+        }
+
         return {
             sceneId: this.m_DefaultSceneId,
             width: 104,
             height: 104,
             planeCount: 4,
-            tiles: [...this.m_Tiles.entries()]
-                .map(([, tile]) => toTileSnapshot(tile))
-                .sort((a, b) => a.coordinate.y - b.coordinate.y || a.coordinate.x - b.coordinate.x),
+            tiles,
         };
     }
 
