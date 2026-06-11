@@ -141,6 +141,54 @@ int main()
     {
         osrssim::World world;
         osrssim::Scene* scene = world.TryGetScene(world.GetDefaultSceneId());
+        osrssim::ActorId unplacedActorId = world.CreatePlayer(1, 1);
+        osrssim::ActorId placedActorId = world.CreatePlayer(1, 1);
+
+        assert(scene != nullptr);
+        assert(!world.MoveActorByDelta(999, 1, 0));
+        assert(!world.MoveActorByDelta(unplacedActorId, 1, 0));
+        assert(world.PlaceActor(
+            placedActorId,
+            world.GetDefaultSceneId(),
+            {10, 10, 0}));
+
+        assert(!world.MoveActorByDelta(placedActorId, 0, 0));
+        assert(world.GetSceneMembership(placedActorId)->coordinate ==
+               (osrssim::SceneCoordinate{10, 10, 0}));
+        assert(scene->TryGetTile({10, 10, 0})->IsOccupied());
+    }
+
+    {
+        osrssim::World world;
+        osrssim::Scene* scene = world.TryGetScene(world.GetDefaultSceneId());
+        osrssim::ActorId stoppedActorId = world.CreatePlayer(1, 0);
+        osrssim::ActorId slowActorId = world.CreatePlayer(1, 1);
+
+        assert(scene != nullptr);
+        assert(world.PlaceActor(
+            stoppedActorId,
+            world.GetDefaultSceneId(),
+            {10, 10, 0}));
+        assert(world.PlaceActor(
+            slowActorId,
+            world.GetDefaultSceneId(),
+            {20, 20, 0}));
+
+        assert(!world.MoveActorByDelta(stoppedActorId, 1, 0));
+        assert(!world.MoveActorByDelta(slowActorId, 2, 0));
+        assert(world.GetSceneMembership(stoppedActorId)->coordinate ==
+               (osrssim::SceneCoordinate{10, 10, 0}));
+        assert(world.GetSceneMembership(slowActorId)->coordinate ==
+               (osrssim::SceneCoordinate{20, 20, 0}));
+        assert(scene->TryGetTile({10, 10, 0})->IsOccupied());
+        assert(scene->TryGetTile({20, 20, 0})->IsOccupied());
+        assert(!scene->TryGetTile({11, 10, 0})->IsOccupied());
+        assert(!scene->TryGetTile({22, 20, 0})->IsOccupied());
+    }
+
+    {
+        osrssim::World world;
+        osrssim::Scene* scene = world.TryGetScene(world.GetDefaultSceneId());
         osrssim::ActorId actorId = world.CreatePlayer(2, 2);
 
         assert(scene != nullptr);
