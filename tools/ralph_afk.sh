@@ -27,7 +27,9 @@ fi
 iteration=1
 once_args=("$@")
 iteration_output="$(mktemp -t ralph_afk.XXXXXX)"
-trap 'rm -f "${iteration_output}"' EXIT
+last_message_output="$(mktemp -t ralph_afk_last_message.XXXXXX)"
+status_output="$(mktemp -t ralph_afk_status.XXXXXX)"
+trap 'rm -f "${iteration_output}" "${last_message_output}" "${status_output}"' EXIT
 
 while true; do
     if [[ -n "${stop_file}" && -e "${stop_file}" ]]; then
@@ -41,10 +43,12 @@ while true; do
 
     echo "ralph_afk: starting iteration ${iteration}" >&2
     : > "${iteration_output}"
+    : > "${last_message_output}"
+    : > "${status_output}"
 
-    if "${script_dir}/ralph_once.sh" "${once_args[@]}" 2>&1 | tee "${iteration_output}"; then
+    if RALPH_OUTPUT_LAST_MESSAGE="${last_message_output}" RALPH_STATUS_FILE="${status_output}" "${script_dir}/ralph_once.sh" "${once_args[@]}" 2>&1 | tee "${iteration_output}"; then
         echo "ralph_afk: completed iteration ${iteration}" >&2
-        if grep -Fqx "${no_valid_issues_token}" "${iteration_output}"; then
+        if grep -Fqx "no_valid_issues" "${status_output}" || grep -Fqx "${no_valid_issues_token}" "${last_message_output}"; then
             echo "ralph_afk: no valid issues remain" >&2
             exit 0
         fi

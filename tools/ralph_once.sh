@@ -12,6 +12,7 @@ approval_policy="${RALPH_APPROVAL_POLICY:-never}"
 github_preflight="${RALPH_GITHUB_PREFLIGHT:-1}"
 issue_limit="${RALPH_ISSUE_LIMIT:-200}"
 no_valid_issues_token="${RALPH_NO_VALID_ISSUES_TOKEN:-RALPH_NO_VALID_ISSUES}"
+status_file="${RALPH_STATUS_FILE:-}"
 
 prompt="${RALPH_PROMPT:-}"
 uses_default_prompt=0
@@ -28,7 +29,7 @@ Run exactly one autonomous implementation pass in this repository:
 1. Read AGENTS.md, docs/agents/issue-tracker.md, docs/agents/triage-labels.md, and docs/agents/domain.md.
 2. If the wrapper selected an issue below, work only on that GitHub issue.
 3. If the wrapper did not select an issue, use gh to find one open non-PRD GitHub issue labelled ready-for-agent.
-4. For the selected issue, inspect the relevant code and docs, make the smallest coherent implementation, and run focused verification.
+4. For the selected issue, inspect the relevant code and docs, use /tdd to make the smallest coherent implementation, and run focused verification.
 5. When the issue is complete and verification has passed, create a local git commit for the issue.
 6. Do not push or open a PR.
 7. Leave a concise final report that includes the issue number, commit hash, changed files, and verification result.
@@ -100,6 +101,10 @@ if [[ "${github_preflight}" == "1" && "${uses_default_prompt}" == "1" ]]; then
                     | .[].number
                 ' <<<"${open_issues_json}"
             )
+        fi
+
+        if [[ -n "${status_file}" ]]; then
+            printf '%s\n' "no_valid_issues" > "${status_file}"
         fi
 
         echo "${no_valid_issues_token}"

@@ -32,6 +32,7 @@ Useful environment variables:
 - `RALPH_GITHUB_PREFLIGHT`: set to `0` to skip the default prompt's `gh issue list` connectivity check.
 - `RALPH_ISSUE_LIMIT`: max open GitHub issues to inspect. Defaults to `200`.
 - `RALPH_NO_VALID_ISSUES_TOKEN`: token emitted by `ralph_once.sh` and watched by `ralph_afk.sh`. Defaults to `RALPH_NO_VALID_ISSUES`.
+- `RALPH_STATUS_FILE`: optional status file written by `ralph_once.sh` for wrapper-readable states.
 - `RALPH_PROMPT`: prompt for `ralph_once.sh`. Positional arguments also replace the default prompt.
 - `ralph_afk.sh` treats a leading numeric argument as `RALPH_MAX_ITERATIONS`; remaining positional arguments replace the default prompt.
 - `RALPH_EXTRA_ARGS`: additional whitespace-separated arguments passed to `codex exec`.
