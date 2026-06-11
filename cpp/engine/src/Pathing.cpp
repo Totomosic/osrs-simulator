@@ -45,7 +45,7 @@ bool Pathing::CanMove(
     int actorSize) const
 {
     if (actorSpeed <= 0 || actorSize <= 0 || from.plane != to.plane ||
-        !CanStand(from, actorSize) || !CanStand(to, actorSize))
+        !CanStand(from, actorSize, true) || !CanStand(to, actorSize, true))
     {
         return false;
     }
@@ -63,7 +63,35 @@ bool Pathing::CanMove(
         return false;
     }
 
-    return CanMoveMonotonicRoute(from, to, actorSpeed, actorSize);
+    return CanMoveMonotonicRoute(from, to, actorSpeed, actorSize, true);
+}
+
+bool Pathing::CanMoveIgnoringActorOccupancy(
+    SceneCoordinate from,
+    SceneCoordinate to,
+    int actorSpeed,
+    int actorSize) const
+{
+    if (actorSpeed <= 0 || actorSize <= 0 || from.plane != to.plane ||
+        !CanStand(from, actorSize, false) || !CanStand(to, actorSize, false))
+    {
+        return false;
+    }
+
+    const int dx = to.x - from.x;
+    const int dy = to.y - from.y;
+
+    if (dx == 0 && dy == 0)
+    {
+        return false;
+    }
+
+    if (Abs(dx) > actorSpeed || Abs(dy) > actorSpeed)
+    {
+        return false;
+    }
+
+    return CanMoveMonotonicRoute(from, to, actorSpeed, actorSize, false);
 }
 
 bool Pathing::IsAdjacentStep(int dx, int dy)
@@ -76,9 +104,9 @@ bool Pathing::IsDiagonalStep(int dx, int dy)
     return dx != 0 && dy != 0;
 }
 
-bool Pathing::IsDestinationBlocked(const Tile& tile)
+bool Pathing::IsDestinationBlocked(const Tile& tile, bool includeActorOccupancy)
 {
-    return tile.HasFlag(TileFlag::Occupied) ||
+    return (includeActorOccupancy && tile.HasFlag(TileFlag::Occupied)) ||
            tile.HasFlag(TileFlag::BlockMovementFull) ||
            tile.HasFlag(TileFlag::BlockMovementObject) ||
            tile.HasFlag(TileFlag::BlockMovementFloor) ||
@@ -145,7 +173,10 @@ TileFlag Pathing::GetDestinationMovementFlag(int dx, int dy)
     return GetSourceMovementFlag(-dx, -dy);
 }
 
-bool Pathing::CanStand(SceneCoordinate anchor, int actorSize) const
+bool Pathing::CanStand(
+    SceneCoordinate anchor,
+    int actorSize,
+    bool includeActorOccupancy) const
 {
     for (int dx = 0; dx < actorSize; ++dx)
     {
@@ -154,7 +185,8 @@ bool Pathing::CanStand(SceneCoordinate anchor, int actorSize) const
             const Tile* tile =
                 m_Scene.TryGetTile({anchor.x + dx, anchor.y + dy, anchor.plane});
 
-            if (tile == nullptr || IsDestinationBlocked(*tile))
+            if (tile == nullptr ||
+                IsDestinationBlocked(*tile, includeActorOccupancy))
             {
                 return false;
             }
@@ -167,7 +199,8 @@ bool Pathing::CanStand(SceneCoordinate anchor, int actorSize) const
 bool Pathing::CanMoveFootprintStep(
     SceneCoordinate from,
     SceneCoordinate to,
-    int actorSize) const
+    int actorSize,
+    bool includeActorOccupancy) const
 {
     if (!m_Scene.Contains(from) || !m_Scene.Contains(to) || from.plane != to.plane)
     {
@@ -177,14 +210,19 @@ bool Pathing::CanMoveFootprintStep(
     const int dx = to.x - from.x;
     const int dy = to.y - from.y;
 
-    if (!IsAdjacentStep(dx, dy) || !CanStand(to, actorSize))
+    if (!IsAdjacentStep(dx, dy) ||
+        !CanStand(to, actorSize, includeActorOccupancy))
     {
         return false;
     }
 
     if (IsDiagonalStep(dx, dy))
     {
-        return CanMoveFootprintDiagonal(from, to, actorSize);
+        return CanMoveFootprintDiagonal(
+            from,
+            to,
+            actorSize,
+            includeActorOccupancy);
     }
 
     return CanMoveFootprintCardinal(from, to, actorSize);
@@ -296,14 +334,16 @@ bool Pathing::CanMoveFootprintCardinal(
 bool Pathing::CanMoveFootprintDiagonal(
     SceneCoordinate from,
     SceneCoordinate to,
-    int actorSize) const
+    int actorSize,
+    bool includeActorOccupancy) const
 {
     const int dx = to.x - from.x;
     const int dy = to.y - from.y;
     SceneCoordinate horizontal{from.x + dx, from.y, from.plane};
     SceneCoordinate vertical{from.x, from.y + dy, from.plane};
 
-    if (!CanStand(horizontal, actorSize) || !CanStand(vertical, actorSize))
+    if (!CanStand(horizontal, actorSize, includeActorOccupancy) ||
+        !CanStand(vertical, actorSize, includeActorOccupancy))
     {
         return false;
     }
@@ -334,7 +374,8 @@ bool Pathing::CanMoveMonotonicRoute(
     SceneCoordinate current,
     SceneCoordinate to,
     int remainingSteps,
-    int actorSize) const
+    int actorSize,
+    bool includeActorOccupancy) const
 {
     if (current == to)
     {
@@ -369,8 +410,17 @@ bool Pathing::CanMoveMonotonicRoute(
             continue;
         }
 
-        if (CanMoveFootprintStep(current, candidate, actorSize) &&
-            CanMoveMonotonicRoute(candidate, to, remainingSteps - 1, actorSize))
+        if (CanMoveFootprintStep(
+                current,
+                candidate,
+                actorSize,
+                includeActorOccupancy) &&
+            CanMoveMonotonicRoute(
+                candidate,
+                to,
+                remainingSteps - 1,
+                actorSize,
+                includeActorOccupancy))
         {
             return true;
         }
@@ -384,7 +434,8 @@ bool Pathing::CanMoveCardinal(SceneCoordinate from, SceneCoordinate to) const
     const Tile* fromTile = m_Scene.TryGetTile(from);
     const Tile* toTile = m_Scene.TryGetTile(to);
 
-    if (fromTile == nullptr || toTile == nullptr || IsDestinationBlocked(*toTile))
+    if (fromTile == nullptr || toTile == nullptr ||
+        IsDestinationBlocked(*toTile, true))
     {
         return false;
     }
@@ -401,7 +452,8 @@ bool Pathing::CanMoveDiagonal(SceneCoordinate from, SceneCoordinate to) const
     const Tile* fromTile = m_Scene.TryGetTile(from);
     const Tile* toTile = m_Scene.TryGetTile(to);
 
-    if (fromTile == nullptr || toTile == nullptr || IsDestinationBlocked(*toTile))
+    if (fromTile == nullptr || toTile == nullptr ||
+        IsDestinationBlocked(*toTile, true))
     {
         return false;
     }
