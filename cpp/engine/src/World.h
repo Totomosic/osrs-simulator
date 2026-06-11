@@ -53,6 +53,8 @@ public:
     const ActorCore* GetActorCore(ActorId actorId) const;
     const SceneMembership* GetSceneMembership(ActorId actorId) const;
     bool PlaceActor(ActorId actorId, SceneId sceneId, SceneCoordinate coordinate);
+    bool RemoveActorSceneMembership(ActorId actorId);
+    bool RemoveActor(ActorId actorId);
     bool MoveActorByDelta(ActorId actorId, int dx, int dy);
 
 private:

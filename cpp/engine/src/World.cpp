@@ -97,6 +97,42 @@ bool World::PlaceActor(
     return true;
 }
 
+bool World::RemoveActorSceneMembership(ActorId actorId)
+{
+    ActorCore* actor = TryGetActorCore(actorId);
+    auto membership = m_SceneMemberships.find(actorId);
+
+    if (actor == nullptr || membership == m_SceneMemberships.end())
+    {
+        return false;
+    }
+
+    Scene* scene = TryGetScene(membership->second.sceneId);
+
+    if (scene != nullptr)
+    {
+        RemoveActorOccupancy(*scene, membership->second.coordinate, actor->size);
+    }
+
+    m_SceneMemberships.erase(membership);
+
+    return true;
+}
+
+bool World::RemoveActor(ActorId actorId)
+{
+    if (!HasActor(actorId))
+    {
+        return false;
+    }
+
+    RemoveActorSceneMembership(actorId);
+    m_Players.erase(actorId);
+    m_Npcs.erase(actorId);
+
+    return true;
+}
+
 bool World::MoveActorByDelta(ActorId actorId, int dx, int dy)
 {
     ActorCore* actor = TryGetActorCore(actorId);
