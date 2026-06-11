@@ -318,5 +318,67 @@ int main()
         assert(pathing.CanMove(origin, east));
     }
 
+    {
+        osrssim::Scene scene;
+        osrssim::Pathing pathing(scene);
+
+        osrssim::SceneCoordinate origin{10, 10, 0};
+        osrssim::SceneCoordinate destination{12, 11, 0};
+
+        assert(pathing.CanMove(origin, destination, 2, 1));
+        assert(!pathing.CanMove(origin, destination, 1, 1));
+        assert(!pathing.CanMove(origin, origin, 2, 1));
+    }
+
+    {
+        osrssim::Scene scene;
+        osrssim::Pathing pathing(scene);
+
+        osrssim::SceneCoordinate origin{10, 10, 0};
+        osrssim::SceneCoordinate destination{12, 11, 0};
+
+        scene.TryGetTile(origin)->AddFlag(osrssim::TileFlag::BlockMovementNorthEast);
+
+        assert(pathing.CanMove(origin, destination, 2, 1));
+    }
+
+    {
+        osrssim::Scene scene;
+        osrssim::Pathing pathing(scene);
+
+        osrssim::SceneCoordinate origin{10, 10, 0};
+        osrssim::SceneCoordinate destination{12, 11, 0};
+
+        scene.TryGetTile(origin)->AddFlag(osrssim::TileFlag::BlockMovementEast);
+
+        assert(!pathing.CanMove(origin, destination, 2, 1));
+    }
+
+    {
+        osrssim::Scene scene;
+        osrssim::Pathing pathing(scene);
+
+        osrssim::SceneCoordinate origin{10, 10, 0};
+        osrssim::SceneCoordinate east{11, 10, 0};
+        osrssim::SceneCoordinate farEast{12, 10, 0};
+
+        osrssim::CollisionProfile wallCollision;
+        wallCollision.blocksMovement = true;
+
+        assert(scene.PlaceWallObject(
+            {11, 11, 0},
+            500,
+            osrssim::CardinalDirection::East,
+            wallCollision));
+
+        assert(pathing.CanMove(origin, east, 1, 1));
+        assert(!pathing.CanMove(origin, east, 1, 2));
+        assert(!pathing.CanMove(origin, farEast, 2, 2));
+        assert(scene.TryGetTile({11, 11, 0})
+                   ->HasFlag(osrssim::TileFlag::BlockMovementEast));
+        assert(scene.TryGetTile({12, 11, 0})
+                   ->HasFlag(osrssim::TileFlag::BlockMovementWest));
+    }
+
     return 0;
 }
