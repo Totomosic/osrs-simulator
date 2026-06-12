@@ -17,15 +17,29 @@ struct ActorCore
     int speed = 0;
 };
 
+enum class MovementTargetKind
+{
+    SceneCoordinate,
+    Actor,
+};
+
+struct MovementTarget
+{
+    MovementTargetKind kind = MovementTargetKind::SceneCoordinate;
+    SceneCoordinate sceneCoordinate;
+    ActorId actorId = 0;
+};
+
 struct Player
 {
     ActorCore actor;
-    std::optional<SceneCoordinate> movementTarget;
+    std::optional<MovementTarget> movementTarget;
 };
 
 struct Npc
 {
     ActorCore actor;
+    std::optional<MovementTarget> movementTarget;
 };
 
 struct SceneMembership
@@ -68,6 +82,8 @@ public:
     bool SetPlayerSceneCoordinateMovementTarget(
         ActorId actorId,
         SceneCoordinate coordinate);
+    bool SetActorMovementTarget(ActorId actorId, ActorId targetActorId);
+    bool UpdateActorMovement(ActorId actorId);
     bool UpdatePlayerMovement(ActorId actorId);
 
 private:
@@ -86,6 +102,9 @@ private:
     const Player* TryGetPlayer(ActorId actorId) const;
     ActorCore* TryGetActorCore(ActorId actorId);
     const ActorCore* TryGetActorCore(ActorId actorId) const;
+    std::optional<MovementTarget>* TryGetMovementTarget(ActorId actorId);
+    const std::optional<MovementTarget>* TryGetMovementTarget(
+        ActorId actorId) const;
     ActorKind GetActorKind(ActorId actorId) const;
     bool HasActor(ActorId actorId) const;
     bool CanUseSceneCoordinateMovementTarget(
@@ -95,7 +114,18 @@ private:
         const ActorCore& actor,
         SceneCoordinate actorCoordinate,
         SceneCoordinate target) const;
+    bool AreActorFootprintsEdgeAdjacent(
+        const ActorCore& mover,
+        SceneCoordinate moverCoordinate,
+        const ActorCore& target,
+        SceneCoordinate targetCoordinate) const;
     int GetMovementDeltaForAxis(int anchor, int size, int target, int speed) const;
+    int GetMovementDeltaTowardFootprintForAxis(
+        int anchor,
+        int size,
+        int targetAnchor,
+        int targetSize,
+        int speed) const;
     bool CanStandOnMovementBlockers(
         const Scene& scene,
         SceneCoordinate coordinate,

@@ -40,7 +40,9 @@ ActorId World::CreatePlayer(int size, int speed)
 ActorId World::CreateNpc(int size, int speed)
 {
     const ActorId actorId = m_NextActorId++;
-    m_Npcs.emplace(actorId, Npc{{actorId, ClampSize(size), ClampSpeed(speed)}});
+    m_Npcs.emplace(
+        actorId,
+        Npc{{actorId, ClampSize(size), ClampSpeed(speed)}, std::nullopt});
     return actorId;
 }
 
@@ -243,22 +245,46 @@ bool World::SetPlayerSceneCoordinateMovementTarget(
     ActorId actorId,
     SceneCoordinate coordinate)
 {
-    Player* player = TryGetPlayer(actorId);
+    std::optional<MovementTarget>* movementTarget =
+        TryGetMovementTarget(actorId);
 
-    if (player == nullptr ||
-        !CanPlayerUseSceneCoordinateMovementTarget(actorId, coordinate))
+    if (movementTarget == nullptr || TryGetPlayer(actorId) == nullptr)
     {
         return false;
     }
 
-    player->movementTarget = coordinate;
+    *movementTarget = MovementTarget{
+        MovementTargetKind::SceneCoordinate,
+        coordinate,
+        0};
 
     return true;
 }
 
-bool World::UpdatePlayerMovement(ActorId actorId)
+bool World::SetActorMovementTarget(ActorId actorId, ActorId targetActorId)
 {
-    Player* player = TryGetPlayer(actorId);
+    std::optional<MovementTarget>* movementTarget =
+        TryGetMovementTarget(actorId);
+
+    if (movementTarget == nullptr || actorId == targetActorId ||
+        TryGetActorCore(targetActorId) == nullptr)
+    {
+        return false;
+    }
+
+    *movementTarget = MovementTarget{
+        MovementTargetKind::Actor,
+        {},
+        targetActorId};
+
+    return true;
+}
+
+bool World::UpdateActorMovement(ActorId actorId)
+{
+    ActorCore* actor = TryGetActorCore(actorId);
+    std::optional<MovementTarget>* movementTarget =
+        TryGetMovementTarget(actorId);
     SceneMembership* membership = nullptr;
     auto membershipIterator = m_SceneMemberships.find(actorId);
 
@@ -267,31 +293,101 @@ bool World::UpdatePlayerMovement(ActorId actorId)
         membership = &membershipIterator->second;
     }
 
-    if (player == nullptr || membership == nullptr ||
-        !player->movementTarget.has_value())
+    if (actor == nullptr || movementTarget == nullptr ||
+        !movementTarget->has_value())
     {
         return false;
     }
 
-    if (DoesActorFootprintCover(
-            player->actor,
-            membership->coordinate,
-            *player->movementTarget))
+    if (membership == nullptr)
     {
-        player->movementTarget = std::nullopt;
+        *movementTarget = std::nullopt;
         return false;
     }
 
-    const int dx = GetMovementDeltaForAxis(
-        membership->coordinate.x,
-        player->actor.size,
-        player->movementTarget->x,
-        player->actor.speed);
-    const int dy = GetMovementDeltaForAxis(
-        membership->coordinate.y,
-        player->actor.size,
-        player->movementTarget->y,
-        player->actor.speed);
+    const Scene* scene = TryGetScene(membership->sceneId);
+    SceneCoordinate destination;
+
+    if (movementTarget->value().kind == MovementTargetKind::SceneCoordinate)
+    {
+        destination = movementTarget->value().sceneCoordinate;
+
+        if (scene == nullptr || !scene->Contains(destination) ||
+            destination.plane != membership->coordinate.plane)
+        {
+            *movementTarget = std::nullopt;
+            return false;
+        }
+
+        if (DoesActorFootprintCover(*actor, membership->coordinate, destination))
+        {
+            *movementTarget = std::nullopt;
+            return false;
+        }
+    }
+    else
+    {
+        const ActorCore* targetActor =
+            TryGetActorCore(movementTarget->value().actorId);
+        const SceneMembership* targetMembership =
+            GetSceneMembership(movementTarget->value().actorId);
+
+        if (scene == nullptr || targetActor == nullptr ||
+            targetMembership == nullptr ||
+            targetMembership->sceneId != membership->sceneId ||
+            targetMembership->coordinate.plane != membership->coordinate.plane)
+        {
+            *movementTarget = std::nullopt;
+            return false;
+        }
+
+        if (AreActorFootprintsEdgeAdjacent(
+                *actor,
+                membership->coordinate,
+                *targetActor,
+                targetMembership->coordinate))
+        {
+            *movementTarget = std::nullopt;
+            return false;
+        }
+
+        destination = targetMembership->coordinate;
+    }
+
+    int dx = 0;
+    int dy = 0;
+
+    if (movementTarget->value().kind == MovementTargetKind::SceneCoordinate)
+    {
+        dx = GetMovementDeltaForAxis(
+            membership->coordinate.x,
+            actor->size,
+            destination.x,
+            actor->speed);
+        dy = GetMovementDeltaForAxis(
+            membership->coordinate.y,
+            actor->size,
+            destination.y,
+            actor->speed);
+    }
+    else
+    {
+        const ActorCore* targetActor =
+            TryGetActorCore(movementTarget->value().actorId);
+
+        dx = GetMovementDeltaTowardFootprintForAxis(
+            membership->coordinate.x,
+            actor->size,
+            destination.x,
+            targetActor->size,
+            actor->speed);
+        dy = GetMovementDeltaTowardFootprintForAxis(
+            membership->coordinate.y,
+            actor->size,
+            destination.y,
+            targetActor->size,
+            actor->speed);
+    }
 
     const bool moved = MoveActorByDelta(actorId, dx, dy);
 
@@ -299,17 +395,44 @@ bool World::UpdatePlayerMovement(ActorId actorId)
     {
         const SceneMembership* updatedMembership = GetSceneMembership(actorId);
 
-        if (updatedMembership != nullptr &&
-            DoesActorFootprintCover(
-                player->actor,
-                updatedMembership->coordinate,
-                *player->movementTarget))
+        if (updatedMembership != nullptr)
         {
-            player->movementTarget = std::nullopt;
+            if (movementTarget->value().kind == MovementTargetKind::SceneCoordinate)
+            {
+                if (DoesActorFootprintCover(
+                        *actor,
+                        updatedMembership->coordinate,
+                        destination))
+                {
+                    *movementTarget = std::nullopt;
+                }
+            }
+            else
+            {
+                const ActorCore* targetActor =
+                    TryGetActorCore(movementTarget->value().actorId);
+                const SceneMembership* targetMembership =
+                    GetSceneMembership(movementTarget->value().actorId);
+
+                if (targetActor != nullptr && targetMembership != nullptr &&
+                    AreActorFootprintsEdgeAdjacent(
+                        *actor,
+                        updatedMembership->coordinate,
+                        *targetActor,
+                        targetMembership->coordinate))
+                {
+                    *movementTarget = std::nullopt;
+                }
+            }
         }
     }
 
     return moved;
+}
+
+bool World::UpdatePlayerMovement(ActorId actorId)
+{
+    return TryGetPlayer(actorId) != nullptr && UpdateActorMovement(actorId);
 }
 
 int World::ClampSize(int size)
@@ -395,6 +518,45 @@ const ActorCore* World::TryGetActorCore(ActorId actorId) const
     return nullptr;
 }
 
+std::optional<MovementTarget>* World::TryGetMovementTarget(ActorId actorId)
+{
+    auto player = m_Players.find(actorId);
+
+    if (player != m_Players.end())
+    {
+        return &player->second.movementTarget;
+    }
+
+    auto npc = m_Npcs.find(actorId);
+
+    if (npc != m_Npcs.end())
+    {
+        return &npc->second.movementTarget;
+    }
+
+    return nullptr;
+}
+
+const std::optional<MovementTarget>* World::TryGetMovementTarget(
+    ActorId actorId) const
+{
+    const auto player = m_Players.find(actorId);
+
+    if (player != m_Players.end())
+    {
+        return &player->second.movementTarget;
+    }
+
+    const auto npc = m_Npcs.find(actorId);
+
+    if (npc != m_Npcs.end())
+    {
+        return &npc->second.movementTarget;
+    }
+
+    return nullptr;
+}
+
 World::ActorKind World::GetActorKind(ActorId actorId) const
 {
     return m_Players.contains(actorId) ? ActorKind::Player : ActorKind::Npc;
@@ -425,6 +587,39 @@ bool World::DoesActorFootprintCover(
            target.y < actorCoordinate.y + actor.size;
 }
 
+bool World::AreActorFootprintsEdgeAdjacent(
+    const ActorCore& mover,
+    SceneCoordinate moverCoordinate,
+    const ActorCore& target,
+    SceneCoordinate targetCoordinate) const
+{
+    if (moverCoordinate.plane != targetCoordinate.plane)
+    {
+        return false;
+    }
+
+    const int moverMinX = moverCoordinate.x;
+    const int moverMaxX = moverCoordinate.x + mover.size - 1;
+    const int moverMinY = moverCoordinate.y;
+    const int moverMaxY = moverCoordinate.y + mover.size - 1;
+    const int targetMinX = targetCoordinate.x;
+    const int targetMaxX = targetCoordinate.x + target.size - 1;
+    const int targetMinY = targetCoordinate.y;
+    const int targetMaxY = targetCoordinate.y + target.size - 1;
+
+    const bool overlapsOnX =
+        moverMinX <= targetMaxX && targetMinX <= moverMaxX;
+    const bool overlapsOnY =
+        moverMinY <= targetMaxY && targetMinY <= moverMaxY;
+    const bool touchesWestOrEast =
+        moverMaxX + 1 == targetMinX || targetMaxX + 1 == moverMinX;
+    const bool touchesSouthOrNorth =
+        moverMaxY + 1 == targetMinY || targetMaxY + 1 == moverMinY;
+
+    return (touchesWestOrEast && overlapsOnY) ||
+           (touchesSouthOrNorth && overlapsOnX);
+}
+
 int World::GetMovementDeltaForAxis(
     int anchor,
     int size,
@@ -439,6 +634,29 @@ int World::GetMovementDeltaForAxis(
     if (target >= anchor + size)
     {
         return ClampDelta(target - (anchor + size - 1), speed);
+    }
+
+    return 0;
+}
+
+int World::GetMovementDeltaTowardFootprintForAxis(
+    int anchor,
+    int size,
+    int targetAnchor,
+    int targetSize,
+    int speed) const
+{
+    const int max = anchor + size - 1;
+    const int targetMax = targetAnchor + targetSize - 1;
+
+    if (max + 1 < targetAnchor)
+    {
+        return ClampDelta(targetAnchor - max - 1, speed);
+    }
+
+    if (targetMax + 1 < anchor)
+    {
+        return ClampDelta(targetMax + 1 - anchor, speed);
     }
 
     return 0;
