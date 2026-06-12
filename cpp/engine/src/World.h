@@ -4,6 +4,7 @@
 #include "Scene.h"
 #include "Types.h"
 
+#include <optional>
 #include <unordered_map>
 
 namespace osrssim
@@ -19,6 +20,7 @@ struct ActorCore
 struct Player
 {
     ActorCore actor;
+    std::optional<SceneCoordinate> movementTarget;
 };
 
 struct Npc
@@ -60,6 +62,13 @@ public:
     bool RemoveActorSceneMembership(ActorId actorId);
     bool RemoveActor(ActorId actorId);
     bool MoveActorByDelta(ActorId actorId, int dx, int dy);
+    bool CanPlayerUseSceneCoordinateMovementTarget(
+        ActorId actorId,
+        SceneCoordinate coordinate) const;
+    bool SetPlayerSceneCoordinateMovementTarget(
+        ActorId actorId,
+        SceneCoordinate coordinate);
+    bool UpdatePlayerMovement(ActorId actorId);
 
 private:
     enum class ActorKind
@@ -70,12 +79,23 @@ private:
 
     static int ClampSize(int size);
     static int ClampSpeed(int speed);
+    static int ClampDelta(int delta, int speed);
     static bool IsWholeTileMovementBlocked(const Tile& tile);
 
+    Player* TryGetPlayer(ActorId actorId);
+    const Player* TryGetPlayer(ActorId actorId) const;
     ActorCore* TryGetActorCore(ActorId actorId);
     const ActorCore* TryGetActorCore(ActorId actorId) const;
     ActorKind GetActorKind(ActorId actorId) const;
     bool HasActor(ActorId actorId) const;
+    bool CanUseSceneCoordinateMovementTarget(
+        const Scene& scene,
+        SceneCoordinate coordinate) const;
+    bool DoesActorFootprintCover(
+        const ActorCore& actor,
+        SceneCoordinate actorCoordinate,
+        SceneCoordinate target) const;
+    int GetMovementDeltaForAxis(int anchor, int size, int target, int speed) const;
     bool CanStandOnMovementBlockers(
         const Scene& scene,
         SceneCoordinate coordinate,

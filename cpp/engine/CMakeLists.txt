@@ -59,6 +59,10 @@ if(BUILD_TESTING)
     tests/WorldTest.cpp
   )
 
+  add_executable(osrssim_engine_engine_test
+    tests/EngineTest.cpp
+  )
+
   target_link_libraries(osrssim_engine_scene_test
     PRIVATE
       osrssim::engine
@@ -74,7 +78,13 @@ if(BUILD_TESTING)
       osrssim::engine
   )
 
+  target_link_libraries(osrssim_engine_engine_test
+    PRIVATE
+      osrssim::engine
+  )
+
   add_test(NAME osrssim_engine_scene_test COMMAND osrssim_engine_scene_test)
   add_test(NAME osrssim_engine_pathing_test COMMAND osrssim_engine_pathing_test)
   add_test(NAME osrssim_engine_world_test COMMAND osrssim_engine_world_test)
+  add_test(NAME osrssim_engine_engine_test COMMAND osrssim_engine_engine_test)
 endif()

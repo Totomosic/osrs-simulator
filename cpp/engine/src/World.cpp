@@ -31,7 +31,9 @@ const Scene* World::TryGetScene(SceneId sceneId) const
 ActorId World::CreatePlayer(int size, int speed)
 {
     const ActorId actorId = m_NextActorId++;
-    m_Players.emplace(actorId, Player{{actorId, ClampSize(size), ClampSpeed(speed)}});
+    m_Players.emplace(
+        actorId,
+        Player{{actorId, ClampSize(size), ClampSpeed(speed)}, std::nullopt});
     return actorId;
 }
 
@@ -218,6 +220,98 @@ bool World::MoveActorByDelta(ActorId actorId, int dx, int dy)
     return true;
 }
 
+bool World::CanPlayerUseSceneCoordinateMovementTarget(
+    ActorId actorId,
+    SceneCoordinate coordinate) const
+{
+    const Player* player = TryGetPlayer(actorId);
+    const SceneMembership* membership = GetSceneMembership(actorId);
+
+    if (player == nullptr || membership == nullptr)
+    {
+        return false;
+    }
+
+    const Scene* scene = TryGetScene(membership->sceneId);
+
+    return scene != nullptr && CanUseSceneCoordinateMovementTarget(
+        *scene,
+        coordinate);
+}
+
+bool World::SetPlayerSceneCoordinateMovementTarget(
+    ActorId actorId,
+    SceneCoordinate coordinate)
+{
+    Player* player = TryGetPlayer(actorId);
+
+    if (player == nullptr ||
+        !CanPlayerUseSceneCoordinateMovementTarget(actorId, coordinate))
+    {
+        return false;
+    }
+
+    player->movementTarget = coordinate;
+
+    return true;
+}
+
+bool World::UpdatePlayerMovement(ActorId actorId)
+{
+    Player* player = TryGetPlayer(actorId);
+    SceneMembership* membership = nullptr;
+    auto membershipIterator = m_SceneMemberships.find(actorId);
+
+    if (membershipIterator != m_SceneMemberships.end())
+    {
+        membership = &membershipIterator->second;
+    }
+
+    if (player == nullptr || membership == nullptr ||
+        !player->movementTarget.has_value())
+    {
+        return false;
+    }
+
+    if (DoesActorFootprintCover(
+            player->actor,
+            membership->coordinate,
+            *player->movementTarget))
+    {
+        player->movementTarget = std::nullopt;
+        return false;
+    }
+
+    const int dx = GetMovementDeltaForAxis(
+        membership->coordinate.x,
+        player->actor.size,
+        player->movementTarget->x,
+        player->actor.speed);
+    const int dy = GetMovementDeltaForAxis(
+        membership->coordinate.y,
+        player->actor.size,
+        player->movementTarget->y,
+        player->actor.speed);
+
+    const bool moved = MoveActorByDelta(actorId, dx, dy);
+
+    if (moved)
+    {
+        const SceneMembership* updatedMembership = GetSceneMembership(actorId);
+
+        if (updatedMembership != nullptr &&
+            DoesActorFootprintCover(
+                player->actor,
+                updatedMembership->coordinate,
+                *player->movementTarget))
+        {
+            player->movementTarget = std::nullopt;
+        }
+    }
+
+    return moved;
+}
+
 int World::ClampSize(int size)
 {
     return size < 1 ? 1 : size;
@@ -228,12 +322,39 @@ int World::ClampSpeed(int speed)
     return speed < 0 ? 0 : speed;
 }
 
+int World::ClampDelta(int delta, int speed)
+{
+    if (delta > speed)
+    {
+        return speed;
+    }
+
+    if (delta < -speed)
+    {
+        return -speed;
+    }
+
+    return delta;
+}
+
 bool World::IsWholeTileMovementBlocked(const Tile& tile)
 {
     return tile.HasFlag(TileFlag::BlockMovementFull) ||
            tile.HasFlag(TileFlag::BlockMovementObject) ||
            tile.HasFlag(TileFlag::BlockMovementFloor) ||
            tile.HasFlag(TileFlag::BlockMovementFloorDecoration);
+}
+
+Player* World::TryGetPlayer(ActorId actorId)
+{
+    auto player = m_Players.find(actorId);
+    return player == m_Players.end() ? nullptr : &player->second;
+}
+
+const Player* World::TryGetPlayer(ActorId actorId) const
+{
+    const auto player = m_Players.find(actorId);
+    return player == m_Players.end() ? nullptr : &player->second;
 }
 
 ActorCore* World::TryGetActorCore(ActorId actorId)
@@ -282,6 +403,45 @@ World::ActorKind World::GetActorKind(ActorId actorId) const
 bool World::HasActor(ActorId actorId) const
 {
     return m_Players.contains(actorId) || m_Npcs.contains(actorId);
+}
+
+bool World::CanUseSceneCoordinateMovementTarget(
+    const Scene& scene,
+    SceneCoordinate coordinate) const
+{
+    const Tile* tile = scene.TryGetTile(coordinate);
+    return tile != nullptr && !IsWholeTileMovementBlocked(*tile);
+}
+
+bool World::DoesActorFootprintCover(
+    const ActorCore& actor,
+    SceneCoordinate actorCoordinate,
+    SceneCoordinate target) const
+{
+    return target.plane == actorCoordinate.plane &&
+           target.x >= actorCoordinate.x &&
+           target.x < actorCoordinate.x + actor.size &&
+           target.y >= actorCoordinate.y &&
+           target.y < actorCoordinate.y + actor.size;
+}
+
+int World::GetMovementDeltaForAxis(
+    int anchor,
+    int size,
+    int target,
+    int speed) const
+{
+    if (target < anchor)
+    {
+        return ClampDelta(target - anchor, speed);
+    }
+
+    if (target >= anchor + size)
+    {
+        return ClampDelta(target - (anchor + size - 1), speed);
+    }
+
+    return 0;
 }
 
 bool World::CanStandOnMovementBlockers(
