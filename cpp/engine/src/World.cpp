@@ -222,14 +222,14 @@ bool World::MoveActorByDelta(ActorId actorId, int dx, int dy)
     return true;
 }
 
-bool World::CanPlayerUseSceneCoordinateMovementTarget(
+bool World::CanActorUseSceneCoordinateMovementTarget(
     ActorId actorId,
     SceneCoordinate coordinate) const
 {
-    const Player* player = TryGetPlayer(actorId);
+    const ActorCore* actor = TryGetActorCore(actorId);
     const SceneMembership* membership = GetSceneMembership(actorId);
 
-    if (player == nullptr || membership == nullptr)
+    if (actor == nullptr || membership == nullptr)
     {
         return false;
     }
@@ -241,14 +241,22 @@ bool World::CanPlayerUseSceneCoordinateMovementTarget(
         coordinate);
 }
 
-bool World::SetPlayerSceneCoordinateMovementTarget(
+bool World::CanPlayerUseSceneCoordinateMovementTarget(
+    ActorId actorId,
+    SceneCoordinate coordinate) const
+{
+    return TryGetPlayer(actorId) != nullptr &&
+           CanActorUseSceneCoordinateMovementTarget(actorId, coordinate);
+}
+
+bool World::SetActorSceneCoordinateMovementTarget(
     ActorId actorId,
     SceneCoordinate coordinate)
 {
     std::optional<MovementTarget>* movementTarget =
         TryGetMovementTarget(actorId);
 
-    if (movementTarget == nullptr || TryGetPlayer(actorId) == nullptr)
+    if (movementTarget == nullptr)
     {
         return false;
     }
@@ -257,6 +265,29 @@ bool World::SetPlayerSceneCoordinateMovementTarget(
         MovementTargetKind::SceneCoordinate,
         coordinate,
         0};
+
+    return true;
+}
+
+bool World::SetPlayerSceneCoordinateMovementTarget(
+    ActorId actorId,
+    SceneCoordinate coordinate)
+{
+    return TryGetPlayer(actorId) != nullptr &&
+           SetActorSceneCoordinateMovementTarget(actorId, coordinate);
+}
+
+bool World::ClearActorMovementTarget(ActorId actorId)
+{
+    std::optional<MovementTarget>* movementTarget =
+        TryGetMovementTarget(actorId);
+
+    if (movementTarget == nullptr)
+    {
+        return false;
+    }
+
+    *movementTarget = std::nullopt;
 
     return true;
 }

@@ -65,6 +65,63 @@ int main()
     {
         osrssim::Engine engine;
         osrssim::World& world = engine.GetWorld();
+        osrssim::ActorId npcId = world.CreateNpc(1, 1);
+        osrssim::ActorId playerId = world.CreatePlayer(1, 1);
+
+        assert(world.PlaceActor(npcId, world.GetDefaultSceneId(), {10, 10, 0}));
+        assert(world.PlaceActor(
+            playerId,
+            world.GetDefaultSceneId(),
+            {11, 10, 0}));
+
+        assert(world.SetActorSceneCoordinateMovementTarget(npcId, {11, 10, 0}));
+        assert(engine.QueuePlayerMoveToSceneCoordinate(playerId, {12, 10, 0}));
+
+        engine.Step();
+
+        assert(world.GetSceneMembership(npcId)->coordinate ==
+               (osrssim::SceneCoordinate{10, 10, 0}));
+        assert(world.GetSceneMembership(playerId)->coordinate ==
+               (osrssim::SceneCoordinate{12, 10, 0}));
+        assert(world.GetNpc(npcId)->movementTarget.has_value());
+    }
+
+    {
+        osrssim::Engine engine;
+        osrssim::World& world = engine.GetWorld();
+        osrssim::ActorId firstNpcId = world.CreateNpc(1, 1);
+        osrssim::ActorId secondNpcId = world.CreateNpc(1, 1);
+
+        assert(firstNpcId < secondNpcId);
+        assert(world.PlaceActor(
+            firstNpcId,
+            world.GetDefaultSceneId(),
+            {10, 10, 0}));
+        assert(world.PlaceActor(
+            secondNpcId,
+            world.GetDefaultSceneId(),
+            {12, 10, 0}));
+
+        assert(world.SetActorSceneCoordinateMovementTarget(
+            firstNpcId,
+            {11, 10, 0}));
+        assert(world.SetActorSceneCoordinateMovementTarget(
+            secondNpcId,
+            {11, 10, 0}));
+
+        engine.Step();
+
+        assert(world.GetSceneMembership(firstNpcId)->coordinate ==
+               (osrssim::SceneCoordinate{11, 10, 0}));
+        assert(world.GetSceneMembership(secondNpcId)->coordinate ==
+               (osrssim::SceneCoordinate{12, 10, 0}));
+        assert(!world.GetNpc(firstNpcId)->movementTarget.has_value());
+        assert(world.GetNpc(secondNpcId)->movementTarget.has_value());
+    }
+
+    {
+        osrssim::Engine engine;
+        osrssim::World& world = engine.GetWorld();
         osrssim::ActorId playerId = world.CreatePlayer(1, 0);
 
         assert(world.PlaceActor(

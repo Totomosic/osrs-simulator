@@ -40,6 +40,7 @@ void Engine::Step()
 {
     ++m_CurrentTick;
     ProcessQueuedPlayerMovementActions();
+    UpdateNpcs();
     UpdatePlayers();
 }
 
@@ -65,7 +66,7 @@ void Engine::ProcessQueuedPlayerMovementActions()
     {
         if (action.movementTarget.kind == MovementTargetKind::SceneCoordinate)
         {
-            m_World.SetPlayerSceneCoordinateMovementTarget(
+            m_World.SetActorSceneCoordinateMovementTarget(
                 action.actorId,
                 action.movementTarget.sceneCoordinate);
         }
@@ -78,6 +79,24 @@ void Engine::ProcessQueuedPlayerMovementActions()
     }
 
     m_QueuedPlayerMovementActions.clear();
+}
+
+void Engine::UpdateNpcs()
+{
+    std::vector<ActorId> npcIds;
+    npcIds.reserve(m_World.GetNpcs().size());
+
+    for (const auto& [actorId, npc] : m_World.GetNpcs())
+    {
+        npcIds.push_back(actorId);
+    }
+
+    std::sort(npcIds.begin(), npcIds.end());
+
+    for (ActorId actorId : npcIds)
+    {
+        m_World.UpdateActorMovement(actorId);
+    }
 }
 
 void Engine::UpdatePlayers()

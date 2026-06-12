@@ -33,6 +33,7 @@ public:
 
 private:
     void ProcessQueuedPlayerMovementActions();
+    void UpdateNpcs();
     void UpdatePlayers();
 };
 

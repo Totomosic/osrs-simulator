@@ -76,12 +76,19 @@ public:
     bool RemoveActorSceneMembership(ActorId actorId);
     bool RemoveActor(ActorId actorId);
     bool MoveActorByDelta(ActorId actorId, int dx, int dy);
+    bool CanActorUseSceneCoordinateMovementTarget(
+        ActorId actorId,
+        SceneCoordinate coordinate) const;
     bool CanPlayerUseSceneCoordinateMovementTarget(
         ActorId actorId,
         SceneCoordinate coordinate) const;
+    bool SetActorSceneCoordinateMovementTarget(
+        ActorId actorId,
+        SceneCoordinate coordinate);
     bool SetPlayerSceneCoordinateMovementTarget(
         ActorId actorId,
         SceneCoordinate coordinate);
+    bool ClearActorMovementTarget(ActorId actorId);
     bool SetActorMovementTarget(ActorId actorId, ActorId targetActorId);
     bool UpdateActorMovement(ActorId actorId);
     bool UpdatePlayerMovement(ActorId actorId);
