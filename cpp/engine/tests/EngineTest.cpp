@@ -115,5 +115,52 @@ int main()
         assert(scene->TryGetTile({12, 10, 0})->IsOccupied());
     }
 
+    {
+        osrssim::Engine engine;
+        osrssim::World& world = engine.GetWorld();
+        osrssim::ActorId playerId = world.CreatePlayer(1, 2);
+        osrssim::ActorId targetId = world.CreateNpc(2, 1);
+
+        assert(world.PlaceActor(
+            playerId,
+            world.GetDefaultSceneId(),
+            {10, 10, 0}));
+        assert(world.PlaceActor(
+            targetId,
+            world.GetDefaultSceneId(),
+            {13, 10, 0}));
+
+        assert(engine.QueuePlayerMoveToActor(playerId, targetId));
+
+        engine.Step();
+
+        assert(world.GetSceneMembership(playerId)->coordinate ==
+               (osrssim::SceneCoordinate{12, 10, 0}));
+        assert(!world.GetPlayer(playerId)->movementTarget.has_value());
+    }
+
+    {
+        osrssim::Engine engine;
+        osrssim::World& world = engine.GetWorld();
+        osrssim::ActorId npcId = world.CreateNpc(1, 1);
+        osrssim::ActorId targetId = world.CreatePlayer(1, 1);
+
+        assert(world.PlaceActor(npcId, world.GetDefaultSceneId(), {10, 10, 0}));
+        assert(world.PlaceActor(
+            targetId,
+            world.GetDefaultSceneId(),
+            {12, 10, 0}));
+
+        assert(!engine.QueuePlayerMoveToActor(npcId, targetId));
+        assert(!engine.QueuePlayerMoveToActor(targetId, 999));
+
+        engine.Step();
+
+        assert(world.GetSceneMembership(npcId)->coordinate ==
+               (osrssim::SceneCoordinate{10, 10, 0}));
+        assert(world.GetSceneMembership(targetId)->coordinate ==
+               (osrssim::SceneCoordinate{12, 10, 0}));
+    }
+
     return 0;
 }

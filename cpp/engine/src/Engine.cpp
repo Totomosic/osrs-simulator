@@ -15,7 +15,23 @@ bool Engine::QueuePlayerMoveToSceneCoordinate(
         return false;
     }
 
-    m_QueuedPlayerMovementActions.push_back({actorId, coordinate});
+    m_QueuedPlayerMovementActions.push_back(
+        {actorId, {MovementTargetKind::SceneCoordinate, coordinate, 0}});
+
+    return true;
+}
+
+bool Engine::QueuePlayerMoveToActor(ActorId actorId, ActorId targetActorId)
+{
+    if (m_World.GetPlayer(actorId) == nullptr ||
+        m_World.GetActorCore(targetActorId) == nullptr ||
+        actorId == targetActorId)
+    {
+        return false;
+    }
+
+    m_QueuedPlayerMovementActions.push_back(
+        {actorId, {MovementTargetKind::Actor, {}, targetActorId}});
 
     return true;
 }
@@ -47,9 +63,18 @@ void Engine::ProcessQueuedPlayerMovementActions()
     for (const QueuedPlayerMovementAction& action :
          m_QueuedPlayerMovementActions)
     {
-        m_World.SetPlayerSceneCoordinateMovementTarget(
-            action.actorId,
-            action.coordinate);
+        if (action.movementTarget.kind == MovementTargetKind::SceneCoordinate)
+        {
+            m_World.SetPlayerSceneCoordinateMovementTarget(
+                action.actorId,
+                action.movementTarget.sceneCoordinate);
+        }
+        else
+        {
+            m_World.SetActorMovementTarget(
+                action.actorId,
+                action.movementTarget.actorId);
+        }
     }
 
     m_QueuedPlayerMovementActions.clear();

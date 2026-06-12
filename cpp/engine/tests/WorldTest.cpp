@@ -447,6 +447,41 @@ int main()
         osrssim::ActorId targetId = world.CreatePlayer(1, 1);
 
         assert(world.PlaceActor(moverId, world.GetDefaultSceneId(), {10, 10, 0}));
+        assert(world.PlaceActor(targetId, world.GetDefaultSceneId(), {11, 11, 0}));
+        assert(world.SetActorMovementTarget(moverId, targetId));
+
+        assert(world.UpdateActorMovement(moverId));
+        assert(world.GetSceneMembership(moverId)->coordinate ==
+               (osrssim::SceneCoordinate{11, 10, 0}));
+        assert(!world.GetNpc(moverId)->movementTarget.has_value());
+    }
+
+    {
+        osrssim::World world;
+        osrssim::Scene* scene = world.TryGetScene(world.GetDefaultSceneId());
+        osrssim::ActorId moverId = world.CreateNpc(1, 1);
+        osrssim::ActorId targetId = world.CreatePlayer(1, 1);
+
+        assert(scene != nullptr);
+        assert(world.PlaceActor(moverId, world.GetDefaultSceneId(), {10, 10, 0}));
+        assert(world.PlaceActor(targetId, world.GetDefaultSceneId(), {9, 11, 0}));
+        assert(world.SetActorMovementTarget(moverId, targetId));
+
+        scene->TryGetTile({9, 10, 0})
+            ->AddFlag(osrssim::TileFlag::BlockMovementObject);
+
+        assert(!world.UpdateActorMovement(moverId));
+        assert(world.GetSceneMembership(moverId)->coordinate ==
+               (osrssim::SceneCoordinate{10, 10, 0}));
+        assert(world.GetNpc(moverId)->movementTarget.has_value());
+    }
+
+    {
+        osrssim::World world;
+        osrssim::ActorId moverId = world.CreateNpc(1, 1);
+        osrssim::ActorId targetId = world.CreatePlayer(1, 1);
+
+        assert(world.PlaceActor(moverId, world.GetDefaultSceneId(), {10, 10, 0}));
         assert(world.PlaceActor(targetId, world.GetDefaultSceneId(), {12, 10, 0}));
         assert(world.SetActorMovementTarget(moverId, targetId));
         assert(world.RemoveActorSceneMembership(moverId));

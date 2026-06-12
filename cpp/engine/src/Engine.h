@@ -14,7 +14,7 @@ private:
     struct QueuedPlayerMovementAction
     {
         ActorId actorId = 0;
-        SceneCoordinate coordinate;
+        MovementTarget movementTarget;
     };
 
     Tick m_CurrentTick = 0;
@@ -25,6 +25,7 @@ public:
     bool QueuePlayerMoveToSceneCoordinate(
         ActorId actorId,
         SceneCoordinate coordinate);
+    bool QueuePlayerMoveToActor(ActorId actorId, ActorId targetActorId);
     void Step();
     Tick GetCurrentTick() const;
     World& GetWorld();
