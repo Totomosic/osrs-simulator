@@ -40,12 +40,13 @@ int main()
             ->AddFlag(osrssim::TileFlag::BlockMovementObject);
 
         assert(engine.QueuePlayerMoveToSceneCoordinate(playerId, {11, 10, 0}));
-        assert(!engine.QueuePlayerMoveToSceneCoordinate(playerId, {10, 11, 0}));
+        assert(engine.QueuePlayerMoveToSceneCoordinate(playerId, {10, 11, 0}));
 
         engine.Step();
 
         assert(world.GetSceneMembership(playerId)->coordinate ==
-               (osrssim::SceneCoordinate{11, 10, 0}));
+               (osrssim::SceneCoordinate{10, 10, 0}));
+        assert(world.GetPlayer(playerId)->movementTarget.has_value());
     }
 
     {
@@ -60,6 +61,19 @@ int main()
 
         assert(world.GetSceneMembership(npcId)->coordinate ==
                (osrssim::SceneCoordinate{10, 10, 0}));
+    }
+
+    {
+        osrssim::Engine engine;
+        osrssim::World& world = engine.GetWorld();
+        osrssim::ActorId playerId = world.CreatePlayer(1, 1);
+
+        assert(engine.QueuePlayerMoveToSceneCoordinate(playerId, {11, 10, 0}));
+
+        engine.Step();
+
+        assert(world.GetSceneMembership(playerId) == nullptr);
+        assert(!world.GetPlayer(playerId)->movementTarget.has_value());
     }
 
     {

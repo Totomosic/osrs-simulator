@@ -9,8 +9,7 @@ bool Engine::QueuePlayerMoveToSceneCoordinate(
     ActorId actorId,
     SceneCoordinate coordinate)
 {
-    if (m_World.GetPlayer(actorId) == nullptr ||
-        !m_World.CanPlayerUseSceneCoordinateMovementTarget(actorId, coordinate))
+    if (m_World.GetPlayer(actorId) == nullptr)
     {
         return false;
     }
