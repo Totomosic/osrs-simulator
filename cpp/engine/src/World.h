@@ -126,7 +126,23 @@ private:
         SceneCoordinate moverCoordinate,
         const ActorCore& target,
         SceneCoordinate targetCoordinate) const;
+    bool AreActorFootprintsOverlapping(
+        const ActorCore& mover,
+        SceneCoordinate moverCoordinate,
+        const ActorCore& target,
+        SceneCoordinate targetCoordinate) const;
     int GetMovementDeltaForAxis(int anchor, int size, int target, int speed) const;
+    bool TryGetActorTargetEdgeAdjacentMovementDelta(
+        const Scene& scene,
+        ActorKind actorKind,
+        const ActorCore& actor,
+        SceneCoordinate current,
+        int requestedDx,
+        int requestedDy,
+        const ActorCore& target,
+        SceneCoordinate targetCoordinate,
+        int& edgeAdjacentDx,
+        int& edgeAdjacentDy) const;
     bool CanStandOnMovementBlockers(
         const Scene& scene,
         SceneCoordinate coordinate,

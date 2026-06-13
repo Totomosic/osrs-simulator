@@ -507,6 +507,15 @@ bool World::UpdateActorMovement(ActorId actorId)
             return false;
         }
 
+        if (AreActorFootprintsOverlapping(
+                *actor,
+                membership->coordinate,
+                *targetActor,
+                targetMembership->coordinate))
+        {
+            return false;
+        }
+
         destination = targetMembership->coordinate;
     }
 
@@ -538,6 +547,31 @@ bool World::UpdateActorMovement(ActorId actorId)
             1,
             destination.y,
             actor->speed);
+
+        int edgeAdjacentDx = 0;
+        int edgeAdjacentDy = 0;
+        const ActorCore* targetActor =
+            TryGetActorCore(movementTarget->value().actorId);
+        const SceneMembership* targetMembership =
+            GetSceneMembership(movementTarget->value().actorId);
+
+        if (scene != nullptr && targetActor != nullptr &&
+            targetMembership != nullptr &&
+            TryGetActorTargetEdgeAdjacentMovementDelta(
+                *scene,
+                GetActorKind(actorId),
+                *actor,
+                membership->coordinate,
+                dx,
+                dy,
+                *targetActor,
+                targetMembership->coordinate,
+                edgeAdjacentDx,
+                edgeAdjacentDy))
+        {
+            dx = edgeAdjacentDx;
+            dy = edgeAdjacentDy;
+        }
     }
 
     const bool moved = MoveActorByDelta(actorId, dx, dy);
@@ -775,6 +809,30 @@ bool World::AreActorFootprintsEdgeAdjacent(
            (touchesSouthOrNorth && overlapsOnX);
 }
 
+bool World::AreActorFootprintsOverlapping(
+    const ActorCore& mover,
+    SceneCoordinate moverCoordinate,
+    const ActorCore& target,
+    SceneCoordinate targetCoordinate) const
+{
+    if (moverCoordinate.plane != targetCoordinate.plane)
+    {
+        return false;
+    }
+
+    const int moverMinX = moverCoordinate.x;
+    const int moverMaxX = moverCoordinate.x + mover.size - 1;
+    const int moverMinY = moverCoordinate.y;
+    const int moverMaxY = moverCoordinate.y + mover.size - 1;
+    const int targetMinX = targetCoordinate.x;
+    const int targetMaxX = targetCoordinate.x + target.size - 1;
+    const int targetMinY = targetCoordinate.y;
+    const int targetMaxY = targetCoordinate.y + target.size - 1;
+
+    return moverMinX <= targetMaxX && targetMinX <= moverMaxX &&
+           moverMinY <= targetMaxY && targetMinY <= moverMaxY;
+}
+
 int World::GetMovementDeltaForAxis(
     int anchor,
     int size,
@@ -792,6 +850,110 @@ int World::GetMovementDeltaForAxis(
     }
 
     return 0;
+}
+
+bool World::TryGetActorTargetEdgeAdjacentMovementDelta(
+    const Scene& scene,
+    ActorKind actorKind,
+    const ActorCore& actor,
+    SceneCoordinate current,
+    int requestedDx,
+    int requestedDy,
+    const ActorCore& target,
+    SceneCoordinate targetCoordinate,
+    int& edgeAdjacentDx,
+    int& edgeAdjacentDy) const
+{
+    const int stepX = Sign(requestedDx);
+    const int stepY = Sign(requestedDy);
+    const int absRequestedDx = Abs(requestedDx);
+    const int absRequestedDy = Abs(requestedDy);
+    Pathing pathing(scene);
+    bool found = false;
+    int bestDx = 0;
+    int bestDy = 0;
+
+    for (int candidateAbsDx = 0; candidateAbsDx <= absRequestedDx;
+         ++candidateAbsDx)
+    {
+        for (int candidateAbsDy = 0; candidateAbsDy <= absRequestedDy;
+             ++candidateAbsDy)
+        {
+            const int candidateDx = candidateAbsDx * stepX;
+            const int candidateDy = candidateAbsDy * stepY;
+
+            if (candidateDx == 0 && candidateDy == 0)
+            {
+                continue;
+            }
+
+            SceneCoordinate candidate{
+                current.x + candidateDx,
+                current.y + candidateDy,
+                current.plane};
+
+            if (!AreActorFootprintsEdgeAdjacent(
+                    actor,
+                    candidate,
+                    target,
+                    targetCoordinate))
+            {
+                continue;
+            }
+
+            if (!pathing.CanMoveIgnoringActorOccupancy(
+                    current,
+                    candidate,
+                    actor.speed,
+                    actor.size))
+            {
+                continue;
+            }
+
+            if (actorKind == ActorKind::Npc &&
+                HasFinalNpcOccupancyConflict(
+                    scene,
+                    current,
+                    candidate,
+                    actor.size))
+            {
+                continue;
+            }
+
+            const int candidateDistance = Max(Abs(candidateDx), Abs(candidateDy));
+            const int bestDistance = Max(Abs(bestDx), Abs(bestDy));
+            const int candidateManhattan = Abs(candidateDx) + Abs(candidateDy);
+            const int bestManhattan = Abs(bestDx) + Abs(bestDy);
+
+            if (!found || candidateDistance < bestDistance ||
+                (candidateDistance == bestDistance &&
+                 candidateManhattan < bestManhattan) ||
+                (candidateDistance == bestDistance &&
+                 candidateManhattan == bestManhattan &&
+                 IsBetterResolvedDelta(
+                     requestedDx,
+                     requestedDy,
+                     candidateDx,
+                     candidateDy,
+                     bestDx,
+                     bestDy)))
+            {
+                found = true;
+                bestDx = candidateDx;
+                bestDy = candidateDy;
+            }
+        }
+    }
+
+    if (!found)
+    {
+        return false;
+    }
+
+    edgeAdjacentDx = bestDx;
+    edgeAdjacentDy = bestDy;
+
+    return true;
 }
 
 bool World::CanStandOnMovementBlockers(
