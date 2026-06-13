@@ -1,4 +1,5 @@
 add_library(osrssim_engine
+  src/DevelopmentPlayerChaseScenario.cpp
   src/Engine.cpp
   src/Pathing.cpp
   src/Scene.cpp

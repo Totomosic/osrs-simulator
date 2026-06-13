@@ -1,89 +1,51 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from "vue";
+import { computed, onMounted, onUnmounted, ref } from "vue";
 import {
-    buildRenderTiles,
+    buildDebugTiles,
+    defaultFieldOfView,
     getSceneScreenCoordinate,
-    runScenario,
-    scenarioOptions,
-    type CardinalDirection,
-    type RenderTile,
-    type ScenarioId,
-    type ScenarioResult,
-} from "./scenarios";
-import { loadEngineModule } from "./wasm/EngineModule";
+    readPlayerChaseDebugSnapshot,
+    tileSize,
+    type CameraMode,
+    type DebugTile,
+    type PlayerChaseDebugSnapshot,
+} from "./playerChaseDebug";
+import {
+    loadEngineModule,
+    type DevelopmentPlayerChaseScenario,
+} from "./wasm/EngineModule";
 
-interface SvgTile extends RenderTile {
-    screenX: number;
-    screenY: number;
-    hasObjectBlocker: boolean;
-    hasFullBlocker: boolean;
-}
-
-interface SvgEdge {
-    key: string;
-    x1: number;
-    y1: number;
-    x2: number;
-    y2: number;
-    wall: boolean;
-}
-
-const tileSize = 10;
 const engineModuleStatus = ref<"loading" | "loaded" | "failed">("loading");
-const engineLoadedTick = ref<number | null>(null);
-const defaultSceneId = ref<number | null>(null);
-const selectedScenarioId = ref<ScenarioId>("empty-world");
-const selectedPlane = ref(0);
-const scenario = computed<ScenarioResult>(() => runScenario(selectedScenarioId.value));
-const viewBox = computed(
-    () =>
-        `0 0 ${scenario.value.scene.width * tileSize} ${
-            scenario.value.scene.height * tileSize
-        }`,
-);
-const renderTiles = computed<SvgTile[]>(() =>
-    buildRenderTiles(scenario.value, selectedPlane.value).map((tile) => {
-        const screenCoordinate = getSceneScreenCoordinate(
-            tile.coordinate,
-            scenario.value.scene,
-            tileSize,
-        );
+const scenario = ref<DevelopmentPlayerChaseScenario | null>(null);
+const snapshot = ref<PlayerChaseDebugSnapshot | null>(null);
+const cameraMode = ref<CameraMode>("Follow Player");
+const fieldOfView = ref(defaultFieldOfView);
+let playbackTimer: number | undefined;
 
-        return {
-            ...tile,
-            screenX: screenCoordinate.x,
-            screenY: screenCoordinate.y,
-            hasObjectBlocker: tile.flags.includes("BlockMovementObject"),
-            hasFullBlocker:
-                tile.flags.includes("BlockMovementFull") ||
-                tile.flags.includes("BlockLineOfSightFull"),
-        };
-    }),
-);
-const objectTiles = computed(() =>
-    renderTiles.value.filter((tile) => tile.hasObjectBlocker || tile.hasFullBlocker),
-);
-const actorTiles = computed(() =>
-    renderTiles.value.filter((tile) => tile.actorLabel !== undefined),
-);
-const movementEdges = computed(() => buildEdges(renderTiles.value, false));
-const wallEdges = computed(() => buildEdges(renderTiles.value, true));
-const sceneContentSummary = computed(() => {
-    const wallObjects = scenario.value.wallObjects.map(
-        (wallObject) =>
-            `Wall Object #${wallObject.id} at ${wallObject.coordinate.x},${wallObject.coordinate.y} facing ${wallObject.directions.join("/")}`,
-    );
-    const gameObjects = scenario.value.gameObjects.map(
-        (gameObject) =>
-            `Game Object #${gameObject.id} at ${gameObject.origin.x},${gameObject.origin.y}, size ${gameObject.sizeX}x${gameObject.sizeY}`,
-    );
+const cameraCenter = computed(() => {
+    if (snapshot.value === null) {
+        return { x: 15, y: 10, plane: 0 };
+    }
 
-    return [...wallObjects, ...gameObjects].join(" | ") || "None";
+    return cameraMode.value === "Follow Player"
+        ? snapshot.value.player.coordinate
+        : { x: 13, y: 10, plane: 0 };
 });
-const engineModuleStatusLabel = computed(() => {
+const renderTiles = computed<DebugTile[]>(() =>
+    scenario.value === null
+        ? []
+        : buildDebugTiles(scenario.value, cameraCenter.value, fieldOfView.value),
+);
+const viewBox = computed(() => {
+    const width = getColumnCount(renderTiles.value) * tileSize;
+    const height = getRowCount(renderTiles.value) * tileSize;
+
+    return `0 0 ${width} ${height}`;
+});
+const engineStatusLabel = computed(() => {
     switch (engineModuleStatus.value) {
         case "loaded":
-            return `Engine wasm loaded | Tick ${engineLoadedTick.value} | Scene #${defaultSceneId.value}`;
+            return "Engine wasm loaded";
         case "failed":
             return "Engine wasm unavailable";
         case "loading":
@@ -94,12 +56,8 @@ const engineModuleStatusLabel = computed(() => {
 onMounted(async () => {
     try {
         const module = await loadEngineModule();
-        const engine = new module.Engine();
-        const world = new module.World();
-
-        engine.Step();
-        engineLoadedTick.value = engine.GetCurrentTick();
-        defaultSceneId.value = world.GetDefaultSceneId();
+        scenario.value = new module.DevelopmentPlayerChaseScenario();
+        refreshSnapshot();
         engineModuleStatus.value = "loaded";
     } catch (error) {
         console.error("Failed to load engine wasm module", error);
@@ -107,43 +65,99 @@ onMounted(async () => {
     }
 });
 
-function selectScenario(id: ScenarioId): void {
-    selectedScenarioId.value = id;
-}
+onUnmounted(() => {
+    stopPlayback();
+});
 
-function selectPlane(plane: number): void {
-    selectedPlane.value = plane;
-}
+function refreshSnapshot(): void {
+    if (scenario.value === null) {
+        return;
+    }
 
-function buildEdges(tiles: SvgTile[], wallOnly: boolean): SvgEdge[] {
-    return tiles.flatMap((tile) =>
-        (wallOnly ? tile.wallEdges : tile.movementEdges).map((direction) =>
-            buildEdge(tile, direction, wallOnly),
-        ),
+    snapshot.value = readPlayerChaseDebugSnapshot(
+        scenario.value,
+        cameraMode.value,
+        fieldOfView.value,
     );
 }
 
-function buildEdge(
-    tile: SvgTile,
-    direction: CardinalDirection,
-    wall: boolean,
-): SvgEdge {
-    const x = tile.screenX;
-    const y = tile.screenY;
-    const maxX = x + tileSize;
-    const maxY = y + tileSize;
-    const key = `${tile.key}:${wall ? "wall" : "movement"}:${direction}`;
-
-    switch (direction) {
-        case "North":
-            return { key, x1: x, y1: y, x2: maxX, y2: y, wall };
-        case "East":
-            return { key, x1: maxX, y1: y, x2: maxX, y2: maxY, wall };
-        case "South":
-            return { key, x1: x, y1: maxY, x2: maxX, y2: maxY, wall };
-        case "West":
-            return { key, x1: x, y1: y, x2: x, y2: maxY, wall };
+function toggleRunning(): void {
+    if (scenario.value === null) {
+        return;
     }
+
+    const running = !scenario.value.IsRunning();
+    scenario.value.SetRunning(running);
+    refreshSnapshot();
+
+    if (running) {
+        playbackTimer = window.setInterval(stepScenario, 700);
+    } else {
+        stopPlayback();
+    }
+}
+
+function stopPlayback(): void {
+    if (playbackTimer !== undefined) {
+        window.clearInterval(playbackTimer);
+        playbackTimer = undefined;
+    }
+}
+
+function stepScenario(): void {
+    if (scenario.value === null) {
+        return;
+    }
+
+    scenario.value.Step();
+    refreshSnapshot();
+}
+
+function setCameraMode(mode: CameraMode): void {
+    cameraMode.value = mode;
+    refreshSnapshot();
+}
+
+function setFieldOfView(value: number): void {
+    fieldOfView.value = value;
+    refreshSnapshot();
+}
+
+function clickTile(tile: DebugTile): void {
+    if (scenario.value === null) {
+        return;
+    }
+
+    scenario.value.ClickSceneCoordinate(
+        tile.coordinate.x,
+        tile.coordinate.y,
+        tile.coordinate.plane,
+    );
+    refreshSnapshot();
+}
+
+function getTileX(tile: DebugTile): number {
+    return getSceneScreenCoordinate(tile.coordinate, renderTiles.value).x;
+}
+
+function getTileY(tile: DebugTile): number {
+    return getSceneScreenCoordinate(tile.coordinate, renderTiles.value).y;
+}
+
+function getColumnCount(tiles: DebugTile[]): number {
+    return new Set(tiles.map((tile) => tile.coordinate.x)).size;
+}
+
+function getRowCount(tiles: DebugTile[]): number {
+    return new Set(tiles.map((tile) => tile.coordinate.y)).size;
+}
+
+function formatCoordinate(
+    coordinate: { x: number; y: number; plane: number } | null,
+): string {
+    return coordinate === null
+        ? "None"
+        : `${coordinate.x}, ${coordinate.y}, P${coordinate.plane}`;
 }
 </script>
 
@@ -152,160 +166,135 @@ function buildEdge(
     <header class="viewer-header">
       <div>
         <p class="eyebrow">Development viewer</p>
-        <h1>OSRS Simulator</h1>
+        <h1>Player Chase</h1>
         <p :class="['engine-status', engineModuleStatus]">
-          {{ engineModuleStatusLabel }}
+          {{ engineStatusLabel }}
         </p>
       </div>
 
-      <div class="control-stack">
-        <div class="scenario-tabs" aria-label="Movement verification scenarios">
+      <div class="controls" v-if="snapshot !== null">
+        <button type="button" @click="toggleRunning">
+          {{ snapshot.running ? "Pause" : "Run" }}
+        </button>
+        <button type="button" @click="stepScenario">Step</button>
+
+        <div class="segmented" aria-label="Camera mode">
           <button
-            v-for="option in scenarioOptions"
-            :key="option.id"
             type="button"
-            :class="{ selected: option.id === selectedScenarioId }"
-            @click="selectScenario(option.id)"
+            :class="{ selected: cameraMode === 'Follow Player' }"
+            @click="setCameraMode('Follow Player')"
           >
-            {{ option.title }}
+            Follow
+          </button>
+          <button
+            type="button"
+            :class="{ selected: cameraMode === 'Fixed Scene' }"
+            @click="setCameraMode('Fixed Scene')"
+          >
+            Fixed
           </button>
         </div>
 
-        <div class="plane-tabs" aria-label="Scene plane">
-          <button
-            v-for="plane in scenario.scene.planeCount"
-            :key="plane - 1"
-            type="button"
-            :class="{ selected: plane - 1 === selectedPlane }"
-            @click="selectPlane(plane - 1)"
-          >
-            P{{ plane - 1 }}
-          </button>
-        </div>
+        <label class="fov-control">
+          <span>FOV</span>
+          <input
+            type="range"
+            min="8"
+            max="18"
+            step="2"
+            :value="fieldOfView"
+            @input="setFieldOfView(Number(($event.target as HTMLInputElement).value))"
+          />
+          <strong>{{ fieldOfView }}</strong>
+        </label>
       </div>
     </header>
 
-    <section class="scenario-layout" aria-live="polite">
-      <div class="viewport" aria-label="Scene tiles">
+    <section v-if="snapshot !== null" class="debug-layout" aria-live="polite">
+      <div class="viewport" aria-label="Player Chase scene">
         <svg class="scene-svg" :viewBox="viewBox" role="img">
-          <defs>
-            <pattern
-              id="scene-grid"
-              :width="tileSize"
-              :height="tileSize"
-              patternUnits="userSpaceOnUse"
-            >
-              <path
-                :d="`M ${tileSize} 0 L 0 0 0 ${tileSize}`"
-                class="grid-line"
-              />
-            </pattern>
-          </defs>
-
           <rect
-            class="scene-background"
-            x="0"
-            y="0"
-            :width="scenario.scene.width * tileSize"
-            :height="scenario.scene.height * tileSize"
-          />
-          <rect
-            class="scene-grid-fill"
-            x="0"
-            y="0"
-            :width="scenario.scene.width * tileSize"
-            :height="scenario.scene.height * tileSize"
-          />
-
-          <rect
-            v-for="tile in objectTiles"
-            :key="`${tile.key}:object`"
-            :x="tile.screenX"
-            :y="tile.screenY"
+            v-for="tile in renderTiles"
+            :key="tile.key"
+            :x="getTileX(tile)"
+            :y="getTileY(tile)"
             :width="tileSize"
             :height="tileSize"
-            :class="[
-              'object-tile',
-              { 'full-blocker': tile.hasFullBlocker, 'game-object': tile.gameObject !== undefined },
-            ]"
+            :class="['tile', tile.kind]"
+            @click="clickTile(tile)"
           />
-
-          <rect
-            v-for="tile in actorTiles"
-            :key="`${tile.key}:actor`"
-            :x="tile.screenX + 1"
-            :y="tile.screenY + 1"
-            :width="tileSize - 2"
-            :height="tileSize - 2"
-            :class="['actor-tile', tile.actorKind === 'Player' ? 'player' : 'npc']"
-          />
-
-          <line
-            v-for="edge in movementEdges"
-            :key="edge.key"
-            :x1="edge.x1"
-            :y1="edge.y1"
-            :x2="edge.x2"
-            :y2="edge.y2"
-            class="movement-edge"
-          />
-
-          <line
-            v-for="edge in wallEdges"
-            :key="edge.key"
-            :x1="edge.x1"
-            :y1="edge.y1"
-            :x2="edge.x2"
-            :y2="edge.y2"
-            class="wall-edge"
-          />
+          <text
+            v-for="tile in renderTiles.filter((tile) => tile.kind === 'player' || tile.kind === 'npc')"
+            :key="`${tile.key}:label`"
+            :x="getTileX(tile) + tileSize / 2"
+            :y="getTileY(tile) + tileSize / 2 + 4"
+            class="actor-label"
+          >
+            {{ tile.kind === "player" ? "P" : "N" }}
+          </text>
         </svg>
       </div>
 
-      <aside class="details" aria-labelledby="scenario-title">
-        <p class="eyebrow">Scenario</p>
-        <h2 id="scenario-title">{{ scenario.title }}</h2>
-        <p>{{ scenario.description }}</p>
-
+      <aside class="details" aria-label="Debug state">
         <dl>
           <div>
-            <dt>Movement outcome</dt>
-            <dd>{{ scenario.movementOutcome }}</dd>
+            <dt>Tick</dt>
+            <dd>{{ snapshot.tick }}</dd>
           </div>
           <div>
-            <dt>Actor Footprint</dt>
-            <dd>
-              <span v-for="actor in scenario.actors" :key="actor.id">
-                {{ actor.kind }} #{{ actor.id }} on Scene #{{ actor.sceneId }}:
-                {{ actor.footprint.map((tile) => `${tile.x},${tile.y}`).join(" | ") }}
-              </span>
-            </dd>
+            <dt>State</dt>
+            <dd>{{ snapshot.running ? "Running" : "Paused" }}</dd>
           </div>
           <div>
-            <dt>Tile Flags</dt>
-            <dd>
-              {{
-                renderTiles
-                  .filter((tile) => tile.flags.length > 0)
-                  .map((tile) => `${tile.coordinate.x},${tile.coordinate.y}: ${tile.flags.join("/")}`)
-                  .join(" | ") || "None"
-              }}
-            </dd>
+            <dt>Camera mode</dt>
+            <dd>{{ snapshot.cameraMode }}</dd>
           </div>
           <div>
-            <dt>Scene content</dt>
-            <dd>{{ sceneContentSummary }}</dd>
+            <dt>Field of View</dt>
+            <dd>{{ snapshot.fieldOfView }}</dd>
+          </div>
+          <div>
+            <dt>Player position</dt>
+            <dd>{{ formatCoordinate(snapshot.player.coordinate) }}</dd>
+          </div>
+          <div>
+            <dt>Player Movement Target</dt>
+            <dd>{{ formatCoordinate(snapshot.player.movementTarget) }}</dd>
+          </div>
+          <div>
+            <dt>NPC position</dt>
+            <dd>{{ formatCoordinate(snapshot.npc.coordinate) }}</dd>
+          </div>
+          <div>
+            <dt>NPC size</dt>
+            <dd>{{ snapshot.npc.size }}x{{ snapshot.npc.size }}</dd>
+          </div>
+          <div>
+            <dt>NPC Movement Target</dt>
+            <dd>{{ snapshot.npc.movementTarget }}</dd>
+          </div>
+          <div class="feedback" :class="{ blocked: snapshot.blockedClick }">
+            <dt>Blocked click</dt>
+            <dd>{{ snapshot.blockedClick ? "Rejected on blocked tile" : "None" }}</dd>
+          </div>
+          <div>
+            <dt>Pathing</dt>
+            <dd>{{ snapshot.noPathfindingNote }}</dd>
           </div>
         </dl>
       </aside>
+    </section>
+
+    <section v-else class="loading-panel">
+      {{ engineStatusLabel }}
     </section>
   </main>
 </template>
 
 <style scoped>
 .viewer-shell {
-    background: #f4f6f1;
-    color: #1f2933;
+    background: #f5f6f4;
+    color: #1e252b;
     font-family:
         Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
         "Segoe UI", sans-serif;
@@ -318,21 +307,20 @@ function buildEdge(
     display: flex;
     gap: 24px;
     justify-content: space-between;
-    margin: 0 auto 24px;
-    max-width: 1240px;
+    margin: 0 auto 20px;
+    max-width: 1180px;
 }
 
 .eyebrow {
-    color: #58606c;
+    color: #64707a;
     font-size: 0.78rem;
-    font-weight: 700;
+    font-weight: 800;
     letter-spacing: 0;
     margin: 0 0 8px;
     text-transform: uppercase;
 }
 
 h1,
-h2,
 p {
     margin: 0;
 }
@@ -343,183 +331,169 @@ h1 {
 }
 
 .engine-status {
-    color: #4d5763;
+    color: #4d5963;
     font-size: 0.92rem;
     font-weight: 700;
     margin-top: 10px;
 }
 
 .engine-status.loaded {
-    color: #1d4f45;
+    color: #1d5a43;
 }
 
 .engine-status.failed {
     color: #9b2c2c;
 }
 
-h2 {
-    font-size: 1.35rem;
-    line-height: 1.2;
-    margin-bottom: 10px;
-}
-
-.control-stack {
-    display: grid;
-    gap: 10px;
-    justify-items: end;
-}
-
-.scenario-tabs,
-.plane-tabs {
+.controls {
+    align-items: center;
     display: flex;
     flex-wrap: wrap;
-    gap: 8px;
+    gap: 10px;
     justify-content: flex-end;
 }
 
 button {
     background: #ffffff;
-    border: 1px solid #c8d0d9;
+    border: 1px solid #bbc5cf;
     border-radius: 6px;
     color: #26313f;
     cursor: pointer;
     font: inherit;
     font-size: 0.92rem;
-    font-weight: 700;
-    min-height: 40px;
+    font-weight: 800;
+    min-height: 38px;
     padding: 0 14px;
 }
 
-.plane-tabs button {
-    min-width: 44px;
-    padding: 0 10px;
-}
-
-button.selected {
-    background: #1d4f45;
-    border-color: #1d4f45;
+button.selected,
+button:hover {
+    background: #1d5a43;
+    border-color: #1d5a43;
     color: #ffffff;
 }
 
-.scenario-layout {
+.segmented {
+    display: flex;
+    gap: 6px;
+}
+
+.fov-control {
+    align-items: center;
+    background: #ffffff;
+    border: 1px solid #bbc5cf;
+    border-radius: 6px;
+    display: flex;
+    gap: 8px;
+    min-height: 38px;
+    padding: 0 10px;
+}
+
+.fov-control span,
+.fov-control strong {
+    font-size: 0.86rem;
+}
+
+.debug-layout {
     display: grid;
-    gap: 24px;
+    gap: 20px;
     grid-template-columns: minmax(0, 1fr) 360px;
     margin: 0 auto;
-    max-width: 1240px;
+    max-width: 1180px;
 }
 
 .viewport {
     align-content: center;
-    background: #d6ddd0;
+    background: #d7ddd6;
     min-height: 620px;
     overflow: auto;
-    padding: 20px;
+    padding: 18px;
 }
 
 .scene-svg {
-    background: #eef1ea;
+    background: #eef1ec;
     display: block;
-    height: min(74vh, 920px);
+    height: min(74vh, 860px);
     min-height: 560px;
-    min-width: 820px;
+    min-width: 560px;
     width: 100%;
 }
 
-.scene-background {
-    fill: #eef1ea;
+.tile {
+    cursor: pointer;
+    fill: #eef1ec;
+    stroke: #b8c3b8;
+    stroke-width: 1;
 }
 
-.scene-grid-fill {
-    fill: url("#scene-grid");
+.tile:hover {
+    fill: #dce6e0;
 }
 
-.grid-line {
-    fill: none;
-    stroke: #b9c4b4;
-    stroke-width: 0.7;
+.tile.game-object {
+    fill: #6c5c50;
+    stroke: #3f332c;
 }
 
-.object-tile {
-    fill: #7e6959;
-    opacity: 0.82;
-    stroke: #40352f;
-    stroke-width: 0.8;
-}
-
-.object-tile.full-blocker {
-    fill: #6a584c;
-}
-
-.object-tile.game-object {
-    stroke: #c07a2a;
-    stroke-width: 1.2;
-}
-
-.actor-tile {
-    opacity: 0.88;
+.tile.player {
+    fill: #1d7d61;
     stroke: #ffffff;
-    stroke-width: 0.6;
 }
 
-.actor-tile.player {
-    fill: #2f6f62;
+.tile.npc {
+    fill: #315e9f;
+    stroke: #ffffff;
 }
 
-.actor-tile.npc {
-    fill: #3b5f9f;
+.actor-label {
+    fill: #ffffff;
+    font-size: 12px;
+    font-weight: 900;
+    pointer-events: none;
+    text-anchor: middle;
 }
 
-.movement-edge {
-    stroke: #1e2a35;
-    stroke-linecap: square;
-    stroke-width: 1.6;
-}
-
-.wall-edge {
-    stroke: #d2385a;
-    stroke-linecap: square;
-    stroke-width: 3;
+.details,
+.loading-panel {
+    background: #ffffff;
+    border: 1px solid #d1d9df;
+    padding: 20px;
 }
 
 .details {
     align-self: start;
-    background: #ffffff;
-    border: 1px solid #d5dbe1;
-    padding: 20px;
-}
-
-.details p {
-    color: #4d5763;
-    line-height: 1.45;
-    margin-bottom: 18px;
 }
 
 dl {
     display: grid;
-    gap: 16px;
+    gap: 14px;
     margin: 0;
 }
 
 dt {
-    color: #58606c;
-    font-size: 0.78rem;
-    font-weight: 800;
+    color: #61707b;
+    font-size: 0.76rem;
+    font-weight: 900;
     margin-bottom: 4px;
     text-transform: uppercase;
 }
 
 dd {
-    color: #1f2933;
+    color: #1e252b;
     font-size: 0.92rem;
-    line-height: 1.45;
+    line-height: 1.42;
     margin: 0;
     overflow-wrap: anywhere;
 }
 
+.feedback.blocked dd {
+    color: #9b2c2c;
+    font-weight: 800;
+}
+
 @media (max-width: 900px) {
     .viewer-shell {
-        padding: 20px;
+        padding: 18px;
     }
 
     .viewer-header {
@@ -527,24 +501,21 @@ dd {
         flex-direction: column;
     }
 
-    .control-stack,
-    .scenario-tabs,
-    .plane-tabs {
-        justify-items: start;
+    .controls {
         justify-content: flex-start;
     }
 
-    .scenario-layout {
+    .debug-layout {
         grid-template-columns: 1fr;
     }
 
     .viewport {
-        min-height: 460px;
-        padding: 14px;
+        min-height: 440px;
+        padding: 12px;
     }
 
     .scene-svg {
-        height: 560px;
+        height: 520px;
     }
 }
 </style>

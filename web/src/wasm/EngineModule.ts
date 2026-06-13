@@ -16,9 +16,41 @@ export interface World {
     GetDefaultSceneId(): number;
 }
 
+export interface DevelopmentPlayerChaseScenario {
+    Step(): void;
+    ClickSceneCoordinate(x: number, y: number, plane: number): boolean;
+    SetRunning(running: boolean): void;
+    IsRunning(): boolean;
+    WasLastClickBlocked(): boolean;
+    GetTick(): number;
+    GetSceneWidth(): number;
+    GetSceneHeight(): number;
+    GetScenePlaneCount(): number;
+    GetPlayerId(): number;
+    GetNpcId(): number;
+    GetPlayerX(): number;
+    GetPlayerY(): number;
+    GetPlayerPlane(): number;
+    HasPlayerMovementTarget(): boolean;
+    GetPlayerMovementTargetX(): number;
+    GetPlayerMovementTargetY(): number;
+    GetPlayerMovementTargetPlane(): number;
+    GetNpcX(): number;
+    GetNpcY(): number;
+    GetNpcPlane(): number;
+    GetNpcSize(): number;
+    HasNpcMovementTarget(): boolean;
+    GetNpcMovementTargetActorId(): number;
+    GetNpcMovementTargetLabel(): string;
+    IsGameObjectTile(x: number, y: number, plane: number): boolean;
+    IsPlayerTile(x: number, y: number, plane: number): boolean;
+    IsNpcTile(x: number, y: number, plane: number): boolean;
+}
+
 export interface EngineModule {
     Engine: new () => Engine;
     World: new () => World;
+    DevelopmentPlayerChaseScenario: new () => DevelopmentPlayerChaseScenario;
 }
 
 const generatedModuleUrl = new URL(

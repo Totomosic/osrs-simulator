@@ -1,4 +1,5 @@
 #include "Engine.h"
+#include "DevelopmentPlayerChaseScenario.h"
 
 #include <cassert>
 
@@ -231,6 +232,32 @@ int main()
                (osrssim::SceneCoordinate{10, 10, 0}));
         assert(world.GetSceneMembership(targetId)->coordinate ==
                (osrssim::SceneCoordinate{12, 10, 0}));
+    }
+
+    {
+        osrssim::DevelopmentPlayerChaseScenario scenario;
+
+        assert(scenario.GetTick() == 0);
+        assert(scenario.GetPlayerX() == 15);
+        assert(scenario.GetPlayerY() == 10);
+        assert(scenario.GetNpcX() == 9);
+        assert(scenario.GetNpcY() == 10);
+        assert(scenario.GetNpcSize() == 2);
+        assert(scenario.HasNpcMovementTarget());
+        assert(scenario.GetNpcMovementTargetActorId() == scenario.GetPlayerId());
+        assert(scenario.GetNpcMovementTargetLabel() == "Player #1");
+        assert(scenario.IsGameObjectTile(12, 10, 0));
+
+        assert(!scenario.ClickSceneCoordinate(12, 10, 0));
+        assert(scenario.WasLastClickBlocked());
+
+        scenario.Step();
+        scenario.Step();
+
+        assert(scenario.GetTick() == 2);
+        assert(scenario.GetNpcX() == 10);
+        assert(scenario.GetNpcY() == 10);
+        assert(scenario.HasNpcMovementTarget());
     }
 
     return 0;
