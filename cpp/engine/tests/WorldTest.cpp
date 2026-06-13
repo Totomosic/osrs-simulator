@@ -700,6 +700,23 @@ int main()
     {
         osrssim::World world;
         osrssim::ActorId moverId = world.CreateNpc(1, 1);
+        osrssim::ActorId targetId = world.CreatePlayer(2, 1);
+
+        assert(world.PlaceActor(moverId, world.GetDefaultSceneId(), {10, 10, 0}));
+        assert(world.PlaceActor(targetId, world.GetDefaultSceneId(), {7, 9, 0}));
+        assert(world.SetActorMovementTarget(moverId, targetId));
+
+        assert(world.UpdateActorMovement(moverId));
+        assert(world.GetSceneMembership(moverId)->coordinate ==
+               (osrssim::SceneCoordinate{9, 9, 0}));
+        assert(world.GetSceneMembership(targetId)->coordinate ==
+               (osrssim::SceneCoordinate{7, 9, 0}));
+        assert(world.GetNpc(moverId)->movementTarget.has_value());
+    }
+
+    {
+        osrssim::World world;
+        osrssim::ActorId moverId = world.CreateNpc(1, 1);
         osrssim::ActorId targetId = world.CreatePlayer(1, 1);
 
         assert(world.PlaceActor(moverId, world.GetDefaultSceneId(), {10, 10, 0}));

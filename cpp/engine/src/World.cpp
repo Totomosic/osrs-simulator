@@ -922,14 +922,8 @@ bool World::TryGetActorTargetEdgeAdjacentMovementDelta(
 
             const int candidateDistance = Max(Abs(candidateDx), Abs(candidateDy));
             const int bestDistance = Max(Abs(bestDx), Abs(bestDy));
-            const int candidateManhattan = Abs(candidateDx) + Abs(candidateDy);
-            const int bestManhattan = Abs(bestDx) + Abs(bestDy);
-
             if (!found || candidateDistance < bestDistance ||
                 (candidateDistance == bestDistance &&
-                 candidateManhattan < bestManhattan) ||
-                (candidateDistance == bestDistance &&
-                 candidateManhattan == bestManhattan &&
                  IsBetterResolvedDelta(
                      requestedDx,
                      requestedDy,
