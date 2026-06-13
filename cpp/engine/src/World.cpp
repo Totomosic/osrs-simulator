@@ -364,7 +364,8 @@ bool World::CanActorUseSceneCoordinateMovementTarget(
 
     return scene != nullptr && CanUseSceneCoordinateMovementTarget(
         *scene,
-        coordinate);
+        coordinate,
+        actor->size);
 }
 
 bool World::CanPlayerUseSceneCoordinateMovementTarget(
@@ -476,7 +477,9 @@ bool World::UpdateActorMovement(ActorId actorId)
             return false;
         }
 
-        if (DoesActorFootprintCover(*actor, membership->coordinate, destination))
+        if (IsActorAtSceneCoordinateMovementTarget(
+                membership->coordinate,
+                destination))
         {
             *movementTarget = std::nullopt;
             return false;
@@ -526,12 +529,12 @@ bool World::UpdateActorMovement(ActorId actorId)
     {
         dx = GetMovementDeltaForAxis(
             membership->coordinate.x,
-            actor->size,
+            1,
             destination.x,
             actor->speed);
         dy = GetMovementDeltaForAxis(
             membership->coordinate.y,
-            actor->size,
+            1,
             destination.y,
             actor->speed);
     }
@@ -606,8 +609,7 @@ bool World::UpdateActorMovement(ActorId actorId)
     {
         if (movementTarget->value().kind == MovementTargetKind::SceneCoordinate)
         {
-            if (DoesActorFootprintCover(
-                    *actor,
+            if (IsActorAtSceneCoordinateMovementTarget(
                     updatedMembership->coordinate,
                     destination))
             {
@@ -758,22 +760,19 @@ bool World::HasActor(ActorId actorId) const
 
 bool World::CanUseSceneCoordinateMovementTarget(
     const Scene& scene,
-    SceneCoordinate coordinate) const
+    SceneCoordinate coordinate,
+    int actorSize) const
 {
-    const Tile* tile = scene.TryGetTile(coordinate);
-    return tile != nullptr && !IsWholeTileMovementBlocked(*tile);
+    return CanStandOnMovementBlockers(scene, coordinate, actorSize);
 }
 
-bool World::DoesActorFootprintCover(
-    const ActorCore& actor,
+bool World::IsActorAtSceneCoordinateMovementTarget(
     SceneCoordinate actorCoordinate,
     SceneCoordinate target) const
 {
     return target.plane == actorCoordinate.plane &&
-           target.x >= actorCoordinate.x &&
-           target.x < actorCoordinate.x + actor.size &&
-           target.y >= actorCoordinate.y &&
-           target.y < actorCoordinate.y + actor.size;
+           target.x == actorCoordinate.x &&
+           target.y == actorCoordinate.y;
 }
 
 bool World::AreActorFootprintsEdgeAdjacent(

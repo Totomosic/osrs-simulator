@@ -116,9 +116,9 @@ private:
     bool HasActor(ActorId actorId) const;
     bool CanUseSceneCoordinateMovementTarget(
         const Scene& scene,
-        SceneCoordinate coordinate) const;
-    bool DoesActorFootprintCover(
-        const ActorCore& actor,
+        SceneCoordinate coordinate,
+        int actorSize) const;
+    bool IsActorAtSceneCoordinateMovementTarget(
         SceneCoordinate actorCoordinate,
         SceneCoordinate target) const;
     bool AreActorFootprintsEdgeAdjacent(
