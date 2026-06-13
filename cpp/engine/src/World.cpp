@@ -544,7 +544,21 @@ bool World::UpdateActorMovement(ActorId actorId)
 
     if (!moved)
     {
-        if (movementTarget->value().kind == MovementTargetKind::SceneCoordinate)
+        const SceneCoordinate attemptedDestination{
+            membership->coordinate.x + dx,
+            membership->coordinate.y + dy,
+            membership->coordinate.plane};
+        const bool shouldKeepDynamicSceneCoordinateTarget =
+            movementTarget->value().kind == MovementTargetKind::SceneCoordinate &&
+            GetActorKind(actorId) == ActorKind::Npc && scene != nullptr &&
+            IsFinalNpcOccupancyOnlyBlock(
+                *scene,
+                *actor,
+                membership->coordinate,
+                attemptedDestination);
+
+        if (movementTarget->value().kind == MovementTargetKind::SceneCoordinate &&
+            !shouldKeepDynamicSceneCoordinateTarget)
         {
             *movementTarget = std::nullopt;
         }
@@ -840,6 +854,26 @@ bool World::HasFinalNpcOccupancyConflict(
     }
 
     return false;
+}
+
+bool World::IsFinalNpcOccupancyOnlyBlock(
+    const Scene& scene,
+    const ActorCore& actor,
+    SceneCoordinate current,
+    SceneCoordinate destination) const
+{
+    Pathing pathing(scene);
+
+    return pathing.CanMoveIgnoringActorOccupancy(
+               current,
+               destination,
+               actor.speed,
+               actor.size) &&
+           HasFinalNpcOccupancyConflict(
+               scene,
+               current,
+               destination,
+               actor.size);
 }
 
 bool World::TryResolveMovementDelta(

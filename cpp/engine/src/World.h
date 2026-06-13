@@ -136,6 +136,11 @@ private:
         SceneCoordinate current,
         SceneCoordinate destination,
         int actorSize) const;
+    bool IsFinalNpcOccupancyOnlyBlock(
+        const Scene& scene,
+        const ActorCore& actor,
+        SceneCoordinate current,
+        SceneCoordinate destination) const;
     bool TryResolveMovementDelta(
         const Scene& scene,
         ActorKind actorKind,
