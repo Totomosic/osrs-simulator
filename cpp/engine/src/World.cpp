@@ -2,6 +2,135 @@
 
 namespace osrssim
 {
+namespace
+{
+int Abs(int value)
+{
+    return value < 0 ? -value : value;
+}
+
+int Max(int lhs, int rhs)
+{
+    return lhs > rhs ? lhs : rhs;
+}
+
+int Sign(int value)
+{
+    if (value < 0)
+    {
+        return -1;
+    }
+
+    if (value > 0)
+    {
+        return 1;
+    }
+
+    return 0;
+}
+
+int CardinalPriority(int dx, int dy)
+{
+    if (dx < 0 && dy == 0)
+    {
+        return 0;
+    }
+
+    if (dx > 0 && dy == 0)
+    {
+        return 1;
+    }
+
+    if (dx == 0 && dy < 0)
+    {
+        return 2;
+    }
+
+    if (dx == 0 && dy > 0)
+    {
+        return 3;
+    }
+
+    return 4;
+}
+
+int RemainingChebyshev(int requestedDx, int requestedDy, int dx, int dy)
+{
+    return Max(Abs(requestedDx - dx), Abs(requestedDy - dy));
+}
+
+int RemainingManhattan(int requestedDx, int requestedDy, int dx, int dy)
+{
+    return Abs(requestedDx - dx) + Abs(requestedDy - dy);
+}
+
+int RatioError(int requestedDx, int requestedDy, int dx, int dy)
+{
+    return Abs(Abs(dx) * Abs(requestedDy) - Abs(dy) * Abs(requestedDx));
+}
+
+bool IsBetterResolvedDelta(
+    int requestedDx,
+    int requestedDy,
+    int candidateDx,
+    int candidateDy,
+    int bestDx,
+    int bestDy)
+{
+    const int candidateRemaining =
+        RemainingChebyshev(requestedDx, requestedDy, candidateDx, candidateDy);
+    const int bestRemaining =
+        RemainingChebyshev(requestedDx, requestedDy, bestDx, bestDy);
+
+    if (candidateRemaining != bestRemaining)
+    {
+        return candidateRemaining < bestRemaining;
+    }
+
+    const bool requestUsesBothAxes = requestedDx != 0 && requestedDy != 0;
+    const bool candidateUsesBothAxes = candidateDx != 0 && candidateDy != 0;
+    const bool bestUsesBothAxes = bestDx != 0 && bestDy != 0;
+
+    if (requestUsesBothAxes && candidateUsesBothAxes != bestUsesBothAxes)
+    {
+        return candidateUsesBothAxes;
+    }
+
+    if (requestUsesBothAxes && candidateUsesBothAxes && bestUsesBothAxes)
+    {
+        const int candidateRatioError =
+            RatioError(requestedDx, requestedDy, candidateDx, candidateDy);
+        const int bestRatioError =
+            RatioError(requestedDx, requestedDy, bestDx, bestDy);
+
+        if (candidateRatioError != bestRatioError)
+        {
+            return candidateRatioError < bestRatioError;
+        }
+    }
+
+    const int candidateManhattan =
+        RemainingManhattan(requestedDx, requestedDy, candidateDx, candidateDy);
+    const int bestManhattan =
+        RemainingManhattan(requestedDx, requestedDy, bestDx, bestDy);
+
+    if (candidateManhattan != bestManhattan)
+    {
+        return candidateManhattan < bestManhattan;
+    }
+
+    const int candidateCardinalPriority =
+        CardinalPriority(candidateDx, candidateDy);
+    const int bestCardinalPriority = CardinalPriority(bestDx, bestDy);
+
+    if (candidateCardinalPriority != bestCardinalPriority)
+    {
+        return candidateCardinalPriority < bestCardinalPriority;
+    }
+
+    return Abs(candidateDx) + Abs(candidateDy) > Abs(bestDx) + Abs(bestDy);
+}
+}  // namespace
 
 SceneId World::GetDefaultSceneId() const
 {
@@ -190,30 +319,27 @@ bool World::MoveActorByDelta(ActorId actorId, int dx, int dy)
         return false;
     }
 
-    SceneCoordinate destination{
-        membership->coordinate.x + dx,
-        membership->coordinate.y + dy,
-        membership->coordinate.plane};
-    Pathing pathing(*scene);
+    int resolvedDx = 0;
+    int resolvedDy = 0;
+    const ActorKind actorKind = GetActorKind(actorId);
 
-    if (!pathing.CanMoveIgnoringActorOccupancy(
-            membership->coordinate,
-            destination,
-            actor->speed,
-            actor->size))
-    {
-        return false;
-    }
-
-    if (GetActorKind(actorId) == ActorKind::Npc &&
-        HasFinalNpcOccupancyConflict(
+    if (!TryResolveMovementDelta(
             *scene,
+            actorKind,
+            *actor,
             membership->coordinate,
-            destination,
-            actor->size))
+            dx,
+            dy,
+            resolvedDx,
+            resolvedDy))
     {
         return false;
     }
+
+    SceneCoordinate destination{
+        membership->coordinate.x + resolvedDx,
+        membership->coordinate.y + resolvedDy,
+        membership->coordinate.plane};
 
     RemoveActorOccupancy(*scene, membership->coordinate, actor->size);
     membership->coordinate = destination;
@@ -378,7 +504,6 @@ bool World::UpdateActorMovement(ActorId actorId)
                 *targetActor,
                 targetMembership->coordinate))
         {
-            *movementTarget = std::nullopt;
             return false;
         }
 
@@ -440,38 +565,28 @@ bool World::UpdateActorMovement(ActorId actorId)
 
     const bool moved = MoveActorByDelta(actorId, dx, dy);
 
-    if (moved)
+    if (!moved)
     {
-        const SceneMembership* updatedMembership = GetSceneMembership(actorId);
-
-        if (updatedMembership != nullptr)
+        if (movementTarget->value().kind == MovementTargetKind::SceneCoordinate)
         {
-            if (movementTarget->value().kind == MovementTargetKind::SceneCoordinate)
-            {
-                if (DoesActorFootprintCover(
-                        *actor,
-                        updatedMembership->coordinate,
-                        destination))
-                {
-                    *movementTarget = std::nullopt;
-                }
-            }
-            else
-            {
-                const ActorCore* targetActor =
-                    TryGetActorCore(movementTarget->value().actorId);
-                const SceneMembership* targetMembership =
-                    GetSceneMembership(movementTarget->value().actorId);
+            *movementTarget = std::nullopt;
+        }
 
-                if (targetActor != nullptr && targetMembership != nullptr &&
-                    AreActorFootprintsEdgeAdjacent(
-                        *actor,
-                        updatedMembership->coordinate,
-                        *targetActor,
-                        targetMembership->coordinate))
-                {
-                    *movementTarget = std::nullopt;
-                }
+        return false;
+    }
+
+    const SceneMembership* updatedMembership = GetSceneMembership(actorId);
+
+    if (updatedMembership != nullptr)
+    {
+        if (movementTarget->value().kind == MovementTargetKind::SceneCoordinate)
+        {
+            if (DoesActorFootprintCover(
+                    *actor,
+                    updatedMembership->coordinate,
+                    destination))
+            {
+                *movementTarget = std::nullopt;
             }
         }
     }
@@ -849,6 +964,95 @@ bool World::HasFinalNpcOccupancyConflict(
     }
 
     return false;
+}
+
+bool World::TryResolveMovementDelta(
+    const Scene& scene,
+    ActorKind actorKind,
+    const ActorCore& actor,
+    SceneCoordinate current,
+    int requestedDx,
+    int requestedDy,
+    int& resolvedDx,
+    int& resolvedDy) const
+{
+    if ((requestedDx == 0 && requestedDy == 0) ||
+        Abs(requestedDx) > actor.speed || Abs(requestedDy) > actor.speed)
+    {
+        return false;
+    }
+
+    const int stepX = Sign(requestedDx);
+    const int stepY = Sign(requestedDy);
+    const int absRequestedDx = Abs(requestedDx);
+    const int absRequestedDy = Abs(requestedDy);
+    Pathing pathing(scene);
+    bool found = false;
+    int bestDx = 0;
+    int bestDy = 0;
+
+    for (int candidateAbsDx = 0; candidateAbsDx <= absRequestedDx;
+         ++candidateAbsDx)
+    {
+        for (int candidateAbsDy = 0; candidateAbsDy <= absRequestedDy;
+             ++candidateAbsDy)
+        {
+            const int candidateDx = candidateAbsDx * stepX;
+            const int candidateDy = candidateAbsDy * stepY;
+
+            if (candidateDx == 0 && candidateDy == 0)
+            {
+                continue;
+            }
+
+            SceneCoordinate candidate{
+                current.x + candidateDx,
+                current.y + candidateDy,
+                current.plane};
+
+            if (!pathing.CanMoveIgnoringActorOccupancy(
+                    current,
+                    candidate,
+                    actor.speed,
+                    actor.size))
+            {
+                continue;
+            }
+
+            if (actorKind == ActorKind::Npc &&
+                HasFinalNpcOccupancyConflict(
+                    scene,
+                    current,
+                    candidate,
+                    actor.size))
+            {
+                continue;
+            }
+
+            if (!found || IsBetterResolvedDelta(
+                              requestedDx,
+                              requestedDy,
+                              candidateDx,
+                              candidateDy,
+                              bestDx,
+                              bestDy))
+            {
+                found = true;
+                bestDx = candidateDx;
+                bestDy = candidateDy;
+            }
+        }
+    }
+
+    if (!found)
+    {
+        return false;
+    }
+
+    resolvedDx = bestDx;
+    resolvedDy = bestDy;
+
+    return true;
 }
 
 void World::AddActorOccupancy(

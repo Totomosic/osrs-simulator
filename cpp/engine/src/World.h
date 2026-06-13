@@ -152,6 +152,15 @@ private:
         SceneCoordinate current,
         SceneCoordinate destination,
         int actorSize) const;
+    bool TryResolveMovementDelta(
+        const Scene& scene,
+        ActorKind actorKind,
+        const ActorCore& actor,
+        SceneCoordinate current,
+        int requestedDx,
+        int requestedDy,
+        int& resolvedDx,
+        int& resolvedDy) const;
     void AddActorOccupancy(
         Scene& scene,
         SceneCoordinate coordinate,

@@ -46,7 +46,7 @@ int main()
 
         assert(world.GetSceneMembership(playerId)->coordinate ==
                (osrssim::SceneCoordinate{10, 10, 0}));
-        assert(world.GetPlayer(playerId)->movementTarget.has_value());
+        assert(!world.GetPlayer(playerId)->movementTarget.has_value());
     }
 
     {
@@ -97,7 +97,7 @@ int main()
                (osrssim::SceneCoordinate{10, 10, 0}));
         assert(world.GetSceneMembership(playerId)->coordinate ==
                (osrssim::SceneCoordinate{12, 10, 0}));
-        assert(world.GetNpc(npcId)->movementTarget.has_value());
+        assert(!world.GetNpc(npcId)->movementTarget.has_value());
     }
 
     {
@@ -130,7 +130,7 @@ int main()
         assert(world.GetSceneMembership(secondNpcId)->coordinate ==
                (osrssim::SceneCoordinate{12, 10, 0}));
         assert(!world.GetNpc(firstNpcId)->movementTarget.has_value());
-        assert(world.GetNpc(secondNpcId)->movementTarget.has_value());
+        assert(!world.GetNpc(secondNpcId)->movementTarget.has_value());
     }
 
     {
@@ -207,7 +207,7 @@ int main()
 
         assert(world.GetSceneMembership(playerId)->coordinate ==
                (osrssim::SceneCoordinate{12, 10, 0}));
-        assert(!world.GetPlayer(playerId)->movementTarget.has_value());
+        assert(world.GetPlayer(playerId)->movementTarget.has_value());
     }
 
     {

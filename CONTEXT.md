@@ -20,6 +20,18 @@ _Avoid_: Map, world map
 A tile position inside the loaded scene, identified by plane, x, and y. Scene coordinates currently follow OSRS scene bounds, but they are distinct from persistent world coordinates.
 _Avoid_: Map coordinate
 
+**Camera**:
+A viewer perspective centered on a scene coordinate in a loaded scene, with a field of view measured in tiles and an optional actor follow target. A camera is not simulation state.
+_Avoid_: Viewport, map view
+
+**Field of View**:
+The number of scene tiles visible through the camera. Changing field of view zooms the viewer in or out without changing simulation tile size.
+_Avoid_: Scale, pixel zoom
+
+**Tick**:
+A discrete simulation step. A tick is distinct from a rendered frame or real-time playback interval.
+_Avoid_: Frame, update loop
+
 **Scene Membership**:
 The relationship between an actor and the loaded scene it currently occupies. Scene membership can change without changing the actor's identity.
 _Avoid_: Actor scene ownership
@@ -75,6 +87,14 @@ _Avoid_: Actor bounds, actor area
 **Actor Speed**:
 The maximum number of per-tile movement steps an actor may take in one tick. A movement attempt may use less than the actor's speed.
 _Avoid_: Run energy, movement mode
+
+**Movement Target**:
+The current destination an actor is trying to reach, either a scene coordinate or another actor's footprint. An actor has at most one movement target at a time; a scene-coordinate movement target ends when the actor's footprint covers that coordinate or when movement toward it makes no progress, while an actor movement target remains active so the actor can keep pursuing or staying edge-adjacent to the target actor's footprint.
+_Avoid_: Target, target tile
+
+**Partial Movement**:
+A movement result where an actor moves less than the requested delta because pathing blocks the full movement before the actor exhausts its actor speed.
+_Avoid_: Failed movement
 
 **Actor Occupancy**:
 A tile state indicating that actor movement should treat the tile as covered by an actor. Actor occupancy blocks NPC movement but not player movement.
