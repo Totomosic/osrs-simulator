@@ -22,6 +22,7 @@ export interface DevelopmentPlayerChaseScenario {
     SetRunning(running: boolean): void;
     IsRunning(): boolean;
     WasLastClickBlocked(): boolean;
+    GetSnapshotJson(): string;
     GetTick(): number;
     GetSceneWidth(): number;
     GetSceneHeight(): number;

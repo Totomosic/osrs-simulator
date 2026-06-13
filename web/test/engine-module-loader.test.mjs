@@ -12,7 +12,7 @@ const outfile = resolve(
 
 await mkdir(dirname(outfile), { recursive: true });
 await build({
-    entryPoints: [resolve(root, "src/wasm/EngineModule.ts")],
+    entryPoints: [resolve(root, "src/scenarios.ts")],
     outfile,
     bundle: true,
     format: "esm",
@@ -20,7 +20,8 @@ await build({
     logLevel: "silent",
 });
 
-const { loadEngineModule } = await import(pathToFileURL(outfile));
+const { createPlayerChaseScenario, loadEngineModule, registeredScenarios } =
+    await import(pathToFileURL(outfile));
 
 let locateFileResult;
 const module = await loadEngineModule(async (options) => {
@@ -51,7 +52,13 @@ const module = await loadEngineModule(async (options) => {
         }
     }
 
-    return { Engine, World };
+    class DevelopmentPlayerChaseScenario {
+        GetSnapshotJson() {
+            return '{"name":"Player Chase"}';
+        }
+    }
+
+    return { DevelopmentPlayerChaseScenario, Engine, World };
 });
 
 const engine = new module.Engine();
@@ -62,5 +69,8 @@ engine.Step();
 assert.equal(engine.GetCurrentTick(), 1);
 assert.equal(engine.GetWorld().GetDefaultSceneId(), 1);
 assert.equal(world.GetDefaultSceneId(), 1);
+assert.equal(registeredScenarios.length, 1);
+assert.equal(registeredScenarios[0].name, "Player Chase");
+assert.equal(createPlayerChaseScenario(module).GetSnapshotJson(), '{"name":"Player Chase"}');
 assert.match(locateFileResult, /\/generated\/EngineModule\.wasm$/);
 await writeFile(`${outfile}.stamp`, new Date().toISOString());

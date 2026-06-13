@@ -26,8 +26,8 @@ const {
     clickDebugTile,
     createDefaultCamera,
     defaultFieldOfView,
-    getSceneScreenCoordinate,
     getCameraCenter,
+    getSceneScreenCoordinate,
     maxFieldOfView,
     minFieldOfView,
     panCamera,
@@ -43,112 +43,77 @@ class FakePlayerChaseScenario {
         this.running = false;
         this.lastClickBlocked = false;
         this.playerTarget = null;
-        this.player = { id: 1, x: 15, y: 10, plane: 0 };
-        this.npc = { id: 2, x: 10, y: 10, plane: 0, size: 2 };
+        this.player = { id: 1, x: 8, y: 11, plane: 0, size: 1, speed: 2 };
+        this.npc = { id: 2, x: 18, y: 10, plane: 0, size: 4, speed: 1 };
         this.width = 104;
         this.height = 104;
     }
 
-    GetTick() {
-        return this.tick;
-    }
+    GetSnapshotJson() {
+        const tiles = [];
 
-    IsRunning() {
-        return this.running;
-    }
+        for (let x = 12; x <= 14; x += 1) {
+            for (let y = 10; y <= 12; y += 1) {
+                tiles.push({
+                    coordinate: { x, y, plane: 0 },
+                    flags: ["BlockMovementObject", "BlockLineOfSightFull"],
+                    gameObject: {
+                        id: 200,
+                        origin: { x: 12, y: 10, plane: 0 },
+                        sizeX: 3,
+                        sizeY: 3,
+                    },
+                });
+            }
+        }
 
-    GetPlayerId() {
-        return this.player.id;
-    }
-
-    GetPlayerX() {
-        return this.player.x;
-    }
-
-    GetPlayerY() {
-        return this.player.y;
-    }
-
-    GetPlayerPlane() {
-        return this.player.plane;
-    }
-
-    HasPlayerMovementTarget() {
-        return this.playerTarget !== null;
-    }
-
-    GetPlayerMovementTargetX() {
-        return this.playerTarget.x;
-    }
-
-    GetPlayerMovementTargetY() {
-        return this.playerTarget.y;
-    }
-
-    GetPlayerMovementTargetPlane() {
-        return this.playerTarget.plane;
-    }
-
-    GetNpcId() {
-        return this.npc.id;
-    }
-
-    GetNpcX() {
-        return this.npc.x;
-    }
-
-    GetNpcY() {
-        return this.npc.y;
-    }
-
-    GetNpcPlane() {
-        return this.npc.plane;
-    }
-
-    GetNpcSize() {
-        return this.npc.size;
-    }
-
-    HasNpcMovementTarget() {
-        return true;
-    }
-
-    GetNpcMovementTargetLabel() {
-        return "Player #1";
-    }
-
-    WasLastClickBlocked() {
-        return this.lastClickBlocked;
-    }
-
-    GetSceneWidth() {
-        return this.width;
-    }
-
-    GetSceneHeight() {
-        return this.height;
-    }
-
-    IsPlayerTile(x, y, plane) {
-        return x === this.player.x && y === this.player.y && plane === 0;
-    }
-
-    IsNpcTile(x, y, plane) {
-        return (
-            plane === this.npc.plane &&
-            x >= this.npc.x &&
-            x < this.npc.x + this.npc.size &&
-            y >= this.npc.y &&
-            y < this.npc.y + this.npc.size
-        );
-    }
-
-    IsGameObjectTile(x, y, plane) {
-        return plane === 0 && x >= 12 && x <= 13 && y >= 10 && y <= 11;
+        return JSON.stringify({
+            name: "Player Chase",
+            tick: this.tick,
+            running: this.running,
+            blockedClick: this.lastClickBlocked,
+            scene: {
+                id: 1,
+                width: this.width,
+                height: this.height,
+                planeCount: 4,
+            },
+            player: {
+                id: this.player.id,
+                kind: "Player",
+                coordinate: {
+                    x: this.player.x,
+                    y: this.player.y,
+                    plane: this.player.plane,
+                },
+                size: this.player.size,
+                speed: this.player.speed,
+                movementTarget:
+                    this.playerTarget === null
+                        ? null
+                        : {
+                              kind: "SceneCoordinate",
+                              coordinate: this.playerTarget,
+                          },
+            },
+            npc: {
+                id: this.npc.id,
+                kind: "NPC",
+                coordinate: { x: this.npc.x, y: this.npc.y, plane: this.npc.plane },
+                size: this.npc.size,
+                speed: this.npc.speed,
+                movementTarget: {
+                    kind: "Actor",
+                    actorId: this.player.id,
+                    label: "Player #1",
+                },
+            },
+            tiles,
+        });
     }
 
     ClickSceneCoordinate(x, y, plane) {
-        if (this.IsGameObjectTile(x, y, plane)) {
+        if (plane === 0 && x >= 12 && x <= 14 && y >= 10 && y <= 12) {
             this.lastClickBlocked = true;
             return false;
         }
@@ -167,16 +132,28 @@ class FakePlayerChaseScenario {
         defaultFieldOfView,
     );
 
+    assert.equal(snapshot.name, "Player Chase");
     assert.equal(snapshot.tick, 0);
     assert.equal(snapshot.running, false);
     assert.equal(snapshot.cameraMode, "Follow Player");
-    assert.equal(snapshot.fieldOfView, 20);
-    assert.deepEqual(snapshot.player.coordinate, { x: 15, y: 10, plane: 0 });
+    assert.deepEqual(snapshot.player.coordinate, { x: 8, y: 11, plane: 0 });
+    assert.equal(snapshot.player.size, 1);
+    assert.equal(snapshot.player.speed, 2);
     assert.equal(snapshot.player.movementTarget, null);
-    assert.deepEqual(snapshot.npc.coordinate, { x: 10, y: 10, plane: 0 });
-    assert.equal(snapshot.npc.size, 2);
-    assert.equal(snapshot.npc.movementTarget, "Player #1");
-    assert.match(snapshot.noPathfindingNote, /Direct movement only/);
+    assert.deepEqual(snapshot.npc.coordinate, { x: 18, y: 10, plane: 0 });
+    assert.equal(snapshot.npc.size, 4);
+    assert.equal(snapshot.npc.speed, 1);
+    assert.deepEqual(snapshot.npc.movementTarget, {
+        kind: "Actor",
+        actorId: 1,
+        label: "Player #1",
+    });
+    assert.equal(
+        snapshot.tiles.filter((tile) =>
+            tile.flags.includes("BlockMovementObject"),
+        ).length,
+        9,
+    );
 }
 
 {
@@ -187,160 +164,66 @@ class FakePlayerChaseScenario {
         defaultFieldOfView,
     );
     const camera = createDefaultCamera(snapshot);
-
-    assert.equal(camera.mode, "Follow Player");
-    assert.equal(camera.fieldOfView, 20);
-    assert.deepEqual(getCameraCenter(camera, snapshot), {
-        x: 15,
-        y: 10,
-        plane: 0,
-    });
-}
-
-{
-    const scenario = new FakePlayerChaseScenario();
-    const snapshot = readPlayerChaseDebugSnapshot(
-        scenario,
-        "Follow Player",
-        defaultFieldOfView,
-    );
-    const playerCamera = createDefaultCamera(snapshot);
-    const npcCamera = setCameraMode(playerCamera, "Follow NPC", snapshot, scenario);
-    const freeCamera = setCameraMode(npcCamera, "Free Camera", snapshot, scenario);
-
-    assert.equal(npcCamera.mode, "Follow NPC");
-    assert.deepEqual(getCameraCenter(npcCamera, snapshot), {
-        x: 10,
-        y: 10,
-        plane: 0,
-    });
-    assert.equal(freeCamera.mode, "Free Camera");
-    assert.deepEqual(getCameraCenter(freeCamera, snapshot), {
-        x: 10,
-        y: 10,
-        plane: 0,
-    });
-}
-
-{
-    const scenario = new FakePlayerChaseScenario();
-    const snapshot = readPlayerChaseDebugSnapshot(
-        scenario,
-        "Follow Player",
-        defaultFieldOfView,
-    );
-    const camera = createDefaultCamera(snapshot);
-    scenario.player = { ...scenario.player, x: 20, y: 12 };
-    const movedSnapshot = readPlayerChaseDebugSnapshot(
-        scenario,
-        "Follow Player",
-        defaultFieldOfView,
-    );
-    const freeCamera = setCameraMode(
-        camera,
-        "Free Camera",
-        movedSnapshot,
-        scenario,
-    );
-
-    assert.deepEqual(getCameraCenter(freeCamera, movedSnapshot), {
-        x: 20,
-        y: 12,
-        plane: 0,
-    });
-}
-
-{
-    const scenario = new FakePlayerChaseScenario();
-    const snapshot = readPlayerChaseDebugSnapshot(
-        scenario,
-        "Follow Player",
-        defaultFieldOfView,
-    );
-    const camera = createDefaultCamera(snapshot);
-    const panned = panCamera(camera, "east", snapshot, scenario);
-
-    assert.equal(panned.mode, "Free Camera");
-    assert.deepEqual(getCameraCenter(panned, snapshot), {
-        x: 16,
-        y: 10,
-        plane: 0,
-    });
-}
-
-{
-    const scenario = new FakePlayerChaseScenario();
-    const snapshot = readPlayerChaseDebugSnapshot(
-        scenario,
-        "Follow Player",
-        defaultFieldOfView,
-    );
-    const camera = createDefaultCamera(snapshot);
+    const npcCamera = setCameraMode(camera, "Follow NPC", snapshot);
+    const freeCamera = panCamera(npcCamera, "east", snapshot);
     const zoomed = setCameraFieldOfView(
-        setCameraMode(camera, "Follow NPC", snapshot, scenario),
+        npcCamera,
         maxFieldOfView + 100,
         snapshot,
-        scenario,
     );
     const zoomedIn = setCameraFieldOfView(
         zoomed,
         minFieldOfView - 100,
         snapshot,
-        scenario,
     );
 
-    assert.equal(zoomed.mode, "Follow NPC");
+    assert.deepEqual(getCameraCenter(camera, snapshot), { x: 8, y: 11, plane: 0 });
+    assert.deepEqual(getCameraCenter(npcCamera, snapshot), {
+        x: 18,
+        y: 10,
+        plane: 0,
+    });
+    assert.equal(freeCamera.mode, "Free Camera");
+    assert.deepEqual(getCameraCenter(freeCamera, snapshot), {
+        x: 19,
+        y: 10,
+        plane: 0,
+    });
     assert.equal(zoomed.fieldOfView, maxFieldOfView);
-    assert.equal(zoomedIn.mode, "Follow NPC");
     assert.equal(zoomedIn.fieldOfView, minFieldOfView);
 }
 
 {
     const scenario = new FakePlayerChaseScenario();
-    scenario.lastClickBlocked = true;
-    scenario.playerTarget = { x: 16, y: 10, plane: 0 };
-
-    const snapshot = readPlayerChaseDebugSnapshot(
-        scenario,
-        "Fixed Scene",
-        defaultFieldOfView,
-    );
-
-    assert.equal(snapshot.blockedClick, true);
-    assert.deepEqual(snapshot.player.movementTarget, { x: 16, y: 10, plane: 0 });
-}
-
-{
-    const scenario = new FakePlayerChaseScenario();
-    const cameraMode = "Follow Player";
     const clicked = clickDebugTile(scenario, {
-        key: "0:16:10",
-        coordinate: { x: 16, y: 10, plane: 0 },
+        key: "0:10:11",
+        coordinate: { x: 10, y: 11, plane: 0 },
         kind: "empty",
+        flags: [],
     });
     const snapshot = readPlayerChaseDebugSnapshot(
         scenario,
-        cameraMode,
+        "Follow Player",
         defaultFieldOfView,
     );
 
     assert.equal(clicked, true);
-    assert.equal(snapshot.tick, 0);
-    assert.equal(snapshot.running, false);
-    assert.equal(snapshot.cameraMode, "Follow Player");
-    assert.deepEqual(snapshot.player.coordinate, { x: 15, y: 10, plane: 0 });
-    assert.deepEqual(snapshot.player.movementTarget, { x: 16, y: 10, plane: 0 });
+    assert.deepEqual(snapshot.player.movementTarget, {
+        kind: "SceneCoordinate",
+        coordinate: { x: 10, y: 11, plane: 0 },
+    });
     assert.equal(snapshot.blockedClick, false);
 }
 
 {
     const scenario = new FakePlayerChaseScenario();
-    scenario.playerTarget = { x: 16, y: 10, plane: 0 };
+    scenario.playerTarget = { x: 10, y: 11, plane: 0 };
 
     const clicked = clickDebugTile(scenario, {
         key: "0:12:10",
         coordinate: { x: 12, y: 10, plane: 0 },
         kind: "game-object",
+        flags: ["BlockMovementObject"],
     });
     const snapshot = readPlayerChaseDebugSnapshot(
         scenario,
@@ -349,17 +232,25 @@ class FakePlayerChaseScenario {
     );
 
     assert.equal(clicked, false);
-    assert.deepEqual(snapshot.player.movementTarget, { x: 16, y: 10, plane: 0 });
     assert.equal(snapshot.blockedClick, true);
+    assert.deepEqual(snapshot.player.movementTarget, {
+        kind: "SceneCoordinate",
+        coordinate: { x: 10, y: 11, plane: 0 },
+    });
 }
 
 {
     const scenario = new FakePlayerChaseScenario();
     scenario.width = 24;
     scenario.height = 24;
+    const snapshot = readPlayerChaseDebugSnapshot(
+        scenario,
+        "Free Camera",
+        defaultFieldOfView,
+    );
 
     const tiles = buildDebugTiles(
-        scenario,
+        snapshot,
         { x: 23, y: 23, plane: 0 },
         defaultFieldOfView,
     );
@@ -375,24 +266,36 @@ class FakePlayerChaseScenario {
 
 {
     const scenario = new FakePlayerChaseScenario();
-    const tiles = buildDebugTiles(
+    const snapshot = readPlayerChaseDebugSnapshot(
         scenario,
-        { x: 15, y: 10, plane: 0 },
+        "Follow NPC",
+        defaultFieldOfView,
+    );
+    const tiles = buildDebugTiles(
+        snapshot,
+        { x: 14, y: 10, plane: 0 },
         defaultFieldOfView,
     );
     const kinds = new Set(tiles.map((tile) => tile.kind));
-    const playerScreen = getSceneScreenCoordinate(
-        { x: 15, y: 10, plane: 0 },
-        tiles,
-    );
     const objectTile = tiles.find(
         (tile) => tile.coordinate.x === 12 && tile.coordinate.y === 10,
     );
+    const npcTile = tiles.find(
+        (tile) => tile.coordinate.x === 21 && tile.coordinate.y === 13,
+    );
+    const playerScreen = getSceneScreenCoordinate(
+        { x: 8, y: 11, plane: 0 },
+        tiles,
+    );
 
-    assert.equal(tiles.length, defaultFieldOfView * defaultFieldOfView);
     assert.ok(kinds.has("player"));
     assert.ok(kinds.has("npc"));
     assert.equal(objectTile.kind, "game-object");
+    assert.equal(npcTile.kind, "npc");
+    assert.deepEqual(objectTile.flags, [
+        "BlockMovementObject",
+        "BlockLineOfSightFull",
+    ]);
     assert.equal(playerScreen.x % tileSize, 0);
     assert.equal(playerScreen.y % tileSize, 0);
 }

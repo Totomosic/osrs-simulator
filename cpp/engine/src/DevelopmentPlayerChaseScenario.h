@@ -25,6 +25,7 @@ public:
     void SetRunning(bool running);
     bool IsRunning() const;
     bool WasLastClickBlocked() const;
+    std::string GetSnapshotJson() const;
     Tick GetTick() const;
     int GetSceneWidth() const;
     int GetSceneHeight() const;

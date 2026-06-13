@@ -18,12 +18,14 @@ import {
     type CameraState,
     type CameraMode,
     type DebugTile,
+    type MovementTargetSnapshot,
     type PlayerChaseDebugSnapshot,
 } from "./playerChaseDebug";
 import {
     loadEngineModule,
     type DevelopmentPlayerChaseScenario,
 } from "./wasm/EngineModule";
+import { createPlayerChaseScenario } from "./scenarios";
 import {
     createPlayerChasePlayback,
     type PlayerChasePlaybackControls,
@@ -43,10 +45,10 @@ const cameraCenter = computed(() => {
     return getCameraCenter(camera.value, snapshot.value);
 });
 const renderTiles = computed<DebugTile[]>(() =>
-    scenario.value === null || camera.value === null
+    snapshot.value === null || camera.value === null
         ? []
         : buildDebugTiles(
-              scenario.value,
+              snapshot.value,
               cameraCenter.value,
               camera.value.fieldOfView,
           ),
@@ -73,7 +75,7 @@ onMounted(async () => {
 
     try {
         const module = await loadEngineModule();
-        scenario.value = new module.DevelopmentPlayerChaseScenario();
+        scenario.value = createPlayerChaseScenario(module);
         playback = createPlayerChasePlayback(scenario.value, refreshSnapshot);
         refreshSnapshot();
         engineModuleStatus.value = "loaded";
@@ -129,7 +131,6 @@ function setCameraMode(mode: CameraMode): void {
         camera.value,
         mode,
         snapshot.value,
-        scenario.value,
     );
     refreshSnapshot();
 }
@@ -143,7 +144,6 @@ function setFieldOfView(value: number): void {
         camera.value,
         value,
         snapshot.value,
-        scenario.value,
     );
     refreshSnapshot();
 }
@@ -157,7 +157,6 @@ function pan(direction: CameraPanDirection): void {
         camera.value,
         direction,
         snapshot.value,
-        scenario.value,
     );
     refreshSnapshot();
 }
@@ -240,6 +239,18 @@ function formatCoordinate(
     return coordinate === null
         ? "None"
         : `${coordinate.x}, ${coordinate.y}, P${coordinate.plane}`;
+}
+
+function formatMovementTarget(target: MovementTargetSnapshot | null): string {
+    if (target === null) {
+        return "None";
+    }
+
+    if (target.kind === "SceneCoordinate" && target.coordinate !== undefined) {
+        return formatCoordinate(target.coordinate);
+    }
+
+    return target.label ?? `Actor #${target.actorId ?? 0}`;
 }
 </script>
 
@@ -334,6 +345,15 @@ function formatCoordinate(
           >
             {{ tile.kind === "player" ? "P" : "N" }}
           </text>
+          <text
+            v-for="tile in renderTiles.filter((tile) => tile.flags.includes('BlockMovementObject'))"
+            :key="`${tile.key}:movement-flag`"
+            :x="getTileX(tile) + tileSize - 6"
+            :y="getTileY(tile) + 10"
+            class="flag-label"
+          >
+            M
+          </text>
         </svg>
       </div>
 
@@ -361,7 +381,7 @@ function formatCoordinate(
           </div>
           <div>
             <dt>Player Movement Target</dt>
-            <dd>{{ formatCoordinate(snapshot.player.movementTarget) }}</dd>
+            <dd>{{ formatMovementTarget(snapshot.player.movementTarget) }}</dd>
           </div>
           <div>
             <dt>NPC position</dt>
@@ -373,7 +393,18 @@ function formatCoordinate(
           </div>
           <div>
             <dt>NPC Movement Target</dt>
-            <dd>{{ snapshot.npc.movementTarget }}</dd>
+            <dd>{{ formatMovementTarget(snapshot.npc.movementTarget) }}</dd>
+          </div>
+          <div>
+            <dt>Tile Flags</dt>
+            <dd>
+              {{
+                snapshot.tiles
+                  .filter((tile) => tile.flags.includes("BlockMovementObject"))
+                  .length
+              }}
+              movement-blocking object tiles
+            </dd>
           </div>
           <div class="feedback" :class="{ blocked: snapshot.blockedClick }">
             <dt>Blocked click</dt>
@@ -560,6 +591,14 @@ button:hover {
 .actor-label {
     fill: #ffffff;
     font-size: 12px;
+    font-weight: 900;
+    pointer-events: none;
+    text-anchor: middle;
+}
+
+.flag-label {
+    fill: #ffffff;
+    font-size: 9px;
     font-weight: 900;
     pointer-events: none;
     text-anchor: middle;

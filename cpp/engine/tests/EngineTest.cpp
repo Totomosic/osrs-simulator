@@ -2,6 +2,7 @@
 #include "DevelopmentPlayerChaseScenario.h"
 
 #include <cassert>
+#include <string>
 
 int main()
 {
@@ -265,41 +266,49 @@ int main()
         osrssim::DevelopmentPlayerChaseScenario scenario;
 
         assert(scenario.GetTick() == 0);
-        assert(scenario.GetPlayerX() == 15);
-        assert(scenario.GetPlayerY() == 10);
-        assert(scenario.GetNpcX() == 9);
+        assert(scenario.GetPlayerX() == 8);
+        assert(scenario.GetPlayerY() == 11);
+        assert(scenario.GetNpcX() == 18);
         assert(scenario.GetNpcY() == 10);
-        assert(scenario.GetNpcSize() == 2);
+        assert(scenario.GetNpcSize() == 4);
         assert(scenario.HasNpcMovementTarget());
         assert(scenario.GetNpcMovementTargetActorId() == scenario.GetPlayerId());
         assert(scenario.GetNpcMovementTargetLabel() == "Player #1");
         assert(scenario.IsGameObjectTile(12, 10, 0));
+        assert(scenario.IsGameObjectTile(14, 12, 0));
 
-        assert(scenario.ClickSceneCoordinate(16, 10, 0));
+        const std::string initialSnapshot = scenario.GetSnapshotJson();
+        assert(initialSnapshot.find("\"name\":\"Player Chase\"") !=
+               std::string::npos);
+        assert(initialSnapshot.find("\"size\":4") != std::string::npos);
+        assert(initialSnapshot.find("\"BlockMovementObject\"") !=
+               std::string::npos);
+
+        assert(scenario.ClickSceneCoordinate(10, 11, 0));
         assert(!scenario.WasLastClickBlocked());
         assert(scenario.GetTick() == 0);
-        assert(scenario.GetPlayerX() == 15);
-        assert(scenario.GetPlayerY() == 10);
+        assert(scenario.GetPlayerX() == 8);
+        assert(scenario.GetPlayerY() == 11);
         assert(scenario.HasPlayerMovementTarget());
-        assert(scenario.GetPlayerMovementTargetX() == 16);
-        assert(scenario.GetPlayerMovementTargetY() == 10);
+        assert(scenario.GetPlayerMovementTargetX() == 10);
+        assert(scenario.GetPlayerMovementTargetY() == 11);
         assert(scenario.GetPlayerMovementTargetPlane() == 0);
 
-        assert(scenario.ClickSceneCoordinate(10, 10, 0));
+        assert(scenario.ClickSceneCoordinate(7, 11, 0));
         assert(!scenario.WasLastClickBlocked());
-        assert(scenario.GetPlayerMovementTargetX() == 10);
-        assert(scenario.GetPlayerMovementTargetY() == 10);
+        assert(scenario.GetPlayerMovementTargetX() == 7);
+        assert(scenario.GetPlayerMovementTargetY() == 11);
 
         assert(!scenario.ClickSceneCoordinate(12, 10, 0));
         assert(scenario.WasLastClickBlocked());
-        assert(scenario.GetPlayerMovementTargetX() == 10);
-        assert(scenario.GetPlayerMovementTargetY() == 10);
+        assert(scenario.GetPlayerMovementTargetX() == 7);
+        assert(scenario.GetPlayerMovementTargetY() == 11);
 
         scenario.Step();
         scenario.Step();
 
         assert(scenario.GetTick() == 2);
-        assert(scenario.GetNpcX() == 10);
+        assert(scenario.GetNpcX() == 16);
         assert(scenario.GetNpcY() == 10);
         assert(scenario.HasNpcMovementTarget());
     }

@@ -43,6 +43,9 @@ EMSCRIPTEN_BINDINGS(osrssim_engine)
         .function(
             "WasLastClickBlocked",
             &osrssim::DevelopmentPlayerChaseScenario::WasLastClickBlocked)
+        .function(
+            "GetSnapshotJson",
+            &osrssim::DevelopmentPlayerChaseScenario::GetSnapshotJson)
         .function("GetTick", &osrssim::DevelopmentPlayerChaseScenario::GetTick)
         .function(
             "GetSceneWidth",

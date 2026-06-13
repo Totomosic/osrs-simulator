@@ -9,23 +9,52 @@ export interface SceneCoordinate {
     plane: number;
 }
 
-export interface PlayerChaseDebugSnapshot {
+export interface MovementTargetSnapshot {
+    kind: "SceneCoordinate" | "Actor";
+    coordinate?: SceneCoordinate;
+    actorId?: number;
+    label?: string;
+}
+
+export interface ActorSnapshot {
+    id: number;
+    kind: "Player" | "NPC";
+    coordinate: SceneCoordinate;
+    size: number;
+    speed: number;
+    movementTarget: MovementTargetSnapshot | null;
+}
+
+export interface SnapshotTile {
+    coordinate: SceneCoordinate;
+    flags: string[];
+    gameObject?: {
+        id: number;
+        origin: SceneCoordinate;
+        sizeX: number;
+        sizeY: number;
+    };
+}
+
+export interface EnginePlayerChaseSnapshot {
+    name: "Player Chase";
     tick: number;
     running: boolean;
+    blockedClick: boolean;
+    scene: {
+        id: number;
+        width: number;
+        height: number;
+        planeCount: number;
+    };
+    player: ActorSnapshot;
+    npc: ActorSnapshot;
+    tiles: SnapshotTile[];
+}
+
+export interface PlayerChaseDebugSnapshot extends EnginePlayerChaseSnapshot {
     cameraMode: CameraMode;
     fieldOfView: number;
-    player: {
-        id: number;
-        coordinate: SceneCoordinate;
-        movementTarget: SceneCoordinate | null;
-    };
-    npc: {
-        id: number;
-        coordinate: SceneCoordinate;
-        size: number;
-        movementTarget: string;
-    };
-    blockedClick: boolean;
     noPathfindingNote: string;
 }
 
@@ -33,6 +62,7 @@ export interface DebugTile {
     key: string;
     coordinate: SceneCoordinate;
     kind: "empty" | "game-object" | "player" | "npc";
+    flags: string[];
 }
 
 export interface ScreenCoordinate {
@@ -56,59 +86,39 @@ export function readPlayerChaseDebugSnapshot(
     cameraMode: CameraMode,
     fieldOfView: number,
 ): PlayerChaseDebugSnapshot {
+    const engineSnapshot = JSON.parse(
+        scenario.GetSnapshotJson(),
+    ) as EnginePlayerChaseSnapshot;
+
     return {
-        tick: Number(scenario.GetTick()),
-        running: scenario.IsRunning(),
+        ...engineSnapshot,
         cameraMode,
         fieldOfView,
-        player: {
-            id: Number(scenario.GetPlayerId()),
-            coordinate: {
-                x: scenario.GetPlayerX(),
-                y: scenario.GetPlayerY(),
-                plane: scenario.GetPlayerPlane(),
-            },
-            movementTarget: scenario.HasPlayerMovementTarget()
-                ? {
-                      x: scenario.GetPlayerMovementTargetX(),
-                      y: scenario.GetPlayerMovementTargetY(),
-                      plane: scenario.GetPlayerMovementTargetPlane(),
-                  }
-                : null,
-        },
-        npc: {
-            id: Number(scenario.GetNpcId()),
-            coordinate: {
-                x: scenario.GetNpcX(),
-                y: scenario.GetNpcY(),
-                plane: scenario.GetNpcPlane(),
-            },
-            size: scenario.GetNpcSize(),
-            movementTarget: scenario.HasNpcMovementTarget()
-                ? scenario.GetNpcMovementTargetLabel()
-                : "None",
-        },
-        blockedClick: scenario.WasLastClickBlocked(),
         noPathfindingNote:
             "Direct movement only: the NPC keeps its Player movement target but stops when the Game Object blocks the straight chase.",
     };
 }
 
 export function buildDebugTiles(
-    scenario: DevelopmentPlayerChaseScenario,
+    snapshot: PlayerChaseDebugSnapshot,
     center: SceneCoordinate,
     fieldOfView: number,
 ): DebugTile[] {
-    const bounds = getVisibleBounds(scenario, center, fieldOfView);
+    const bounds = getVisibleBounds(snapshot, center, fieldOfView);
+    const tilesByCoordinate = new Map(
+        snapshot.tiles.map((tile) => [getCoordinateKey(tile.coordinate), tile]),
+    );
     const tiles: DebugTile[] = [];
 
     for (let y = bounds.minY; y <= bounds.maxY; y += 1) {
         for (let x = bounds.minX; x <= bounds.maxX; x += 1) {
             const coordinate = { x, y, plane: center.plane };
+            const snapshotTile = tilesByCoordinate.get(getCoordinateKey(coordinate));
             tiles.push({
-                key: `${coordinate.plane}:${coordinate.x}:${coordinate.y}`,
+                key: getCoordinateKey(coordinate),
                 coordinate,
-                kind: getTileKind(scenario, coordinate),
+                kind: getTileKind(snapshot, coordinate, snapshotTile),
+                flags: snapshotTile?.flags ?? [],
             });
         }
     }
@@ -145,7 +155,6 @@ export function setCameraMode(
     camera: CameraState,
     mode: CameraMode,
     snapshot: PlayerChaseDebugSnapshot,
-    scenario: DevelopmentPlayerChaseScenario,
 ): CameraState {
     const center =
         mode === "Free Camera"
@@ -158,7 +167,7 @@ export function setCameraMode(
             mode,
             center,
         },
-        scenario,
+        snapshot,
     );
 }
 
@@ -166,7 +175,6 @@ export function panCamera(
     camera: CameraState,
     direction: CameraPanDirection,
     snapshot: PlayerChaseDebugSnapshot,
-    scenario: DevelopmentPlayerChaseScenario,
 ): CameraState {
     const center = getCameraCenter(camera, snapshot);
     const delta = getPanDelta(direction);
@@ -181,7 +189,7 @@ export function panCamera(
                 plane: center.plane,
             },
         },
-        scenario,
+        snapshot,
     );
 }
 
@@ -189,7 +197,6 @@ export function setCameraFieldOfView(
     camera: CameraState,
     fieldOfView: number,
     snapshot: PlayerChaseDebugSnapshot,
-    scenario: DevelopmentPlayerChaseScenario,
 ): CameraState {
     return clampCameraToScene(
         {
@@ -197,7 +204,7 @@ export function setCameraFieldOfView(
             center: getCameraCenter(camera, snapshot),
             fieldOfView: clampFieldOfView(fieldOfView),
         },
-        scenario,
+        snapshot,
     );
 }
 
@@ -226,37 +233,51 @@ export function clickDebugTile(
 }
 
 function getTileKind(
-    scenario: DevelopmentPlayerChaseScenario,
+    snapshot: PlayerChaseDebugSnapshot,
     coordinate: SceneCoordinate,
+    tile: SnapshotTile | undefined,
 ): DebugTile["kind"] {
-    if (scenario.IsPlayerTile(coordinate.x, coordinate.y, coordinate.plane)) {
+    if (isActorFootprintTile(snapshot.player, coordinate)) {
         return "player";
     }
 
-    if (scenario.IsNpcTile(coordinate.x, coordinate.y, coordinate.plane)) {
+    if (isActorFootprintTile(snapshot.npc, coordinate)) {
         return "npc";
     }
 
-    if (scenario.IsGameObjectTile(coordinate.x, coordinate.y, coordinate.plane)) {
+    if (tile?.gameObject !== undefined) {
         return "game-object";
     }
 
     return "empty";
 }
 
+function isActorFootprintTile(
+    actor: ActorSnapshot,
+    coordinate: SceneCoordinate,
+): boolean {
+    return (
+        coordinate.plane === actor.coordinate.plane &&
+        coordinate.x >= actor.coordinate.x &&
+        coordinate.x < actor.coordinate.x + actor.size &&
+        coordinate.y >= actor.coordinate.y &&
+        coordinate.y < actor.coordinate.y + actor.size
+    );
+}
+
 function getVisibleBounds(
-    scenario: DevelopmentPlayerChaseScenario,
+    snapshot: PlayerChaseDebugSnapshot,
     center: SceneCoordinate,
     fieldOfView: number,
 ): { minX: number; maxX: number; minY: number; maxY: number } {
-    const width = scenario.GetSceneWidth();
-    const height = scenario.GetSceneHeight();
-    const columnCount = Math.min(fieldOfView, width);
-    const rowCount = Math.min(fieldOfView, height);
+    const columnCount = Math.min(fieldOfView, snapshot.scene.width);
+    const rowCount = Math.min(fieldOfView, snapshot.scene.height);
 
     return {
-        ...getAxisBounds(center.x, columnCount, width),
-        ...renameAxisBounds(getAxisBounds(center.y, rowCount, height)),
+        ...getAxisBounds(center.x, columnCount, snapshot.scene.width),
+        ...renameAxisBounds(
+            getAxisBounds(center.y, rowCount, snapshot.scene.height),
+        ),
     };
 }
 
@@ -287,21 +308,21 @@ function renameAxisBounds(bounds: {
 
 function clampCameraToScene(
     camera: CameraState,
-    scenario: DevelopmentPlayerChaseScenario,
+    snapshot: PlayerChaseDebugSnapshot,
 ): CameraState {
     return {
         ...camera,
-        center: clampCoordinateToScene(camera.center, scenario),
+        center: clampCoordinateToScene(camera.center, snapshot),
     };
 }
 
 function clampCoordinateToScene(
     coordinate: SceneCoordinate,
-    scenario: DevelopmentPlayerChaseScenario,
+    snapshot: PlayerChaseDebugSnapshot,
 ): SceneCoordinate {
     return {
-        x: clamp(coordinate.x, 0, scenario.GetSceneWidth() - 1),
-        y: clamp(coordinate.y, 0, scenario.GetSceneHeight() - 1),
+        x: clamp(coordinate.x, 0, snapshot.scene.width - 1),
+        y: clamp(coordinate.y, 0, snapshot.scene.height - 1),
         plane: coordinate.plane,
     };
 }
@@ -310,9 +331,7 @@ function clampFieldOfView(fieldOfView: number): number {
     return clamp(fieldOfView, minFieldOfView, maxFieldOfView);
 }
 
-function getPanDelta(
-    direction: CameraPanDirection,
-): { x: number; y: number } {
+function getPanDelta(direction: CameraPanDirection): { x: number; y: number } {
     switch (direction) {
         case "north":
             return { x: 0, y: 1 };
@@ -323,6 +342,10 @@ function getPanDelta(
         case "west":
             return { x: -1, y: 0 };
     }
+}
+
+function getCoordinateKey(coordinate: SceneCoordinate): string {
+    return `${coordinate.plane}:${coordinate.x}:${coordinate.y}`;
 }
 
 function clamp(value: number, min: number, max: number): number {

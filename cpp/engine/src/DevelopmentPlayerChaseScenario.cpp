@@ -3,8 +3,85 @@
 #include "Scene.h"
 #include "Tile.h"
 
+#include <sstream>
+
 namespace osrssim
 {
+namespace
+{
+void AppendCoordinateJson(std::ostringstream& output, SceneCoordinate coordinate)
+{
+    output << "{\"x\":" << coordinate.x << ",\"y\":" << coordinate.y
+           << ",\"plane\":" << coordinate.plane << "}";
+}
+
+void AppendMovementTargetJson(
+    std::ostringstream& output,
+    const MovementTarget* movementTarget,
+    ActorId playerId)
+{
+    if (movementTarget == nullptr)
+    {
+        output << "null";
+        return;
+    }
+
+    if (movementTarget->kind == MovementTargetKind::SceneCoordinate)
+    {
+        output << "{\"kind\":\"SceneCoordinate\",\"coordinate\":";
+        AppendCoordinateJson(output, movementTarget->sceneCoordinate);
+        output << "}";
+        return;
+    }
+
+    output << "{\"kind\":\"Actor\",\"actorId\":" << movementTarget->actorId
+           << ",\"label\":\""
+           << (movementTarget->actorId == playerId ? "Player #" : "Actor #")
+           << movementTarget->actorId << "\"}";
+}
+
+void AppendTileFlagsJson(std::ostringstream& output, const Tile& tile)
+{
+    bool hasPrevious = false;
+
+    auto appendFlag = [&](TileFlag flag, const char* label)
+    {
+        if (!tile.HasFlag(flag))
+        {
+            return;
+        }
+
+        if (hasPrevious)
+        {
+            output << ",";
+        }
+
+        output << "\"" << label << "\"";
+        hasPrevious = true;
+    };
+
+    appendFlag(TileFlag::Occupied, "Occupied");
+    appendFlag(TileFlag::BlockMovementNorthWest, "BlockMovementNorthWest");
+    appendFlag(TileFlag::BlockMovementNorth, "BlockMovementNorth");
+    appendFlag(TileFlag::BlockMovementNorthEast, "BlockMovementNorthEast");
+    appendFlag(TileFlag::BlockMovementEast, "BlockMovementEast");
+    appendFlag(TileFlag::BlockMovementSouthEast, "BlockMovementSouthEast");
+    appendFlag(TileFlag::BlockMovementSouth, "BlockMovementSouth");
+    appendFlag(TileFlag::BlockMovementSouthWest, "BlockMovementSouthWest");
+    appendFlag(TileFlag::BlockMovementWest, "BlockMovementWest");
+    appendFlag(TileFlag::BlockMovementFull, "BlockMovementFull");
+    appendFlag(TileFlag::BlockMovementObject, "BlockMovementObject");
+    appendFlag(TileFlag::BlockMovementFloor, "BlockMovementFloor");
+    appendFlag(
+        TileFlag::BlockMovementFloorDecoration,
+        "BlockMovementFloorDecoration");
+    appendFlag(TileFlag::BlockLineOfSightNorth, "BlockLineOfSightNorth");
+    appendFlag(TileFlag::BlockLineOfSightEast, "BlockLineOfSightEast");
+    appendFlag(TileFlag::BlockLineOfSightSouth, "BlockLineOfSightSouth");
+    appendFlag(TileFlag::BlockLineOfSightWest, "BlockLineOfSightWest");
+    appendFlag(TileFlag::BlockLineOfSightFull, "BlockLineOfSightFull");
+}
+}  // namespace
 
 DevelopmentPlayerChaseScenario::DevelopmentPlayerChaseScenario()
 {
@@ -21,16 +98,16 @@ DevelopmentPlayerChaseScenario::DevelopmentPlayerChaseScenario()
             {12, 10, 0},
             200,
             CardinalDirection::North,
-            2,
-            2,
+            3,
+            3,
             blockingObject);
     }
 
-    m_PlayerId = world.CreatePlayer(1, 1);
-    m_NpcId = world.CreateNpc(2, 1);
+    m_PlayerId = world.CreatePlayer(1, 2);
+    m_NpcId = world.CreateNpc(4, 1);
 
-    world.PlaceActor(m_NpcId, world.GetDefaultSceneId(), {9, 10, 0});
-    world.PlaceActor(m_PlayerId, world.GetDefaultSceneId(), {15, 10, 0});
+    world.PlaceActor(m_PlayerId, world.GetDefaultSceneId(), {8, 11, 0});
+    world.PlaceActor(m_NpcId, world.GetDefaultSceneId(), {18, 10, 0});
     world.SetActorMovementTarget(m_NpcId, m_PlayerId);
 }
 
@@ -69,6 +146,100 @@ bool DevelopmentPlayerChaseScenario::IsRunning() const
 bool DevelopmentPlayerChaseScenario::WasLastClickBlocked() const
 {
     return m_LastClickBlocked;
+}
+
+std::string DevelopmentPlayerChaseScenario::GetSnapshotJson() const
+{
+    const World& world = GetWorld();
+    const Scene* scene = world.TryGetScene(world.GetDefaultSceneId());
+    const ActorCore* player = GetActor(m_PlayerId);
+    const ActorCore* npc = GetActor(m_NpcId);
+    const SceneMembership* playerMembership = GetMembership(m_PlayerId);
+    const SceneMembership* npcMembership = GetMembership(m_NpcId);
+    std::ostringstream output;
+
+    output << "{\"name\":\"Player Chase\",\"tick\":" << GetTick()
+           << ",\"running\":" << (IsRunning() ? "true" : "false")
+           << ",\"blockedClick\":"
+           << (WasLastClickBlocked() ? "true" : "false")
+           << ",\"scene\":{\"id\":" << world.GetDefaultSceneId()
+           << ",\"width\":" << Scene::Width << ",\"height\":" << Scene::Height
+           << ",\"planeCount\":" << Scene::PlaneCount << "}";
+
+    output << ",\"player\":{\"id\":" << m_PlayerId << ",\"kind\":\"Player\""
+           << ",\"size\":" << (player == nullptr ? 0 : player->size)
+           << ",\"speed\":" << (player == nullptr ? 0 : player->speed)
+           << ",\"coordinate\":";
+    AppendCoordinateJson(
+        output,
+        playerMembership == nullptr ? SceneCoordinate{} :
+                                      playerMembership->coordinate);
+    output << ",\"movementTarget\":";
+    AppendMovementTargetJson(output, GetPlayerMovementTarget(), m_PlayerId);
+    output << "}";
+
+    output << ",\"npc\":{\"id\":" << m_NpcId << ",\"kind\":\"NPC\""
+           << ",\"size\":" << (npc == nullptr ? 0 : npc->size)
+           << ",\"speed\":" << (npc == nullptr ? 0 : npc->speed)
+           << ",\"coordinate\":";
+    AppendCoordinateJson(
+        output,
+        npcMembership == nullptr ? SceneCoordinate{} : npcMembership->coordinate);
+    output << ",\"movementTarget\":";
+    AppendMovementTargetJson(output, GetNpcMovementTarget(), m_PlayerId);
+    output << "}";
+
+    output << ",\"tiles\":[";
+
+    bool hasPreviousTile = false;
+    if (scene != nullptr)
+    {
+        for (int plane = 0; plane < Scene::PlaneCount; ++plane)
+        {
+            for (int x = 0; x < Scene::Width; ++x)
+            {
+                for (int y = 0; y < Scene::Height; ++y)
+                {
+                    const Tile* tile = scene->TryGetTile({x, y, plane});
+
+                    if (tile == nullptr ||
+                        (tile->flags == ToTileFlags(TileFlag::None) &&
+                         !tile->gameObject.has_value()))
+                    {
+                        continue;
+                    }
+
+                    if (hasPreviousTile)
+                    {
+                        output << ",";
+                    }
+
+                    output << "{\"coordinate\":";
+                    AppendCoordinateJson(output, tile->coordinate);
+                    output << ",\"flags\":[";
+                    AppendTileFlagsJson(output, *tile);
+                    output << "]";
+
+                    if (tile->gameObject.has_value())
+                    {
+                        output << ",\"gameObject\":{\"id\":"
+                               << tile->gameObject->id << ",\"origin\":";
+                        AppendCoordinateJson(output, tile->gameObject->origin);
+                        output << ",\"sizeX\":" << tile->gameObject->sizeX
+                               << ",\"sizeY\":" << tile->gameObject->sizeY
+                               << "}";
+                    }
+
+                    output << "}";
+                    hasPreviousTile = true;
+                }
+            }
+        }
+    }
+
+    output << "]}";
+
+    return output.str();
 }
 
 Tick DevelopmentPlayerChaseScenario::GetTick() const
