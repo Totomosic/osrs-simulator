@@ -23,9 +23,16 @@ await writeFile(`${outfile}.stamp`, new Date().toISOString());
 
 const {
     buildDebugTiles,
+    createDefaultCamera,
     defaultFieldOfView,
     getSceneScreenCoordinate,
+    getCameraCenter,
+    maxFieldOfView,
+    minFieldOfView,
+    panCamera,
     readPlayerChaseDebugSnapshot,
+    setCameraFieldOfView,
+    setCameraMode,
     tileSize,
 } = await import(pathToFileURL(outfile));
 
@@ -37,6 +44,8 @@ class FakePlayerChaseScenario {
         this.playerTarget = null;
         this.player = { id: 1, x: 15, y: 10, plane: 0 };
         this.npc = { id: 2, x: 10, y: 10, plane: 0, size: 2 };
+        this.width = 104;
+        this.height = 104;
     }
 
     GetTick() {
@@ -112,11 +121,11 @@ class FakePlayerChaseScenario {
     }
 
     GetSceneWidth() {
-        return 104;
+        return this.width;
     }
 
     GetSceneHeight() {
-        return 104;
+        return this.height;
     }
 
     IsPlayerTile(x, y, plane) {
@@ -149,13 +158,129 @@ class FakePlayerChaseScenario {
     assert.equal(snapshot.tick, 0);
     assert.equal(snapshot.running, false);
     assert.equal(snapshot.cameraMode, "Follow Player");
-    assert.equal(snapshot.fieldOfView, 12);
+    assert.equal(snapshot.fieldOfView, 20);
     assert.deepEqual(snapshot.player.coordinate, { x: 15, y: 10, plane: 0 });
     assert.equal(snapshot.player.movementTarget, null);
     assert.deepEqual(snapshot.npc.coordinate, { x: 10, y: 10, plane: 0 });
     assert.equal(snapshot.npc.size, 2);
     assert.equal(snapshot.npc.movementTarget, "Player #1");
     assert.match(snapshot.noPathfindingNote, /Direct movement only/);
+}
+
+{
+    const scenario = new FakePlayerChaseScenario();
+    const snapshot = readPlayerChaseDebugSnapshot(
+        scenario,
+        "Follow Player",
+        defaultFieldOfView,
+    );
+    const camera = createDefaultCamera(snapshot);
+
+    assert.equal(camera.mode, "Follow Player");
+    assert.equal(camera.fieldOfView, 20);
+    assert.deepEqual(getCameraCenter(camera, snapshot), {
+        x: 15,
+        y: 10,
+        plane: 0,
+    });
+}
+
+{
+    const scenario = new FakePlayerChaseScenario();
+    const snapshot = readPlayerChaseDebugSnapshot(
+        scenario,
+        "Follow Player",
+        defaultFieldOfView,
+    );
+    const playerCamera = createDefaultCamera(snapshot);
+    const npcCamera = setCameraMode(playerCamera, "Follow NPC", snapshot, scenario);
+    const freeCamera = setCameraMode(npcCamera, "Free Camera", snapshot, scenario);
+
+    assert.equal(npcCamera.mode, "Follow NPC");
+    assert.deepEqual(getCameraCenter(npcCamera, snapshot), {
+        x: 10,
+        y: 10,
+        plane: 0,
+    });
+    assert.equal(freeCamera.mode, "Free Camera");
+    assert.deepEqual(getCameraCenter(freeCamera, snapshot), {
+        x: 10,
+        y: 10,
+        plane: 0,
+    });
+}
+
+{
+    const scenario = new FakePlayerChaseScenario();
+    const snapshot = readPlayerChaseDebugSnapshot(
+        scenario,
+        "Follow Player",
+        defaultFieldOfView,
+    );
+    const camera = createDefaultCamera(snapshot);
+    scenario.player = { ...scenario.player, x: 20, y: 12 };
+    const movedSnapshot = readPlayerChaseDebugSnapshot(
+        scenario,
+        "Follow Player",
+        defaultFieldOfView,
+    );
+    const freeCamera = setCameraMode(
+        camera,
+        "Free Camera",
+        movedSnapshot,
+        scenario,
+    );
+
+    assert.deepEqual(getCameraCenter(freeCamera, movedSnapshot), {
+        x: 20,
+        y: 12,
+        plane: 0,
+    });
+}
+
+{
+    const scenario = new FakePlayerChaseScenario();
+    const snapshot = readPlayerChaseDebugSnapshot(
+        scenario,
+        "Follow Player",
+        defaultFieldOfView,
+    );
+    const camera = createDefaultCamera(snapshot);
+    const panned = panCamera(camera, "east", snapshot, scenario);
+
+    assert.equal(panned.mode, "Free Camera");
+    assert.deepEqual(getCameraCenter(panned, snapshot), {
+        x: 16,
+        y: 10,
+        plane: 0,
+    });
+}
+
+{
+    const scenario = new FakePlayerChaseScenario();
+    const snapshot = readPlayerChaseDebugSnapshot(
+        scenario,
+        "Follow Player",
+        defaultFieldOfView,
+    );
+    const camera = createDefaultCamera(snapshot);
+    const zoomed = setCameraFieldOfView(
+        setCameraMode(camera, "Follow NPC", snapshot, scenario),
+        maxFieldOfView + 100,
+        snapshot,
+        scenario,
+    );
+    const zoomedIn = setCameraFieldOfView(
+        zoomed,
+        minFieldOfView - 100,
+        snapshot,
+        scenario,
+    );
+
+    assert.equal(zoomed.mode, "Follow NPC");
+    assert.equal(zoomed.fieldOfView, maxFieldOfView);
+    assert.equal(zoomedIn.mode, "Follow NPC");
+    assert.equal(zoomedIn.fieldOfView, minFieldOfView);
 }
 
 {
@@ -171,6 +296,26 @@ class FakePlayerChaseScenario {
 
     assert.equal(snapshot.blockedClick, true);
     assert.deepEqual(snapshot.player.movementTarget, { x: 16, y: 10, plane: 0 });
+}
+
+{
+    const scenario = new FakePlayerChaseScenario();
+    scenario.width = 24;
+    scenario.height = 24;
+
+    const tiles = buildDebugTiles(
+        scenario,
+        { x: 23, y: 23, plane: 0 },
+        defaultFieldOfView,
+    );
+    const xs = tiles.map((tile) => tile.coordinate.x);
+    const ys = tiles.map((tile) => tile.coordinate.y);
+
+    assert.equal(tiles.length, defaultFieldOfView * defaultFieldOfView);
+    assert.equal(Math.min(...xs), 4);
+    assert.equal(Math.max(...xs), 23);
+    assert.equal(Math.min(...ys), 4);
+    assert.equal(Math.max(...ys), 23);
 }
 
 {

@@ -1,6 +1,7 @@
 import type { DevelopmentPlayerChaseScenario } from "./wasm/EngineModule";
 
-export type CameraMode = "Follow Player" | "Fixed Scene";
+export type CameraMode = "Follow Player" | "Follow NPC" | "Free Camera";
+export type CameraPanDirection = "north" | "east" | "south" | "west";
 
 export interface SceneCoordinate {
     x: number;
@@ -39,8 +40,16 @@ export interface ScreenCoordinate {
     y: number;
 }
 
+export interface CameraState {
+    mode: CameraMode;
+    center: SceneCoordinate;
+    fieldOfView: number;
+}
+
 export const tileSize = 28;
-export const defaultFieldOfView = 12;
+export const defaultFieldOfView = 20;
+export const minFieldOfView = 8;
+export const maxFieldOfView = 40;
 
 export function readPlayerChaseDebugSnapshot(
     scenario: DevelopmentPlayerChaseScenario,
@@ -90,15 +99,11 @@ export function buildDebugTiles(
     center: SceneCoordinate,
     fieldOfView: number,
 ): DebugTile[] {
-    const half = Math.floor(fieldOfView / 2);
-    const minX = Math.max(0, center.x - half);
-    const minY = Math.max(0, center.y - half);
-    const maxX = Math.min(scenario.GetSceneWidth() - 1, minX + fieldOfView - 1);
-    const maxY = Math.min(scenario.GetSceneHeight() - 1, minY + fieldOfView - 1);
+    const bounds = getVisibleBounds(scenario, center, fieldOfView);
     const tiles: DebugTile[] = [];
 
-    for (let y = minY; y <= maxY; y += 1) {
-        for (let x = minX; x <= maxX; x += 1) {
+    for (let y = bounds.minY; y <= bounds.maxY; y += 1) {
+        for (let x = bounds.minX; x <= bounds.maxX; x += 1) {
             const coordinate = { x, y, plane: center.plane };
             tiles.push({
                 key: `${coordinate.plane}:${coordinate.x}:${coordinate.y}`,
@@ -109,6 +114,91 @@ export function buildDebugTiles(
     }
 
     return tiles;
+}
+
+export function createDefaultCamera(
+    snapshot: PlayerChaseDebugSnapshot,
+): CameraState {
+    return {
+        mode: "Follow Player",
+        center: snapshot.player.coordinate,
+        fieldOfView: defaultFieldOfView,
+    };
+}
+
+export function getCameraCenter(
+    camera: CameraState,
+    snapshot: PlayerChaseDebugSnapshot,
+): SceneCoordinate {
+    if (camera.mode === "Follow Player") {
+        return snapshot.player.coordinate;
+    }
+
+    if (camera.mode === "Follow NPC") {
+        return snapshot.npc.coordinate;
+    }
+
+    return camera.center;
+}
+
+export function setCameraMode(
+    camera: CameraState,
+    mode: CameraMode,
+    snapshot: PlayerChaseDebugSnapshot,
+    scenario: DevelopmentPlayerChaseScenario,
+): CameraState {
+    const center =
+        mode === "Free Camera"
+            ? getCameraCenter(camera, snapshot)
+            : getCameraCenter({ ...camera, mode }, snapshot);
+
+    return clampCameraToScene(
+        {
+            ...camera,
+            mode,
+            center,
+        },
+        scenario,
+    );
+}
+
+export function panCamera(
+    camera: CameraState,
+    direction: CameraPanDirection,
+    snapshot: PlayerChaseDebugSnapshot,
+    scenario: DevelopmentPlayerChaseScenario,
+): CameraState {
+    const center = getCameraCenter(camera, snapshot);
+    const delta = getPanDelta(direction);
+
+    return clampCameraToScene(
+        {
+            ...camera,
+            mode: "Free Camera",
+            center: {
+                x: center.x + delta.x,
+                y: center.y + delta.y,
+                plane: center.plane,
+            },
+        },
+        scenario,
+    );
+}
+
+export function setCameraFieldOfView(
+    camera: CameraState,
+    fieldOfView: number,
+    snapshot: PlayerChaseDebugSnapshot,
+    scenario: DevelopmentPlayerChaseScenario,
+): CameraState {
+    return clampCameraToScene(
+        {
+            ...camera,
+            center: getCameraCenter(camera, snapshot),
+            fieldOfView: clampFieldOfView(fieldOfView),
+        },
+        scenario,
+    );
 }
 
 export function getSceneScreenCoordinate(
@@ -141,4 +231,89 @@ function getTileKind(
     }
 
     return "empty";
+}
+
+function getVisibleBounds(
+    scenario: DevelopmentPlayerChaseScenario,
+    center: SceneCoordinate,
+    fieldOfView: number,
+): { minX: number; maxX: number; minY: number; maxY: number } {
+    const width = scenario.GetSceneWidth();
+    const height = scenario.GetSceneHeight();
+    const columnCount = Math.min(fieldOfView, width);
+    const rowCount = Math.min(fieldOfView, height);
+
+    return {
+        ...getAxisBounds(center.x, columnCount, width),
+        ...renameAxisBounds(getAxisBounds(center.y, rowCount, height)),
+    };
+}
+
+function getAxisBounds(
+    center: number,
+    visibleCount: number,
+    sceneSize: number,
+): { minX: number; maxX: number } {
+    const half = Math.floor(visibleCount / 2);
+    const maxStart = Math.max(0, sceneSize - visibleCount);
+    const start = Math.min(Math.max(0, center - half), maxStart);
+
+    return {
+        minX: start,
+        maxX: Math.min(sceneSize - 1, start + visibleCount - 1),
+    };
+}
+
+function renameAxisBounds(bounds: {
+    minX: number;
+    maxX: number;
+}): { minY: number; maxY: number } {
+    return {
+        minY: bounds.minX,
+        maxY: bounds.maxX,
+    };
+}
+
+function clampCameraToScene(
+    camera: CameraState,
+    scenario: DevelopmentPlayerChaseScenario,
+): CameraState {
+    return {
+        ...camera,
+        center: clampCoordinateToScene(camera.center, scenario),
+    };
+}
+
+function clampCoordinateToScene(
+    coordinate: SceneCoordinate,
+    scenario: DevelopmentPlayerChaseScenario,
+): SceneCoordinate {
+    return {
+        x: clamp(coordinate.x, 0, scenario.GetSceneWidth() - 1),
+        y: clamp(coordinate.y, 0, scenario.GetSceneHeight() - 1),
+        plane: coordinate.plane,
+    };
+}
+
+function clampFieldOfView(fieldOfView: number): number {
+    return clamp(fieldOfView, minFieldOfView, maxFieldOfView);
+}
+
+function getPanDelta(
+    direction: CameraPanDirection,
+): { x: number; y: number } {
+    switch (direction) {
+        case "north":
+            return { x: 0, y: 1 };
+        case "east":
+            return { x: 1, y: 0 };
+        case "south":
+            return { x: 0, y: -1 };
+        case "west":
+            return { x: -1, y: 0 };
+    }
+}
+
+function clamp(value: number, min: number, max: number): number {
+    return Math.min(Math.max(value, min), max);
 }

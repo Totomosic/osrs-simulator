@@ -2,10 +2,19 @@
 import { computed, onMounted, onUnmounted, ref } from "vue";
 import {
     buildDebugTiles,
+    createDefaultCamera,
     defaultFieldOfView,
+    getCameraCenter,
     getSceneScreenCoordinate,
+    maxFieldOfView,
+    minFieldOfView,
+    panCamera,
     readPlayerChaseDebugSnapshot,
+    setCameraFieldOfView,
+    setCameraMode as setDebugCameraMode,
     tileSize,
+    type CameraPanDirection,
+    type CameraState,
     type CameraMode,
     type DebugTile,
     type PlayerChaseDebugSnapshot,
@@ -18,23 +27,24 @@ import {
 const engineModuleStatus = ref<"loading" | "loaded" | "failed">("loading");
 const scenario = ref<DevelopmentPlayerChaseScenario | null>(null);
 const snapshot = ref<PlayerChaseDebugSnapshot | null>(null);
-const cameraMode = ref<CameraMode>("Follow Player");
-const fieldOfView = ref(defaultFieldOfView);
+const camera = ref<CameraState | null>(null);
 let playbackTimer: number | undefined;
 
 const cameraCenter = computed(() => {
-    if (snapshot.value === null) {
+    if (snapshot.value === null || camera.value === null) {
         return { x: 15, y: 10, plane: 0 };
     }
 
-    return cameraMode.value === "Follow Player"
-        ? snapshot.value.player.coordinate
-        : { x: 13, y: 10, plane: 0 };
+    return getCameraCenter(camera.value, snapshot.value);
 });
 const renderTiles = computed<DebugTile[]>(() =>
-    scenario.value === null
+    scenario.value === null || camera.value === null
         ? []
-        : buildDebugTiles(scenario.value, cameraCenter.value, fieldOfView.value),
+        : buildDebugTiles(
+              scenario.value,
+              cameraCenter.value,
+              camera.value.fieldOfView,
+          ),
 );
 const viewBox = computed(() => {
     const width = getColumnCount(renderTiles.value) * tileSize;
@@ -54,6 +64,8 @@ const engineStatusLabel = computed(() => {
 });
 
 onMounted(async () => {
+    window.addEventListener("keydown", handleCameraKeyDown);
+
     try {
         const module = await loadEngineModule();
         scenario.value = new module.DevelopmentPlayerChaseScenario();
@@ -66,6 +78,7 @@ onMounted(async () => {
 });
 
 onUnmounted(() => {
+    window.removeEventListener("keydown", handleCameraKeyDown);
     stopPlayback();
 });
 
@@ -74,11 +87,23 @@ function refreshSnapshot(): void {
         return;
     }
 
-    snapshot.value = readPlayerChaseDebugSnapshot(
+    const nextSnapshot = readPlayerChaseDebugSnapshot(
         scenario.value,
-        cameraMode.value,
-        fieldOfView.value,
+        camera.value?.mode ?? "Follow Player",
+        camera.value?.fieldOfView ?? defaultFieldOfView,
     );
+
+    if (camera.value === null) {
+        camera.value = createDefaultCamera(nextSnapshot);
+        snapshot.value = readPlayerChaseDebugSnapshot(
+            scenario.value,
+            camera.value.mode,
+            camera.value.fieldOfView,
+        );
+        return;
+    }
+
+    snapshot.value = nextSnapshot;
 }
 
 function toggleRunning(): void {
@@ -114,13 +139,92 @@ function stepScenario(): void {
 }
 
 function setCameraMode(mode: CameraMode): void {
-    cameraMode.value = mode;
+    if (scenario.value === null || snapshot.value === null || camera.value === null) {
+        return;
+    }
+
+    camera.value = setDebugCameraMode(
+        camera.value,
+        mode,
+        snapshot.value,
+        scenario.value,
+    );
     refreshSnapshot();
 }
 
 function setFieldOfView(value: number): void {
-    fieldOfView.value = value;
+    if (scenario.value === null || snapshot.value === null || camera.value === null) {
+        return;
+    }
+
+    camera.value = setCameraFieldOfView(
+        camera.value,
+        value,
+        snapshot.value,
+        scenario.value,
+    );
     refreshSnapshot();
+}
+
+function pan(direction: CameraPanDirection): void {
+    if (scenario.value === null || snapshot.value === null || camera.value === null) {
+        return;
+    }
+
+    camera.value = panCamera(
+        camera.value,
+        direction,
+        snapshot.value,
+        scenario.value,
+    );
+    refreshSnapshot();
+}
+
+function handleCameraKeyDown(event: KeyboardEvent): void {
+    if (event.target instanceof HTMLInputElement) {
+        return;
+    }
+
+    const direction = getKeyboardPanDirection(event.key);
+
+    if (direction === null) {
+        return;
+    }
+
+    event.preventDefault();
+    pan(direction);
+}
+
+function getKeyboardPanDirection(key: string): CameraPanDirection | null {
+    switch (key) {
+        case "ArrowUp":
+        case "w":
+        case "W":
+            return "north";
+        case "ArrowRight":
+        case "d":
+        case "D":
+            return "east";
+        case "ArrowDown":
+        case "s":
+        case "S":
+            return "south";
+        case "ArrowLeft":
+        case "a":
+        case "A":
+            return "west";
+        default:
+            return null;
+    }
+}
+
+function wheelFieldOfView(event: WheelEvent): void {
+    if (camera.value === null) {
+        return;
+    }
+
+    const delta = event.deltaY > 0 ? 2 : -2;
+    setFieldOfView(camera.value.fieldOfView + delta);
 }
 
 function clickTile(tile: DebugTile): void {
@@ -181,37 +285,55 @@ function formatCoordinate(
         <div class="segmented" aria-label="Camera mode">
           <button
             type="button"
-            :class="{ selected: cameraMode === 'Follow Player' }"
+            :class="{ selected: camera?.mode === 'Follow Player' }"
             @click="setCameraMode('Follow Player')"
           >
-            Follow
+            Player
           </button>
           <button
             type="button"
-            :class="{ selected: cameraMode === 'Fixed Scene' }"
-            @click="setCameraMode('Fixed Scene')"
+            :class="{ selected: camera?.mode === 'Follow NPC' }"
+            @click="setCameraMode('Follow NPC')"
           >
-            Fixed
+            NPC
           </button>
+          <button
+            type="button"
+            :class="{ selected: camera?.mode === 'Free Camera' }"
+            @click="setCameraMode('Free Camera')"
+          >
+            Free
+          </button>
+        </div>
+
+        <div class="pan-controls" aria-label="Pan Camera">
+          <button type="button" @click="pan('north')">N</button>
+          <button type="button" @click="pan('west')">W</button>
+          <button type="button" @click="pan('east')">E</button>
+          <button type="button" @click="pan('south')">S</button>
         </div>
 
         <label class="fov-control">
           <span>FOV</span>
           <input
             type="range"
-            min="8"
-            max="18"
+            :min="minFieldOfView"
+            :max="maxFieldOfView"
             step="2"
-            :value="fieldOfView"
+            :value="camera?.fieldOfView ?? defaultFieldOfView"
             @input="setFieldOfView(Number(($event.target as HTMLInputElement).value))"
           />
-          <strong>{{ fieldOfView }}</strong>
+          <strong>{{ camera?.fieldOfView ?? defaultFieldOfView }}</strong>
         </label>
       </div>
     </header>
 
     <section v-if="snapshot !== null" class="debug-layout" aria-live="polite">
-      <div class="viewport" aria-label="Player Chase scene">
+      <div
+        class="viewport"
+        aria-label="Player Chase scene"
+        @wheel.prevent="wheelFieldOfView"
+      >
         <svg class="scene-svg" :viewBox="viewBox" role="img">
           <rect
             v-for="tile in renderTiles"
@@ -376,6 +498,16 @@ button:hover {
 .segmented {
     display: flex;
     gap: 6px;
+}
+
+.pan-controls {
+    display: grid;
+    gap: 4px;
+    grid-template-columns: repeat(4, 38px);
+}
+
+.pan-controls button {
+    padding: 0;
 }
 
 .fov-control {
