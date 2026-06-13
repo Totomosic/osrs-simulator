@@ -24,12 +24,16 @@ import {
     loadEngineModule,
     type DevelopmentPlayerChaseScenario,
 } from "./wasm/EngineModule";
+import {
+    createPlayerChasePlayback,
+    type PlayerChasePlaybackControls,
+} from "./playerChasePlayback";
 
 const engineModuleStatus = ref<"loading" | "loaded" | "failed">("loading");
 const scenario = ref<DevelopmentPlayerChaseScenario | null>(null);
 const snapshot = ref<PlayerChaseDebugSnapshot | null>(null);
 const camera = ref<CameraState | null>(null);
-let playbackTimer: number | undefined;
+let playback: PlayerChasePlaybackControls | null = null;
 
 const cameraCenter = computed(() => {
     if (snapshot.value === null || camera.value === null) {
@@ -70,6 +74,7 @@ onMounted(async () => {
     try {
         const module = await loadEngineModule();
         scenario.value = new module.DevelopmentPlayerChaseScenario();
+        playback = createPlayerChasePlayback(scenario.value, refreshSnapshot);
         refreshSnapshot();
         engineModuleStatus.value = "loaded";
     } catch (error) {
@@ -80,7 +85,7 @@ onMounted(async () => {
 
 onUnmounted(() => {
     window.removeEventListener("keydown", handleCameraKeyDown);
-    stopPlayback();
+    playback?.stop();
 });
 
 function refreshSnapshot(): void {
@@ -108,35 +113,11 @@ function refreshSnapshot(): void {
 }
 
 function toggleRunning(): void {
-    if (scenario.value === null) {
-        return;
-    }
-
-    const running = !scenario.value.IsRunning();
-    scenario.value.SetRunning(running);
-    refreshSnapshot();
-
-    if (running) {
-        playbackTimer = window.setInterval(stepScenario, 700);
-    } else {
-        stopPlayback();
-    }
+    playback?.toggle();
 }
 
-function stopPlayback(): void {
-    if (playbackTimer !== undefined) {
-        window.clearInterval(playbackTimer);
-        playbackTimer = undefined;
-    }
-}
-
-function stepScenario(): void {
-    if (scenario.value === null) {
-        return;
-    }
-
-    scenario.value.Step();
-    refreshSnapshot();
+function stepWhilePaused(): void {
+    playback?.stepWhilePaused();
 }
 
 function setCameraMode(mode: CameraMode): void {
@@ -277,7 +258,9 @@ function formatCoordinate(
         <button type="button" @click="toggleRunning">
           {{ snapshot.running ? "Pause" : "Run" }}
         </button>
-        <button type="button" @click="stepScenario">Step</button>
+        <button type="button" :disabled="snapshot.running" @click="stepWhilePaused">
+          Step
+        </button>
 
         <div class="segmented" aria-label="Camera mode">
           <button
