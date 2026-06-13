@@ -44,7 +44,7 @@ class FakePlayerChaseScenario {
         this.lastClickBlocked = false;
         this.playerTarget = null;
         this.player = { id: 1, x: 8, y: 11, plane: 0, size: 1, speed: 2 };
-        this.npc = { id: 2, x: 18, y: 10, plane: 0, size: 4, speed: 1 };
+        this.npc = { id: 2, x: 18, y: 20, plane: 0, size: 4, speed: 1 };
         this.width = 104;
         this.height = 104;
     }
@@ -53,13 +53,13 @@ class FakePlayerChaseScenario {
         const tiles = [];
 
         for (let x = 12; x <= 14; x += 1) {
-            for (let y = 10; y <= 12; y += 1) {
+            for (let y = 4; y <= 6; y += 1) {
                 tiles.push({
                     coordinate: { x, y, plane: 0 },
                     flags: ["BlockMovementObject", "BlockLineOfSightFull"],
                     gameObject: {
                         id: 200,
-                        origin: { x: 12, y: 10, plane: 0 },
+                        origin: { x: 12, y: 4, plane: 0 },
                         sizeX: 3,
                         sizeY: 3,
                     },
@@ -113,7 +113,7 @@ class FakePlayerChaseScenario {
     }
 
     ClickSceneCoordinate(x, y, plane) {
-        if (plane === 0 && x >= 12 && x <= 14 && y >= 10 && y <= 12) {
+        if (plane === 0 && x >= 12 && x <= 14 && y >= 4 && y <= 6) {
             this.lastClickBlocked = true;
             return false;
         }
@@ -140,7 +140,7 @@ class FakePlayerChaseScenario {
     assert.equal(snapshot.player.size, 1);
     assert.equal(snapshot.player.speed, 2);
     assert.equal(snapshot.player.movementTarget, null);
-    assert.deepEqual(snapshot.npc.coordinate, { x: 18, y: 10, plane: 0 });
+    assert.deepEqual(snapshot.npc.coordinate, { x: 18, y: 20, plane: 0 });
     assert.equal(snapshot.npc.size, 4);
     assert.equal(snapshot.npc.speed, 1);
     assert.deepEqual(snapshot.npc.movementTarget, {
@@ -180,13 +180,13 @@ class FakePlayerChaseScenario {
     assert.deepEqual(getCameraCenter(camera, snapshot), { x: 8, y: 11, plane: 0 });
     assert.deepEqual(getCameraCenter(npcCamera, snapshot), {
         x: 18,
-        y: 10,
+        y: 20,
         plane: 0,
     });
     assert.equal(freeCamera.mode, "Free Camera");
     assert.deepEqual(getCameraCenter(freeCamera, snapshot), {
         x: 19,
-        y: 10,
+        y: 20,
         plane: 0,
     });
     assert.equal(zoomed.fieldOfView, maxFieldOfView);
@@ -220,8 +220,8 @@ class FakePlayerChaseScenario {
     scenario.playerTarget = { x: 10, y: 11, plane: 0 };
 
     const clicked = clickDebugTile(scenario, {
-        key: "0:12:10",
-        coordinate: { x: 12, y: 10, plane: 0 },
+        key: "0:12:4",
+        coordinate: { x: 12, y: 4, plane: 0 },
         kind: "game-object",
         flags: ["BlockMovementObject"],
     });
@@ -273,15 +273,15 @@ class FakePlayerChaseScenario {
     );
     const tiles = buildDebugTiles(
         snapshot,
-        { x: 14, y: 10, plane: 0 },
+        { x: 14, y: 14, plane: 0 },
         defaultFieldOfView,
     );
     const kinds = new Set(tiles.map((tile) => tile.kind));
     const objectTile = tiles.find(
-        (tile) => tile.coordinate.x === 12 && tile.coordinate.y === 10,
+        (tile) => tile.coordinate.x === 12 && tile.coordinate.y === 4,
     );
     const npcTile = tiles.find(
-        (tile) => tile.coordinate.x === 21 && tile.coordinate.y === 13,
+        (tile) => tile.coordinate.x === 21 && tile.coordinate.y === 23,
     );
     const playerScreen = getSceneScreenCoordinate(
         { x: 8, y: 11, plane: 0 },

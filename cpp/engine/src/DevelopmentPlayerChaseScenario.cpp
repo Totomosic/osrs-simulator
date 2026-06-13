@@ -95,7 +95,7 @@ DevelopmentPlayerChaseScenario::DevelopmentPlayerChaseScenario()
     if (scene != nullptr)
     {
         scene->PlaceGameObject(
-            {12, 10, 0},
+            {12, 4, 0},
             200,
             CardinalDirection::North,
             3,
@@ -107,7 +107,7 @@ DevelopmentPlayerChaseScenario::DevelopmentPlayerChaseScenario()
     m_NpcId = world.CreateNpc(4, 1);
 
     world.PlaceActor(m_PlayerId, world.GetDefaultSceneId(), {8, 11, 0});
-    world.PlaceActor(m_NpcId, world.GetDefaultSceneId(), {18, 10, 0});
+    world.PlaceActor(m_NpcId, world.GetDefaultSceneId(), {18, 20, 0});
     world.SetActorMovementTarget(m_NpcId, m_PlayerId);
 }
 

@@ -528,39 +528,16 @@ bool World::UpdateActorMovement(ActorId actorId)
     }
     else
     {
-        const ActorCore* targetActor =
-            TryGetActorCore(movementTarget->value().actorId);
-
-        if (AreActorFootprintsDiagonallyAdjacent(
-                *actor,
-                membership->coordinate,
-                *targetActor,
-                destination))
-        {
-            const SceneCoordinate cardinalDestination =
-                GetDiagonalAdjacencyCardinalDestination(
-                    *actor,
-                    membership->coordinate,
-                    *targetActor,
-                    destination);
-            dx = cardinalDestination.x - membership->coordinate.x;
-            dy = cardinalDestination.y - membership->coordinate.y;
-        }
-        else
-        {
-            dx = GetMovementDeltaTowardFootprintForAxis(
-                membership->coordinate.x,
-                actor->size,
-                destination.x,
-                targetActor->size,
-                actor->speed);
-            dy = GetMovementDeltaTowardFootprintForAxis(
-                membership->coordinate.y,
-                actor->size,
-                destination.y,
-                targetActor->size,
-                actor->speed);
-        }
+        dx = GetMovementDeltaForAxis(
+            membership->coordinate.x,
+            1,
+            destination.x,
+            actor->speed);
+        dy = GetMovementDeltaForAxis(
+            membership->coordinate.y,
+            1,
+            destination.y,
+            actor->speed);
     }
 
     const bool moved = MoveActorByDelta(actorId, dx, dy);
@@ -784,34 +761,6 @@ bool World::AreActorFootprintsEdgeAdjacent(
            (touchesSouthOrNorth && overlapsOnX);
 }
 
-bool World::AreActorFootprintsDiagonallyAdjacent(
-    const ActorCore& mover,
-    SceneCoordinate moverCoordinate,
-    const ActorCore& target,
-    SceneCoordinate targetCoordinate) const
-{
-    if (moverCoordinate.plane != targetCoordinate.plane)
-    {
-        return false;
-    }
-
-    const int moverMinX = moverCoordinate.x;
-    const int moverMaxX = moverCoordinate.x + mover.size - 1;
-    const int moverMinY = moverCoordinate.y;
-    const int moverMaxY = moverCoordinate.y + mover.size - 1;
-    const int targetMinX = targetCoordinate.x;
-    const int targetMaxX = targetCoordinate.x + target.size - 1;
-    const int targetMinY = targetCoordinate.y;
-    const int targetMaxY = targetCoordinate.y + target.size - 1;
-
-    const bool touchesWestOrEast =
-        moverMaxX + 1 == targetMinX || targetMaxX + 1 == moverMinX;
-    const bool touchesSouthOrNorth =
-        moverMaxY + 1 == targetMinY || targetMaxY + 1 == moverMinY;
-
-    return touchesWestOrEast && touchesSouthOrNorth;
-}
-
 int World::GetMovementDeltaForAxis(
     int anchor,
     int size,
@@ -829,79 +778,6 @@ int World::GetMovementDeltaForAxis(
     }
 
     return 0;
-}
-
-int World::GetMovementDeltaTowardFootprintForAxis(
-    int anchor,
-    int size,
-    int targetAnchor,
-    int targetSize,
-    int speed) const
-{
-    const int max = anchor + size - 1;
-    const int targetMax = targetAnchor + targetSize - 1;
-
-    if (max + 1 < targetAnchor)
-    {
-        return ClampDelta(targetAnchor - max - 1, speed);
-    }
-
-    if (targetMax + 1 < anchor)
-    {
-        return ClampDelta(targetMax + 1 - anchor, speed);
-    }
-
-    return 0;
-}
-
-SceneCoordinate World::GetDiagonalAdjacencyCardinalDestination(
-    const ActorCore& mover,
-    SceneCoordinate moverCoordinate,
-    const ActorCore& target,
-    SceneCoordinate targetCoordinate) const
-{
-    const int moverMaxX = moverCoordinate.x + mover.size - 1;
-    const int moverMaxY = moverCoordinate.y + mover.size - 1;
-    const int targetMaxX = targetCoordinate.x + target.size - 1;
-    const int targetMaxY = targetCoordinate.y + target.size - 1;
-    const int westDx = -1;
-    const int eastDx = 1;
-    const int southDy = -1;
-    const int northDy = 1;
-
-    if (targetMaxX + 1 == moverCoordinate.x)
-    {
-        return {
-            moverCoordinate.x + westDx,
-            moverCoordinate.y,
-            moverCoordinate.plane};
-    }
-
-    if (moverMaxX + 1 == targetCoordinate.x)
-    {
-        return {
-            moverCoordinate.x + eastDx,
-            moverCoordinate.y,
-            moverCoordinate.plane};
-    }
-
-    if (targetMaxY + 1 == moverCoordinate.y)
-    {
-        return {
-            moverCoordinate.x,
-            moverCoordinate.y + southDy,
-            moverCoordinate.plane};
-    }
-
-    if (moverMaxY + 1 == targetCoordinate.y)
-    {
-        return {
-            moverCoordinate.x,
-            moverCoordinate.y + northDy,
-            moverCoordinate.plane};
-    }
-
-    return moverCoordinate;
 }
 
 bool World::CanStandOnMovementBlockers(

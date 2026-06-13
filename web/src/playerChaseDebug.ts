@@ -95,7 +95,7 @@ export function readPlayerChaseDebugSnapshot(
         cameraMode,
         fieldOfView,
         noPathfindingNote:
-            "Direct movement only: the NPC keeps its Player movement target but stops when the Game Object blocks the straight chase.",
+            "Direct movement only: the NPC keeps its Player movement target when it stops at Edge Adjacency; the Game Object remains available for blocked-click checks.",
     };
 }
 

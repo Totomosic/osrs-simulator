@@ -126,23 +126,7 @@ private:
         SceneCoordinate moverCoordinate,
         const ActorCore& target,
         SceneCoordinate targetCoordinate) const;
-    bool AreActorFootprintsDiagonallyAdjacent(
-        const ActorCore& mover,
-        SceneCoordinate moverCoordinate,
-        const ActorCore& target,
-        SceneCoordinate targetCoordinate) const;
     int GetMovementDeltaForAxis(int anchor, int size, int target, int speed) const;
-    int GetMovementDeltaTowardFootprintForAxis(
-        int anchor,
-        int size,
-        int targetAnchor,
-        int targetSize,
-        int speed) const;
-    SceneCoordinate GetDiagonalAdjacencyCardinalDestination(
-        const ActorCore& mover,
-        SceneCoordinate moverCoordinate,
-        const ActorCore& target,
-        SceneCoordinate targetCoordinate) const;
     bool CanStandOnMovementBlockers(
         const Scene& scene,
         SceneCoordinate coordinate,

@@ -269,13 +269,13 @@ int main()
         assert(scenario.GetPlayerX() == 8);
         assert(scenario.GetPlayerY() == 11);
         assert(scenario.GetNpcX() == 18);
-        assert(scenario.GetNpcY() == 10);
+        assert(scenario.GetNpcY() == 20);
         assert(scenario.GetNpcSize() == 4);
         assert(scenario.HasNpcMovementTarget());
         assert(scenario.GetNpcMovementTargetActorId() == scenario.GetPlayerId());
         assert(scenario.GetNpcMovementTargetLabel() == "Player #1");
-        assert(scenario.IsGameObjectTile(12, 10, 0));
-        assert(scenario.IsGameObjectTile(14, 12, 0));
+        assert(scenario.IsGameObjectTile(12, 4, 0));
+        assert(scenario.IsGameObjectTile(14, 6, 0));
 
         const std::string initialSnapshot = scenario.GetSnapshotJson();
         assert(initialSnapshot.find("\"name\":\"Player Chase\"") !=
@@ -294,23 +294,26 @@ int main()
         assert(scenario.GetPlayerMovementTargetY() == 11);
         assert(scenario.GetPlayerMovementTargetPlane() == 0);
 
-        assert(scenario.ClickSceneCoordinate(7, 11, 0));
+        assert(scenario.ClickSceneCoordinate(8, 11, 0));
         assert(!scenario.WasLastClickBlocked());
-        assert(scenario.GetPlayerMovementTargetX() == 7);
+        assert(scenario.GetPlayerMovementTargetX() == 8);
         assert(scenario.GetPlayerMovementTargetY() == 11);
 
-        assert(!scenario.ClickSceneCoordinate(12, 10, 0));
+        assert(!scenario.ClickSceneCoordinate(12, 4, 0));
         assert(scenario.WasLastClickBlocked());
-        assert(scenario.GetPlayerMovementTargetX() == 7);
+        assert(scenario.GetPlayerMovementTargetX() == 8);
         assert(scenario.GetPlayerMovementTargetY() == 11);
 
-        scenario.Step();
-        scenario.Step();
+        for (int i = 0; i < 9; ++i)
+        {
+            scenario.Step();
+        }
 
-        assert(scenario.GetTick() == 2);
-        assert(scenario.GetNpcX() == 16);
-        assert(scenario.GetNpcY() == 10);
+        assert(scenario.GetTick() == 9);
+        assert(scenario.GetNpcX() == 9);
+        assert(scenario.GetNpcY() == 11);
         assert(scenario.HasNpcMovementTarget());
+        assert(scenario.GetNpcMovementTargetActorId() == scenario.GetPlayerId());
     }
 
     return 0;

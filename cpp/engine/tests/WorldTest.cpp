@@ -606,6 +606,8 @@ int main()
 
         scene->TryGetTile({9, 10, 0})
             ->AddFlag(osrssim::TileFlag::BlockMovementObject);
+        scene->TryGetTile({10, 11, 0})
+            ->AddFlag(osrssim::TileFlag::BlockMovementObject);
 
         assert(!world.UpdateActorMovement(moverId));
         assert(world.GetSceneMembership(moverId)->coordinate ==
