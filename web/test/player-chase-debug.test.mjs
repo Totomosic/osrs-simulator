@@ -23,6 +23,7 @@ await writeFile(`${outfile}.stamp`, new Date().toISOString());
 
 const {
     buildDebugTiles,
+    clickDebugTile,
     createDefaultCamera,
     defaultFieldOfView,
     getSceneScreenCoordinate,
@@ -144,6 +145,17 @@ class FakePlayerChaseScenario {
 
     IsGameObjectTile(x, y, plane) {
         return plane === 0 && x >= 12 && x <= 13 && y >= 10 && y <= 11;
+    }
+
+    ClickSceneCoordinate(x, y, plane) {
+        if (this.IsGameObjectTile(x, y, plane)) {
+            this.lastClickBlocked = true;
+            return false;
+        }
+
+        this.lastClickBlocked = false;
+        this.playerTarget = { x, y, plane };
+        return true;
     }
 }
 
@@ -296,6 +308,49 @@ class FakePlayerChaseScenario {
 
     assert.equal(snapshot.blockedClick, true);
     assert.deepEqual(snapshot.player.movementTarget, { x: 16, y: 10, plane: 0 });
+}
+
+{
+    const scenario = new FakePlayerChaseScenario();
+    const cameraMode = "Follow Player";
+    const clicked = clickDebugTile(scenario, {
+        key: "0:16:10",
+        coordinate: { x: 16, y: 10, plane: 0 },
+        kind: "empty",
+    });
+    const snapshot = readPlayerChaseDebugSnapshot(
+        scenario,
+        cameraMode,
+        defaultFieldOfView,
+    );
+
+    assert.equal(clicked, true);
+    assert.equal(snapshot.tick, 0);
+    assert.equal(snapshot.running, false);
+    assert.equal(snapshot.cameraMode, "Follow Player");
+    assert.deepEqual(snapshot.player.coordinate, { x: 15, y: 10, plane: 0 });
+    assert.deepEqual(snapshot.player.movementTarget, { x: 16, y: 10, plane: 0 });
+    assert.equal(snapshot.blockedClick, false);
+}
+
+{
+    const scenario = new FakePlayerChaseScenario();
+    scenario.playerTarget = { x: 16, y: 10, plane: 0 };
+
+    const clicked = clickDebugTile(scenario, {
+        key: "0:12:10",
+        coordinate: { x: 12, y: 10, plane: 0 },
+        kind: "game-object",
+    });
+    const snapshot = readPlayerChaseDebugSnapshot(
+        scenario,
+        "Follow NPC",
+        defaultFieldOfView,
+    );
+
+    assert.equal(clicked, false);
+    assert.deepEqual(snapshot.player.movementTarget, { x: 16, y: 10, plane: 0 });
+    assert.equal(snapshot.blockedClick, true);
 }
 
 {

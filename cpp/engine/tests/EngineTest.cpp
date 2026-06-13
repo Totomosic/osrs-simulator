@@ -15,6 +15,33 @@ int main()
             world.GetDefaultSceneId(),
             {10, 10, 0}));
 
+        assert(engine.SetPlayerSceneCoordinateMovementTarget(
+            playerId,
+            {11, 10, 0}));
+
+        assert(engine.GetCurrentTick() == 0);
+        assert(world.GetSceneMembership(playerId)->coordinate ==
+               (osrssim::SceneCoordinate{10, 10, 0}));
+        assert(world.GetPlayer(playerId)->movementTarget.has_value());
+        assert(world.GetPlayer(playerId)->movementTarget->sceneCoordinate ==
+               (osrssim::SceneCoordinate{11, 10, 0}));
+
+        engine.Step();
+
+        assert(world.GetSceneMembership(playerId)->coordinate ==
+               (osrssim::SceneCoordinate{11, 10, 0}));
+    }
+
+    {
+        osrssim::Engine engine;
+        osrssim::World& world = engine.GetWorld();
+        osrssim::ActorId playerId = world.CreatePlayer(1, 1);
+
+        assert(world.PlaceActor(
+            playerId,
+            world.GetDefaultSceneId(),
+            {10, 10, 0}));
+
         assert(engine.QueuePlayerMoveToSceneCoordinate(playerId, {11, 10, 0}));
         assert(engine.QueuePlayerMoveToSceneCoordinate(playerId, {10, 11, 0}));
 
@@ -248,8 +275,25 @@ int main()
         assert(scenario.GetNpcMovementTargetLabel() == "Player #1");
         assert(scenario.IsGameObjectTile(12, 10, 0));
 
+        assert(scenario.ClickSceneCoordinate(16, 10, 0));
+        assert(!scenario.WasLastClickBlocked());
+        assert(scenario.GetTick() == 0);
+        assert(scenario.GetPlayerX() == 15);
+        assert(scenario.GetPlayerY() == 10);
+        assert(scenario.HasPlayerMovementTarget());
+        assert(scenario.GetPlayerMovementTargetX() == 16);
+        assert(scenario.GetPlayerMovementTargetY() == 10);
+        assert(scenario.GetPlayerMovementTargetPlane() == 0);
+
+        assert(scenario.ClickSceneCoordinate(10, 10, 0));
+        assert(!scenario.WasLastClickBlocked());
+        assert(scenario.GetPlayerMovementTargetX() == 10);
+        assert(scenario.GetPlayerMovementTargetY() == 10);
+
         assert(!scenario.ClickSceneCoordinate(12, 10, 0));
         assert(scenario.WasLastClickBlocked());
+        assert(scenario.GetPlayerMovementTargetX() == 10);
+        assert(scenario.GetPlayerMovementTargetY() == 10);
 
         scenario.Step();
         scenario.Step();

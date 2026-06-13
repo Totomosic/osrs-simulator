@@ -2,6 +2,7 @@
 import { computed, onMounted, onUnmounted, ref } from "vue";
 import {
     buildDebugTiles,
+    clickDebugTile,
     createDefaultCamera,
     defaultFieldOfView,
     getCameraCenter,
@@ -232,11 +233,7 @@ function clickTile(tile: DebugTile): void {
         return;
     }
 
-    scenario.value.ClickSceneCoordinate(
-        tile.coordinate.x,
-        tile.coordinate.y,
-        tile.coordinate.plane,
-    );
+    clickDebugTile(scenario.value, tile);
     refreshSnapshot();
 }
 

@@ -51,7 +51,9 @@ bool DevelopmentPlayerChaseScenario::ClickSceneCoordinate(int x, int y, int plan
     }
 
     m_LastClickBlocked = false;
-    return m_Engine.QueuePlayerMoveToSceneCoordinate(m_PlayerId, coordinate);
+    return m_Engine.SetPlayerSceneCoordinateMovementTarget(
+        m_PlayerId,
+        coordinate);
 }
 
 void DevelopmentPlayerChaseScenario::SetRunning(bool running)

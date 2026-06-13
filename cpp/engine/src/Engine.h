@@ -22,6 +22,9 @@ private:
     std::vector<QueuedPlayerMovementAction> m_QueuedPlayerMovementActions;
 
 public:
+    bool SetPlayerSceneCoordinateMovementTarget(
+        ActorId actorId,
+        SceneCoordinate coordinate);
     bool QueuePlayerMoveToSceneCoordinate(
         ActorId actorId,
         SceneCoordinate coordinate);

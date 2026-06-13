@@ -5,6 +5,13 @@
 namespace osrssim
 {
 
+bool Engine::SetPlayerSceneCoordinateMovementTarget(
+    ActorId actorId,
+    SceneCoordinate coordinate)
+{
+    return m_World.SetPlayerSceneCoordinateMovementTarget(actorId, coordinate);
+}
+
 bool Engine::QueuePlayerMoveToSceneCoordinate(
     ActorId actorId,
     SceneCoordinate coordinate)

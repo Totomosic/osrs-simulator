@@ -214,6 +214,17 @@ export function getSceneScreenCoordinate(
     };
 }
 
+export function clickDebugTile(
+    scenario: DevelopmentPlayerChaseScenario,
+    tile: DebugTile,
+): boolean {
+    return scenario.ClickSceneCoordinate(
+        tile.coordinate.x,
+        tile.coordinate.y,
+        tile.coordinate.plane,
+    );
+}
+
 function getTileKind(
     scenario: DevelopmentPlayerChaseScenario,
     coordinate: SceneCoordinate,
