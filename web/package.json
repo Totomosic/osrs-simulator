@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "test": "node test/player-chase-debug.test.mjs && node test/player-chase-playback.test.mjs && node test/engine-module-loader.test.mjs",
+    "test": "node test/player-chase-debug.test.mjs && node test/player-chase-playback.test.mjs && node test/engine-module-loader.test.mjs && node test/wasm-reactivity.test.mjs",
     "typecheck": "vue-tsc --noEmit",
     "build": "yarn typecheck && vite build"
   },

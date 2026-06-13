@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, ref } from "vue";
+import { computed, onMounted, onUnmounted, ref, shallowRef } from "vue";
 import {
     buildDebugTiles,
     clickDebugTile,
@@ -32,7 +32,7 @@ import {
 } from "./playerChasePlayback";
 
 const engineModuleStatus = ref<"loading" | "loaded" | "failed">("loading");
-const scenario = ref<DevelopmentPlayerChaseScenario | null>(null);
+const scenario = shallowRef<DevelopmentPlayerChaseScenario | null>(null);
 const snapshot = ref<PlayerChaseDebugSnapshot | null>(null);
 const camera = ref<CameraState | null>(null);
 let playback: PlayerChasePlaybackControls | null = null;

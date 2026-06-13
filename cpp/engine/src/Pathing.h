@@ -6,6 +6,12 @@
 namespace osrssim
 {
 
+enum class DiagonalSideFootprintRule
+{
+    RequireClear,
+    AllowBlocked,
+};
+
 class Pathing
 {
 private:
@@ -25,6 +31,12 @@ public:
         SceneCoordinate to,
         int actorSpeed,
         int actorSize) const;
+    bool CanMoveIgnoringActorOccupancy(
+        SceneCoordinate from,
+        SceneCoordinate to,
+        int actorSpeed,
+        int actorSize,
+        DiagonalSideFootprintRule diagonalSideFootprintRule) const;
 
 private:
     static bool IsAdjacentStep(int dx, int dy);
@@ -42,7 +54,8 @@ private:
         SceneCoordinate from,
         SceneCoordinate to,
         int actorSize,
-        bool includeActorOccupancy) const;
+        bool includeActorOccupancy,
+        DiagonalSideFootprintRule diagonalSideFootprintRule) const;
     bool CanMoveFootprintCardinal(
         SceneCoordinate from,
         SceneCoordinate to,
@@ -51,13 +64,15 @@ private:
         SceneCoordinate from,
         SceneCoordinate to,
         int actorSize,
-        bool includeActorOccupancy) const;
+        bool includeActorOccupancy,
+        DiagonalSideFootprintRule diagonalSideFootprintRule) const;
     bool CanMoveMonotonicRoute(
         SceneCoordinate current,
         SceneCoordinate to,
         int remainingSteps,
         int actorSize,
-        bool includeActorOccupancy) const;
+        bool includeActorOccupancy,
+        DiagonalSideFootprintRule diagonalSideFootprintRule) const;
     bool CanMoveCardinal(SceneCoordinate from, SceneCoordinate to) const;
     bool CanMoveDiagonal(SceneCoordinate from, SceneCoordinate to) const;
 };

@@ -84,12 +84,24 @@ _Avoid_: Entity ID
 The square set of tiles occupied by an actor, anchored at the actor's south-west scene coordinate. Actor size is measured as the side length of this footprint in tiles.
 _Avoid_: Actor bounds, actor area
 
+**Edge Adjacency**:
+The relationship between two actor footprints on the same plane when they touch along a cardinal edge and overlap along the perpendicular axis. Diagonal corner contact is not edge adjacency.
+_Avoid_: Diagonal adjacency, overlap
+
+**Corner Contact**:
+The relationship between two actor footprints on the same plane when they touch only across a diagonal corner and do not share an edge or tile.
+_Avoid_: Diagonal adjacency
+
+**Footprint Overlap**:
+The relationship between two actor footprints on the same plane when they share at least one tile.
+_Avoid_: Underneath, covered by
+
 **Actor Speed**:
 The maximum number of per-tile movement steps an actor may take in one tick. A movement attempt may use less than the actor's speed.
 _Avoid_: Run energy, movement mode
 
 **Movement Target**:
-The current destination an actor is trying to reach, either a scene coordinate or another actor's footprint. An actor has at most one movement target at a time; a scene-coordinate movement target ends when the actor's footprint covers that coordinate or when movement toward it makes no progress, while an actor movement target remains active so the actor can keep pursuing or staying edge-adjacent to the target actor's footprint.
+The current destination reference an actor is trying to reach, either a scene coordinate for its own south-west anchor or another actor whose south-west anchor it pursues until edge adjacency is reached. An actor has at most one movement target at a time.
 _Avoid_: Target, target tile
 
 **Partial Movement**:
@@ -97,7 +109,7 @@ A movement result where an actor moves less than the requested delta because pat
 _Avoid_: Failed movement
 
 **Actor Occupancy**:
-A tile state indicating that actor movement should treat the tile as covered by an actor. Actor occupancy blocks NPC movement but not player movement.
+A tile state indicating that actor movement should treat the tile as covered by an actor. Actor occupancy blocks NPC movement from ending on the occupied tile, but it does not block player movement.
 _Avoid_: Character collision
 
 **Player**:
@@ -111,3 +123,7 @@ _Avoid_: Non-player character
 **Pathing**:
 The rules used to decide whether movement through a scene is possible. Pathing interprets movement blocking and actor occupancy rather than owning scene data.
 _Avoid_: Map traversal
+
+**Large NPC Diagonal Squeeze**:
+The movement rule where an NPC with an actor footprint larger than one tile may move diagonally around whole-tile blockers or actor occupancy that would block either cardinal side of the diagonal, provided its final actor footprint is clear and directional movement blocking still allows the diagonal crossing.
+_Avoid_: Clipping, diagonal phasing

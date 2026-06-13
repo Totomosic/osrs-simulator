@@ -63,7 +63,13 @@ bool Pathing::CanMove(
         return false;
     }
 
-    return CanMoveMonotonicRoute(from, to, actorSpeed, actorSize, true);
+    return CanMoveMonotonicRoute(
+        from,
+        to,
+        actorSpeed,
+        actorSize,
+        true,
+        DiagonalSideFootprintRule::RequireClear);
 }
 
 bool Pathing::CanMoveIgnoringActorOccupancy(
@@ -91,7 +97,47 @@ bool Pathing::CanMoveIgnoringActorOccupancy(
         return false;
     }
 
-    return CanMoveMonotonicRoute(from, to, actorSpeed, actorSize, false);
+    return CanMoveIgnoringActorOccupancy(
+        from,
+        to,
+        actorSpeed,
+        actorSize,
+        DiagonalSideFootprintRule::RequireClear);
+}
+
+bool Pathing::CanMoveIgnoringActorOccupancy(
+    SceneCoordinate from,
+    SceneCoordinate to,
+    int actorSpeed,
+    int actorSize,
+    DiagonalSideFootprintRule diagonalSideFootprintRule) const
+{
+    if (actorSpeed <= 0 || actorSize <= 0 || from.plane != to.plane ||
+        !CanStand(from, actorSize, false) || !CanStand(to, actorSize, false))
+    {
+        return false;
+    }
+
+    const int dx = to.x - from.x;
+    const int dy = to.y - from.y;
+
+    if (dx == 0 && dy == 0)
+    {
+        return false;
+    }
+
+    if (Abs(dx) > actorSpeed || Abs(dy) > actorSpeed)
+    {
+        return false;
+    }
+
+    return CanMoveMonotonicRoute(
+        from,
+        to,
+        actorSpeed,
+        actorSize,
+        false,
+        diagonalSideFootprintRule);
 }
 
 bool Pathing::IsAdjacentStep(int dx, int dy)
@@ -200,7 +246,8 @@ bool Pathing::CanMoveFootprintStep(
     SceneCoordinate from,
     SceneCoordinate to,
     int actorSize,
-    bool includeActorOccupancy) const
+    bool includeActorOccupancy,
+    DiagonalSideFootprintRule diagonalSideFootprintRule) const
 {
     if (!m_Scene.Contains(from) || !m_Scene.Contains(to) || from.plane != to.plane)
     {
@@ -222,7 +269,8 @@ bool Pathing::CanMoveFootprintStep(
             from,
             to,
             actorSize,
-            includeActorOccupancy);
+            includeActorOccupancy,
+            diagonalSideFootprintRule);
     }
 
     return CanMoveFootprintCardinal(from, to, actorSize);
@@ -335,15 +383,18 @@ bool Pathing::CanMoveFootprintDiagonal(
     SceneCoordinate from,
     SceneCoordinate to,
     int actorSize,
-    bool includeActorOccupancy) const
+    bool includeActorOccupancy,
+    DiagonalSideFootprintRule diagonalSideFootprintRule) const
 {
     const int dx = to.x - from.x;
     const int dy = to.y - from.y;
     SceneCoordinate horizontal{from.x + dx, from.y, from.plane};
     SceneCoordinate vertical{from.x, from.y + dy, from.plane};
 
-    if (!CanStand(horizontal, actorSize, includeActorOccupancy) ||
-        !CanStand(vertical, actorSize, includeActorOccupancy))
+    if (diagonalSideFootprintRule ==
+            DiagonalSideFootprintRule::RequireClear &&
+        (!CanStand(horizontal, actorSize, includeActorOccupancy) ||
+         !CanStand(vertical, actorSize, includeActorOccupancy)))
     {
         return false;
     }
@@ -366,8 +417,16 @@ bool Pathing::CanMoveFootprintDiagonal(
         }
     }
 
+    if (diagonalSideFootprintRule ==
+        DiagonalSideFootprintRule::AllowBlocked)
+    {
+        return true;
+    }
+
     return CanMoveFootprintCardinal(from, horizontal, actorSize) &&
-           CanMoveFootprintCardinal(from, vertical, actorSize);
+           CanMoveFootprintCardinal(from, vertical, actorSize) &&
+           CanMoveFootprintCardinal(horizontal, to, actorSize) &&
+           CanMoveFootprintCardinal(vertical, to, actorSize);
 }
 
 bool Pathing::CanMoveMonotonicRoute(
@@ -375,7 +434,8 @@ bool Pathing::CanMoveMonotonicRoute(
     SceneCoordinate to,
     int remainingSteps,
     int actorSize,
-    bool includeActorOccupancy) const
+    bool includeActorOccupancy,
+    DiagonalSideFootprintRule diagonalSideFootprintRule) const
 {
     if (current == to)
     {
@@ -414,13 +474,15 @@ bool Pathing::CanMoveMonotonicRoute(
                 current,
                 candidate,
                 actorSize,
-                includeActorOccupancy) &&
+                includeActorOccupancy,
+                diagonalSideFootprintRule) &&
             CanMoveMonotonicRoute(
                 candidate,
                 to,
                 remainingSteps - 1,
                 actorSize,
-                includeActorOccupancy))
+                includeActorOccupancy,
+                diagonalSideFootprintRule))
         {
             return true;
         }

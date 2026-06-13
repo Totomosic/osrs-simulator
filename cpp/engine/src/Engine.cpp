@@ -101,7 +101,7 @@ void Engine::UpdateNpcs()
 
     for (ActorId actorId : npcIds)
     {
-        m_World.UpdateActorMovement(actorId);
+        m_World.UpdateActorMovement(actorId, m_CurrentTick);
     }
 }
 
@@ -119,7 +119,7 @@ void Engine::UpdatePlayers()
 
     for (ActorId actorId : playerIds)
     {
-        m_World.UpdatePlayerMovement(actorId);
+        m_World.UpdatePlayerMovement(actorId, m_CurrentTick);
     }
 }
 

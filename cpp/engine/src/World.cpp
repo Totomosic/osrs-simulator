@@ -54,6 +54,15 @@ int CardinalPriority(int dx, int dy)
     return 4;
 }
 
+int DeterministicCardinalStart(
+    ActorId actorId,
+    ActorId targetActorId,
+    Tick currentTick)
+{
+    return static_cast<int>(
+        (actorId * 31 + targetActorId * 17 + currentTick) % 4);
+}
+
 int RemainingChebyshev(int requestedDx, int requestedDy, int dx, int dy)
 {
     return Max(Abs(requestedDx - dx), Abs(requestedDy - dy));
@@ -438,7 +447,7 @@ bool World::SetActorMovementTarget(ActorId actorId, ActorId targetActorId)
     return true;
 }
 
-bool World::UpdateActorMovement(ActorId actorId)
+bool World::UpdateActorMovement(ActorId actorId, Tick currentTick)
 {
     ActorCore* actor = TryGetActorCore(actorId);
     std::optional<MovementTarget>* movementTarget =
@@ -465,6 +474,7 @@ bool World::UpdateActorMovement(ActorId actorId)
 
     const Scene* scene = TryGetScene(membership->sceneId);
     SceneCoordinate destination;
+    bool actorTargetOverlaps = false;
 
     if (movementTarget->value().kind == MovementTargetKind::SceneCoordinate)
     {
@@ -516,7 +526,7 @@ bool World::UpdateActorMovement(ActorId actorId)
                 *targetActor,
                 targetMembership->coordinate))
         {
-            return false;
+            actorTargetOverlaps = true;
         }
 
         destination = targetMembership->coordinate;
@@ -540,40 +550,70 @@ bool World::UpdateActorMovement(ActorId actorId)
     }
     else
     {
-        dx = GetMovementDeltaForAxis(
-            membership->coordinate.x,
-            1,
-            destination.x,
-            actor->speed);
-        dy = GetMovementDeltaForAxis(
-            membership->coordinate.y,
-            1,
-            destination.y,
-            actor->speed);
-
-        int edgeAdjacentDx = 0;
-        int edgeAdjacentDy = 0;
-        const ActorCore* targetActor =
-            TryGetActorCore(movementTarget->value().actorId);
-        const SceneMembership* targetMembership =
-            GetSceneMembership(movementTarget->value().actorId);
-
-        if (scene != nullptr && targetActor != nullptr &&
-            targetMembership != nullptr &&
-            TryGetActorTargetEdgeAdjacentMovementDelta(
-                *scene,
-                GetActorKind(actorId),
-                *actor,
-                membership->coordinate,
-                dx,
-                dy,
-                *targetActor,
-                targetMembership->coordinate,
-                edgeAdjacentDx,
-                edgeAdjacentDy))
+        if (actorTargetOverlaps)
         {
-            dx = edgeAdjacentDx;
-            dy = edgeAdjacentDy;
+            if (scene == nullptr ||
+                !TryGetActorTargetOverlapEscapeMovementDelta(
+                    *scene,
+                    GetActorKind(actorId),
+                    *actor,
+                    membership->coordinate,
+                    movementTarget->value().actorId,
+                    currentTick,
+                    dx,
+                    dy))
+            {
+                return false;
+            }
+        }
+        else
+        {
+            dx = GetMovementDeltaForAxis(
+                membership->coordinate.x,
+                1,
+                destination.x,
+                actor->speed);
+            dy = GetMovementDeltaForAxis(
+                membership->coordinate.y,
+                1,
+                destination.y,
+                actor->speed);
+
+            int edgeAdjacentDx = 0;
+            int edgeAdjacentDy = 0;
+            const ActorCore* targetActor =
+                TryGetActorCore(movementTarget->value().actorId);
+            const SceneMembership* targetMembership =
+                GetSceneMembership(movementTarget->value().actorId);
+            const bool cornerContact =
+                targetActor != nullptr && targetMembership != nullptr &&
+                AreActorFootprintsCornerContact(
+                    *actor,
+                    membership->coordinate,
+                    *targetActor,
+                    targetMembership->coordinate);
+
+            if (scene != nullptr && targetActor != nullptr &&
+                targetMembership != nullptr &&
+                TryGetActorTargetEdgeAdjacentMovementDelta(
+                    *scene,
+                    GetActorKind(actorId),
+                    *actor,
+                    membership->coordinate,
+                    dx,
+                    dy,
+                    *targetActor,
+                    targetMembership->coordinate,
+                    edgeAdjacentDx,
+                    edgeAdjacentDy))
+            {
+                dx = edgeAdjacentDx;
+                dy = edgeAdjacentDy;
+            }
+            else if (cornerContact)
+            {
+                return false;
+            }
         }
     }
 
@@ -621,9 +661,10 @@ bool World::UpdateActorMovement(ActorId actorId)
     return moved;
 }
 
-bool World::UpdatePlayerMovement(ActorId actorId)
+bool World::UpdatePlayerMovement(ActorId actorId, Tick currentTick)
 {
-    return TryGetPlayer(actorId) != nullptr && UpdateActorMovement(actorId);
+    return TryGetPlayer(actorId) != nullptr &&
+           UpdateActorMovement(actorId, currentTick);
 }
 
 int World::ClampSize(int size)
@@ -657,6 +698,22 @@ bool World::IsWholeTileMovementBlocked(const Tile& tile)
            tile.HasFlag(TileFlag::BlockMovementObject) ||
            tile.HasFlag(TileFlag::BlockMovementFloor) ||
            tile.HasFlag(TileFlag::BlockMovementFloorDecoration);
+}
+
+bool World::CanUseLargeNpcDiagonalSqueeze(
+    ActorKind actorKind,
+    const ActorCore& actor)
+{
+    return actorKind == ActorKind::Npc && actor.size > 1;
+}
+
+DiagonalSideFootprintRule World::GetDiagonalSideFootprintRule(
+    ActorKind actorKind,
+    const ActorCore& actor)
+{
+    return CanUseLargeNpcDiagonalSqueeze(actorKind, actor)
+               ? DiagonalSideFootprintRule::AllowBlocked
+               : DiagonalSideFootprintRule::RequireClear;
 }
 
 Player* World::TryGetPlayer(ActorId actorId)
@@ -832,6 +889,34 @@ bool World::AreActorFootprintsOverlapping(
            moverMinY <= targetMaxY && targetMinY <= moverMaxY;
 }
 
+bool World::AreActorFootprintsCornerContact(
+    const ActorCore& mover,
+    SceneCoordinate moverCoordinate,
+    const ActorCore& target,
+    SceneCoordinate targetCoordinate) const
+{
+    if (moverCoordinate.plane != targetCoordinate.plane)
+    {
+        return false;
+    }
+
+    const int moverMinX = moverCoordinate.x;
+    const int moverMaxX = moverCoordinate.x + mover.size - 1;
+    const int moverMinY = moverCoordinate.y;
+    const int moverMaxY = moverCoordinate.y + mover.size - 1;
+    const int targetMinX = targetCoordinate.x;
+    const int targetMaxX = targetCoordinate.x + target.size - 1;
+    const int targetMinY = targetCoordinate.y;
+    const int targetMaxY = targetCoordinate.y + target.size - 1;
+
+    const bool touchesWestOrEast =
+        moverMaxX + 1 == targetMinX || targetMaxX + 1 == moverMinX;
+    const bool touchesSouthOrNorth =
+        moverMaxY + 1 == targetMinY || targetMaxY + 1 == moverMinY;
+
+    return touchesWestOrEast && touchesSouthOrNorth;
+}
+
 int World::GetMovementDeltaForAxis(
     int anchor,
     int size,
@@ -851,6 +936,27 @@ int World::GetMovementDeltaForAxis(
     return 0;
 }
 
+bool World::HasNpcDiagonalSideOccupancyConflict(
+    const Scene& scene,
+    SceneCoordinate current,
+    SceneCoordinate destination,
+    int actorSize) const
+{
+    const int dx = Sign(destination.x - current.x);
+    const int dy = Sign(destination.y - current.y);
+
+    if (dx == 0 || dy == 0)
+    {
+        return false;
+    }
+
+    SceneCoordinate horizontal{current.x + dx, current.y, current.plane};
+    SceneCoordinate vertical{current.x, current.y + dy, current.plane};
+
+    return HasFinalNpcOccupancyConflict(scene, current, horizontal, actorSize) ||
+           HasFinalNpcOccupancyConflict(scene, current, vertical, actorSize);
+}
+
 bool World::TryGetActorTargetEdgeAdjacentMovementDelta(
     const Scene& scene,
     ActorKind actorKind,
@@ -868,6 +974,15 @@ bool World::TryGetActorTargetEdgeAdjacentMovementDelta(
     const int absRequestedDx = Abs(requestedDx);
     const int absRequestedDy = Abs(requestedDy);
     Pathing pathing(scene);
+    const DiagonalSideFootprintRule diagonalSideFootprintRule =
+        GetDiagonalSideFootprintRule(actorKind, actor);
+    const bool canUseLargeNpcDiagonalSqueeze =
+        CanUseLargeNpcDiagonalSqueeze(actorKind, actor);
+    const bool cornerContact = AreActorFootprintsCornerContact(
+        actor,
+        current,
+        target,
+        targetCoordinate);
     bool found = false;
     int bestDx = 0;
     int bestDy = 0;
@@ -882,6 +997,11 @@ bool World::TryGetActorTargetEdgeAdjacentMovementDelta(
             const int candidateDy = candidateAbsDy * stepY;
 
             if (candidateDx == 0 && candidateDy == 0)
+            {
+                continue;
+            }
+
+            if (cornerContact && candidateDy != 0)
             {
                 continue;
             }
@@ -904,6 +1024,18 @@ bool World::TryGetActorTargetEdgeAdjacentMovementDelta(
                     current,
                     candidate,
                     actor.speed,
+                    actor.size,
+                    diagonalSideFootprintRule))
+            {
+                continue;
+            }
+
+            if (actorKind == ActorKind::Npc &&
+                !canUseLargeNpcDiagonalSqueeze &&
+                HasNpcDiagonalSideOccupancyConflict(
+                    scene,
+                    current,
+                    candidate,
                     actor.size))
             {
                 continue;
@@ -947,6 +1079,71 @@ bool World::TryGetActorTargetEdgeAdjacentMovementDelta(
     edgeAdjacentDy = bestDy;
 
     return true;
+}
+
+bool World::TryGetActorTargetOverlapEscapeMovementDelta(
+    const Scene& scene,
+    ActorKind actorKind,
+    const ActorCore& actor,
+    SceneCoordinate current,
+    ActorId targetActorId,
+    Tick currentTick,
+    int& escapeDx,
+    int& escapeDy) const
+{
+    if (actorKind != ActorKind::Npc || actor.speed <= 0)
+    {
+        return false;
+    }
+
+    struct MovementDelta
+    {
+        int dx = 0;
+        int dy = 0;
+    };
+
+    const MovementDelta cardinalDeltas[4]{
+        {-1, 0},
+        {1, 0},
+        {0, -1},
+        {0, 1}};
+    const int start =
+        DeterministicCardinalStart(actor.id, targetActorId, currentTick);
+    Pathing pathing(scene);
+
+    for (int offset = 0; offset < 4; ++offset)
+    {
+        const MovementDelta delta = cardinalDeltas[(start + offset) % 4];
+        SceneCoordinate candidate{
+            current.x + delta.dx,
+            current.y + delta.dy,
+            current.plane};
+
+        if (!pathing.CanMoveIgnoringActorOccupancy(
+                current,
+                candidate,
+                1,
+                actor.size))
+        {
+            continue;
+        }
+
+        if (HasFinalNpcOccupancyConflict(
+                scene,
+                current,
+                candidate,
+                actor.size))
+        {
+            continue;
+        }
+
+        escapeDx = delta.dx;
+        escapeDy = delta.dy;
+
+        return true;
+    }
+
+    return false;
 }
 
 bool World::CanStandOnMovementBlockers(
@@ -1018,12 +1215,15 @@ bool World::IsFinalNpcOccupancyOnlyBlock(
     SceneCoordinate destination) const
 {
     Pathing pathing(scene);
+    const DiagonalSideFootprintRule diagonalSideFootprintRule =
+        GetDiagonalSideFootprintRule(ActorKind::Npc, actor);
 
     return pathing.CanMoveIgnoringActorOccupancy(
                current,
                destination,
                actor.speed,
-               actor.size) &&
+               actor.size,
+               diagonalSideFootprintRule) &&
            HasFinalNpcOccupancyConflict(
                scene,
                current,
@@ -1052,6 +1252,10 @@ bool World::TryResolveMovementDelta(
     const int absRequestedDx = Abs(requestedDx);
     const int absRequestedDy = Abs(requestedDy);
     Pathing pathing(scene);
+    const DiagonalSideFootprintRule diagonalSideFootprintRule =
+        GetDiagonalSideFootprintRule(actorKind, actor);
+    const bool canUseLargeNpcDiagonalSqueeze =
+        CanUseLargeNpcDiagonalSqueeze(actorKind, actor);
     bool found = false;
     int bestDx = 0;
     int bestDy = 0;
@@ -1079,6 +1283,18 @@ bool World::TryResolveMovementDelta(
                     current,
                     candidate,
                     actor.speed,
+                    actor.size,
+                    diagonalSideFootprintRule))
+            {
+                continue;
+            }
+
+            if (actorKind == ActorKind::Npc &&
+                !canUseLargeNpcDiagonalSqueeze &&
+                HasNpcDiagonalSideOccupancyConflict(
+                    scene,
+                    current,
+                    candidate,
                     actor.size))
             {
                 continue;

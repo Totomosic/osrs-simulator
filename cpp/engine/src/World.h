@@ -90,8 +90,8 @@ public:
         SceneCoordinate coordinate);
     bool ClearActorMovementTarget(ActorId actorId);
     bool SetActorMovementTarget(ActorId actorId, ActorId targetActorId);
-    bool UpdateActorMovement(ActorId actorId);
-    bool UpdatePlayerMovement(ActorId actorId);
+    bool UpdateActorMovement(ActorId actorId, Tick currentTick = 0);
+    bool UpdatePlayerMovement(ActorId actorId, Tick currentTick = 0);
 
 private:
     enum class ActorKind
@@ -104,6 +104,12 @@ private:
     static int ClampSpeed(int speed);
     static int ClampDelta(int delta, int speed);
     static bool IsWholeTileMovementBlocked(const Tile& tile);
+    static bool CanUseLargeNpcDiagonalSqueeze(
+        ActorKind actorKind,
+        const ActorCore& actor);
+    static DiagonalSideFootprintRule GetDiagonalSideFootprintRule(
+        ActorKind actorKind,
+        const ActorCore& actor);
 
     Player* TryGetPlayer(ActorId actorId);
     const Player* TryGetPlayer(ActorId actorId) const;
@@ -131,7 +137,17 @@ private:
         SceneCoordinate moverCoordinate,
         const ActorCore& target,
         SceneCoordinate targetCoordinate) const;
+    bool AreActorFootprintsCornerContact(
+        const ActorCore& mover,
+        SceneCoordinate moverCoordinate,
+        const ActorCore& target,
+        SceneCoordinate targetCoordinate) const;
     int GetMovementDeltaForAxis(int anchor, int size, int target, int speed) const;
+    bool HasNpcDiagonalSideOccupancyConflict(
+        const Scene& scene,
+        SceneCoordinate current,
+        SceneCoordinate destination,
+        int actorSize) const;
     bool TryGetActorTargetEdgeAdjacentMovementDelta(
         const Scene& scene,
         ActorKind actorKind,
@@ -143,6 +159,15 @@ private:
         SceneCoordinate targetCoordinate,
         int& edgeAdjacentDx,
         int& edgeAdjacentDy) const;
+    bool TryGetActorTargetOverlapEscapeMovementDelta(
+        const Scene& scene,
+        ActorKind actorKind,
+        const ActorCore& actor,
+        SceneCoordinate current,
+        ActorId targetActorId,
+        Tick currentTick,
+        int& escapeDx,
+        int& escapeDy) const;
     bool CanStandOnMovementBlockers(
         const Scene& scene,
         SceneCoordinate coordinate,
