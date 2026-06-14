@@ -1,4 +1,6 @@
 import type {
+    ActionFeedback,
+    CardinalDirection,
     DevelopmentPlayerChaseScenario,
     Engine,
     EngineModule,
@@ -47,6 +49,13 @@ interface EngineActorSnapshot {
           };
 }
 
+interface GameObjectSnapshot {
+    id: number;
+    origin: SceneCoordinate;
+    sizeX: number;
+    sizeY: number;
+}
+
 export interface RegisteredScenario {
     name: "Player Chase";
     create(module: EngineModule): DevelopmentPlayerChaseScenario;
@@ -74,9 +83,12 @@ class PlayerChaseScenario implements DevelopmentPlayerChaseScenario {
     private m_Scene: Scene;
     private m_Running = false;
     private m_LastClickBlocked = false;
+    private m_ActionFeedback: ActionFeedback = { state: "none" };
     private m_PlayerId = 0;
     private m_NpcIds: number[] = [];
     private m_SelectedNpcId = 0;
+    private m_GameObjects: GameObjectSnapshot[] = [];
+    private m_NextGameObjectId = 201;
 
     public constructor(module: EngineModule) {
         this.m_Module = module;
@@ -107,14 +119,133 @@ class PlayerChaseScenario implements DevelopmentPlayerChaseScenario {
             )
         ) {
             this.m_LastClickBlocked = true;
+            this.m_ActionFeedback = { state: "blocked-movement" };
             return false;
         }
 
         this.m_LastClickBlocked = false;
-        return this.m_World.SetPlayerSceneCoordinateMovementTarget(
+        const moved = this.m_World.SetPlayerSceneCoordinateMovementTarget(
             this.m_PlayerId,
             coordinate,
         );
+
+        this.m_ActionFeedback = moved
+            ? { state: "none" }
+            : { state: "blocked-movement" };
+        return moved;
+    }
+
+    public PlaceNpc(
+        size: number,
+        speed: number,
+        x: number,
+        y: number,
+        plane: number,
+    ): boolean {
+        const npcId = this.m_World.CreateNpc(size, speed);
+        const placed = this.m_World.PlaceActor(
+            npcId,
+            this.m_World.GetDefaultSceneId(),
+            { x, y, plane },
+        );
+
+        if (!placed) {
+            this.m_World.RemoveActor(npcId);
+            this.m_ActionFeedback = { state: "placement-failure" };
+            return false;
+        }
+
+        this.m_World.SetActorMovementTarget(npcId, this.m_PlayerId);
+        this.m_NpcIds.push(npcId);
+        this.m_SelectedNpcId = npcId;
+        this.m_LastClickBlocked = false;
+        this.m_ActionFeedback = { state: "none" };
+        return true;
+    }
+
+    public RemoveNpc(x: number, y: number, plane: number): boolean {
+        const coordinate = { x, y, plane };
+        const npcId = this.findNpcIdAtCoordinate(coordinate);
+
+        if (npcId === null) {
+            this.m_ActionFeedback = { state: "removal-failure" };
+            return false;
+        }
+
+        this.m_World.RemoveActor(npcId);
+        this.m_NpcIds = this.m_NpcIds.filter((id) => id !== npcId);
+
+        if (this.m_SelectedNpcId === npcId) {
+            this.m_SelectedNpcId = this.m_NpcIds[0] ?? 0;
+        }
+
+        this.m_LastClickBlocked = false;
+        this.m_ActionFeedback = { state: "none" };
+        return true;
+    }
+
+    public PlaceGameObject(
+        x: number,
+        y: number,
+        plane: number,
+        sizeX: number,
+        sizeY: number,
+        direction: CardinalDirection,
+        blocksMovement: boolean,
+        blocksLineOfSight: boolean,
+    ): boolean {
+        const coordinate = { x, y, plane };
+        const id = this.m_NextGameObjectId;
+        const placed = this.m_Scene.PlaceGameObject(
+            coordinate,
+            id,
+            direction,
+            sizeX,
+            sizeY,
+            {
+                blocksMovement,
+                blocksLineOfSight,
+            },
+        );
+
+        if (!placed) {
+            this.m_ActionFeedback = { state: "placement-failure" };
+            return false;
+        }
+
+        this.m_NextGameObjectId += 1;
+        this.m_GameObjects.push({
+            id,
+            origin: coordinate,
+            sizeX,
+            sizeY,
+        });
+        this.m_LastClickBlocked = false;
+        this.m_ActionFeedback = { state: "none" };
+        return true;
+    }
+
+    public RemoveGameObject(x: number, y: number, plane: number): boolean {
+        const gameObject = this.findGameObjectAtCoordinate({ x, y, plane });
+
+        if (gameObject === null) {
+            this.m_ActionFeedback = { state: "removal-failure" };
+            return false;
+        }
+
+        const removed = this.m_Scene.RemoveGameObject({ x, y, plane });
+
+        if (!removed) {
+            this.m_ActionFeedback = { state: "removal-failure" };
+            return false;
+        }
+
+        this.m_GameObjects = this.m_GameObjects.filter(
+            (candidate) => candidate.id !== gameObject.id,
+        );
+        this.m_LastClickBlocked = false;
+        this.m_ActionFeedback = { state: "none" };
+        return true;
     }
 
     public SetRunning(running: boolean): void {
@@ -145,16 +276,19 @@ class PlayerChaseScenario implements DevelopmentPlayerChaseScenario {
         this.m_Scene = scene;
         this.m_Running = false;
         this.m_LastClickBlocked = false;
+        this.m_ActionFeedback = { state: "none" };
         this.m_PlayerId = this.m_World.CreatePlayer(1, 2);
         const npcId = this.m_World.CreateNpc(4, 1);
         this.m_NpcIds = [npcId];
         this.m_SelectedNpcId = npcId;
+        this.m_GameObjects = [];
+        this.m_NextGameObjectId = 201;
 
         const sceneId = this.m_World.GetDefaultSceneId();
         this.m_World.PlaceActor(this.m_PlayerId, sceneId, { x: 8, y: 11, plane: 0 });
         this.m_World.PlaceActor(npcId, sceneId, { x: 18, y: 20, plane: 0 });
         this.m_World.SetActorMovementTarget(npcId, this.m_PlayerId);
-        this.m_Scene.PlaceGameObject(
+        const placed = this.m_Scene.PlaceGameObject(
             { x: 12, y: 4, plane: 0 },
             200,
             this.m_Module.CardinalDirection.North,
@@ -165,6 +299,15 @@ class PlayerChaseScenario implements DevelopmentPlayerChaseScenario {
                 blocksLineOfSight: true,
             },
         );
+
+        if (placed) {
+            this.m_GameObjects.push({
+                id: 200,
+                origin: { x: 12, y: 4, plane: 0 },
+                sizeX: 3,
+                sizeY: 3,
+            });
+        }
     }
 
     public GetSnapshotJson(): string {
@@ -178,6 +321,7 @@ class PlayerChaseScenario implements DevelopmentPlayerChaseScenario {
             tick: this.GetTick(),
             running: this.m_Running,
             blockedClick: this.m_LastClickBlocked,
+            actionFeedback: this.m_ActionFeedback,
             scene: {
                 id: this.m_World.GetDefaultSceneId(),
                 width: this.GetSceneWidth(),
@@ -185,10 +329,10 @@ class PlayerChaseScenario implements DevelopmentPlayerChaseScenario {
                 planeCount: this.GetScenePlaneCount(),
             },
             player,
-            npc: selectedNpc,
+            npc: selectedNpc ?? null,
             npcs,
             selectedNpcId: selectedNpc?.id ?? null,
-            tiles: this.readFixtureTiles(),
+            tiles: this.readScenarioTiles(),
         });
     }
 
@@ -245,33 +389,33 @@ class PlayerChaseScenario implements DevelopmentPlayerChaseScenario {
     }
 
     public GetNpcX(): number {
-        return this.readActorSnapshot(this.m_SelectedNpcId).coordinate.x;
+        return this.getSelectedNpcSnapshot()?.coordinate.x ?? 0;
     }
 
     public GetNpcY(): number {
-        return this.readActorSnapshot(this.m_SelectedNpcId).coordinate.y;
+        return this.getSelectedNpcSnapshot()?.coordinate.y ?? 0;
     }
 
     public GetNpcPlane(): number {
-        return this.readActorSnapshot(this.m_SelectedNpcId).coordinate.plane;
+        return this.getSelectedNpcSnapshot()?.coordinate.plane ?? 0;
     }
 
     public GetNpcSize(): number {
-        return this.readActorSnapshot(this.m_SelectedNpcId).size;
+        return this.getSelectedNpcSnapshot()?.size ?? 0;
     }
 
     public HasNpcMovementTarget(): boolean {
-        return this.readActorSnapshot(this.m_SelectedNpcId).movementTarget !== null;
+        return (this.getSelectedNpcSnapshot()?.movementTarget ?? null) !== null;
     }
 
     public GetNpcMovementTargetActorId(): number {
-        const target = this.readActorSnapshot(this.m_SelectedNpcId).movementTarget;
+        const target = this.getSelectedNpcSnapshot()?.movementTarget;
 
         return target?.kind === "Actor" ? target.actorId : 0;
     }
 
     public GetNpcMovementTargetLabel(): string {
-        const target = this.readActorSnapshot(this.m_SelectedNpcId).movementTarget;
+        const target = this.getSelectedNpcSnapshot()?.movementTarget;
 
         return target?.kind === "Actor" ? target.label : "";
     }
@@ -289,11 +433,15 @@ class PlayerChaseScenario implements DevelopmentPlayerChaseScenario {
     }
 
     public IsNpcTile(x: number, y: number, plane: number): boolean {
-        return this.isActorTile(this.readActorSnapshot(this.m_SelectedNpcId), {
-            x,
-            y,
-            plane,
-        });
+        const selectedNpc = this.getSelectedNpcSnapshot();
+
+        return selectedNpc === null
+            ? false
+            : this.isActorTile(selectedNpc, {
+                  x,
+                  y,
+                  plane,
+              });
     }
 
     private readActorSnapshot(actorId: number): ActorSnapshot {
@@ -339,7 +487,7 @@ class PlayerChaseScenario implements DevelopmentPlayerChaseScenario {
         return null;
     }
 
-    private readFixtureTiles(): {
+    private readScenarioTiles(): {
         coordinate: SceneCoordinate;
         flags: string[];
         gameObject?: {
@@ -351,21 +499,31 @@ class PlayerChaseScenario implements DevelopmentPlayerChaseScenario {
     }[] {
         const tiles = [];
 
-        for (let x = 12; x <= 14; x += 1) {
-            for (let y = 4; y <= 6; y += 1) {
-                const coordinate = { x, y, plane: 0 };
-                tiles.push({
-                    coordinate,
-                    flags: this.m_Scene.GetTileFlagLabels(coordinate),
-                    gameObject: this.m_Scene.IsGameObjectTile(coordinate)
-                        ? {
-                              id: 200,
-                              origin: { x: 12, y: 4, plane: 0 },
-                              sizeX: 3,
-                              sizeY: 3,
-                          }
-                        : undefined,
-                });
+        for (const gameObject of this.m_GameObjects) {
+            for (
+                let x = gameObject.origin.x;
+                x < gameObject.origin.x + gameObject.sizeX;
+                x += 1
+            ) {
+                for (
+                    let y = gameObject.origin.y;
+                    y < gameObject.origin.y + gameObject.sizeY;
+                    y += 1
+                ) {
+                    const coordinate = { x, y, plane: gameObject.origin.plane };
+                    tiles.push({
+                        coordinate,
+                        flags: this.m_Scene.GetTileFlagLabels(coordinate),
+                        gameObject: this.m_Scene.IsGameObjectTile(coordinate)
+                            ? {
+                                  id: gameObject.id,
+                                  origin: gameObject.origin,
+                                  sizeX: gameObject.sizeX,
+                                  sizeY: gameObject.sizeY,
+                              }
+                            : undefined,
+                    });
+                }
             }
         }
 
@@ -376,6 +534,12 @@ class PlayerChaseScenario implements DevelopmentPlayerChaseScenario {
         const target = this.readActorSnapshot(this.m_PlayerId).movementTarget;
 
         return target?.kind === "SceneCoordinate" ? target.coordinate : null;
+    }
+
+    private getSelectedNpcSnapshot(): ActorSnapshot | null {
+        return this.m_SelectedNpcId === 0
+            ? null
+            : this.readActorSnapshot(this.m_SelectedNpcId);
     }
 
     private isActorTile(actor: ActorSnapshot, coordinate: SceneCoordinate): boolean {
@@ -396,5 +560,50 @@ class PlayerChaseScenario implements DevelopmentPlayerChaseScenario {
         for (const npcId of this.m_NpcIds) {
             this.m_World.RemoveActor(npcId);
         }
+    }
+
+    private findNpcIdAtCoordinate(coordinate: SceneCoordinate): number | null {
+        if (
+            this.m_SelectedNpcId !== 0 &&
+            this.isActorTile(
+                this.readActorSnapshot(this.m_SelectedNpcId),
+                coordinate,
+            )
+        ) {
+            return this.m_SelectedNpcId;
+        }
+
+        for (let index = this.m_NpcIds.length - 1; index >= 0; index -= 1) {
+            const npcId = this.m_NpcIds[index];
+
+            if (this.isActorTile(this.readActorSnapshot(npcId), coordinate)) {
+                return npcId;
+            }
+        }
+
+        return null;
+    }
+
+    private findGameObjectAtCoordinate(
+        coordinate: SceneCoordinate,
+    ): GameObjectSnapshot | null {
+        return (
+            this.m_GameObjects.find((gameObject) =>
+                this.isGameObjectTile(gameObject, coordinate),
+            ) ?? null
+        );
+    }
+
+    private isGameObjectTile(
+        gameObject: GameObjectSnapshot,
+        coordinate: SceneCoordinate,
+    ): boolean {
+        return (
+            coordinate.plane === gameObject.origin.plane &&
+            coordinate.x >= gameObject.origin.x &&
+            coordinate.x < gameObject.origin.x + gameObject.sizeX &&
+            coordinate.y >= gameObject.origin.y &&
+            coordinate.y < gameObject.origin.y + gameObject.sizeY
+        );
     }
 }

@@ -23,6 +23,10 @@ export interface CollisionProfile {
     blocksLineOfSight: boolean;
 }
 
+export interface ActionFeedback {
+    state: "none" | "blocked-movement" | "placement-failure" | "removal-failure";
+}
+
 export interface Scene {
     PlaceGameObject(
         coordinate: SceneCoordinate,
@@ -62,6 +66,25 @@ export interface DevelopmentPlayerChaseScenario {
     Step(): void;
     Reset(): void;
     ClickSceneCoordinate(x: number, y: number, plane: number): boolean;
+    PlaceNpc(
+        size: number,
+        speed: number,
+        x: number,
+        y: number,
+        plane: number,
+    ): boolean;
+    RemoveNpc(x: number, y: number, plane: number): boolean;
+    PlaceGameObject(
+        x: number,
+        y: number,
+        plane: number,
+        sizeX: number,
+        sizeY: number,
+        direction: CardinalDirection,
+        blocksMovement: boolean,
+        blocksLineOfSight: boolean,
+    ): boolean;
+    RemoveGameObject(x: number, y: number, plane: number): boolean;
     SetRunning(running: boolean): void;
     IsRunning(): boolean;
     WasLastClickBlocked(): boolean;

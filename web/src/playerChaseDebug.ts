@@ -1,7 +1,22 @@
 import type { DevelopmentPlayerChaseScenario } from "./wasm/EngineModule";
 
+export type ActionFeedbackState =
+    | "none"
+    | "blocked-movement"
+    | "placement-failure"
+    | "removal-failure";
 export type CameraMode = "Follow Player" | "Follow NPC" | "Free Camera";
 export type CameraPanDirection = "north" | "east" | "south" | "west";
+export type PlayerChaseTool =
+    | "Move Player"
+    | "Place NPC"
+    | "Remove NPC"
+    | "Place Game Object"
+    | "Remove Game Object";
+
+export interface ActionFeedback {
+    state: ActionFeedbackState;
+}
 
 export interface SceneCoordinate {
     x: number;
@@ -41,6 +56,7 @@ export interface EnginePlayerChaseSnapshot {
     tick: number;
     running: boolean;
     blockedClick: boolean;
+    actionFeedback?: ActionFeedback;
     scene: {
         id: number;
         width: number;
@@ -48,19 +64,20 @@ export interface EnginePlayerChaseSnapshot {
         planeCount: number;
     };
     player: ActorSnapshot;
-    npc: ActorSnapshot;
+    npc: ActorSnapshot | null;
     npcs?: ActorSnapshot[];
     selectedNpcId?: number | null;
     tiles: SnapshotTile[];
 }
 
 export interface PlayerChaseDebugSnapshot extends EnginePlayerChaseSnapshot {
+    actionFeedback: ActionFeedback;
     npcs: ActorSnapshot[];
-    selectedNpcId: number;
+    selectedNpcId: number | null;
     cameraMode: CameraMode;
     fieldOfView: number;
     noPathfindingNote: string;
-    selectedNpc: ActorSnapshot;
+    selectedNpc: ActorSnapshot | null;
 }
 
 export interface DebugTile {
@@ -95,15 +112,21 @@ export function readPlayerChaseDebugSnapshot(
         scenario.GetSnapshotJson(),
     ) as EnginePlayerChaseSnapshot;
 
-    const npcs = engineSnapshot.npcs ?? [engineSnapshot.npc];
+    const npcs = engineSnapshot.npcs ?? (
+        engineSnapshot.npc === null ? [] : [engineSnapshot.npc]
+    );
     const selectedNpc =
         npcs.find((npc) => npc.id === engineSnapshot.selectedNpcId) ??
-        engineSnapshot.npc;
+        engineSnapshot.npc ??
+        null;
 
     return {
         ...engineSnapshot,
+        actionFeedback: engineSnapshot.actionFeedback ?? {
+            state: engineSnapshot.blockedClick ? "blocked-movement" : "none",
+        },
         npcs,
-        selectedNpcId: selectedNpc.id,
+        selectedNpcId: selectedNpc?.id ?? null,
         selectedNpc,
         cameraMode,
         fieldOfView,
@@ -158,7 +181,7 @@ export function getCameraCenter(
     }
 
     if (camera.mode === "Follow NPC") {
-        return snapshot.selectedNpc.coordinate;
+        return snapshot.selectedNpc?.coordinate ?? snapshot.player.coordinate;
     }
 
     return camera.center;

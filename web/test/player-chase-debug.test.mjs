@@ -42,6 +42,7 @@ class FakePlayerChaseScenario {
         this.tick = 0;
         this.running = false;
         this.lastClickBlocked = false;
+        this.actionFeedback = { state: "none" };
         this.playerTarget = null;
         this.player = { id: 1, x: 8, y: 11, plane: 0, size: 1, speed: 2 };
         this.npc = { id: 2, x: 18, y: 20, plane: 0, size: 4, speed: 1 };
@@ -73,6 +74,7 @@ class FakePlayerChaseScenario {
             tick: this.tick,
             running: this.running,
             blockedClick: this.lastClickBlocked,
+            actionFeedback: this.actionFeedback,
             scene: {
                 id: 1,
                 width: this.width,
@@ -147,12 +149,24 @@ class FakePlayerChaseScenario {
     ClickSceneCoordinate(x, y, plane) {
         if (plane === 0 && x >= 12 && x <= 14 && y >= 4 && y <= 6) {
             this.lastClickBlocked = true;
+            this.actionFeedback = { state: "blocked-movement" };
             return false;
         }
 
         this.lastClickBlocked = false;
+        this.actionFeedback = { state: "none" };
         this.playerTarget = { x, y, plane };
         return true;
+    }
+
+    PlaceNpc() {
+        this.actionFeedback = { state: "placement-failure" };
+        return false;
+    }
+
+    RemoveNpc() {
+        this.actionFeedback = { state: "removal-failure" };
+        return false;
     }
 }
 
@@ -247,6 +261,7 @@ class FakePlayerChaseScenario {
         coordinate: { x: 10, y: 11, plane: 0 },
     });
     assert.equal(snapshot.blockedClick, false);
+    assert.deepEqual(snapshot.actionFeedback, { state: "none" });
 }
 
 {
@@ -267,10 +282,35 @@ class FakePlayerChaseScenario {
 
     assert.equal(clicked, false);
     assert.equal(snapshot.blockedClick, true);
+    assert.deepEqual(snapshot.actionFeedback, { state: "blocked-movement" });
     assert.deepEqual(snapshot.player.movementTarget, {
         kind: "SceneCoordinate",
         coordinate: { x: 10, y: 11, plane: 0 },
     });
+}
+
+{
+    const scenario = new FakePlayerChaseScenario();
+
+    assert.equal(scenario.PlaceNpc(), false);
+
+    let snapshot = readPlayerChaseDebugSnapshot(
+        scenario,
+        "Follow Player",
+        defaultFieldOfView,
+    );
+
+    assert.deepEqual(snapshot.actionFeedback, { state: "placement-failure" });
+
+    assert.equal(scenario.RemoveNpc(), false);
+
+    snapshot = readPlayerChaseDebugSnapshot(
+        scenario,
+        "Follow Player",
+        defaultFieldOfView,
+    );
+
+    assert.deepEqual(snapshot.actionFeedback, { state: "removal-failure" });
 }
 
 {

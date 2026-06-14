@@ -20,6 +20,7 @@ import {
     type DebugTile,
     type MovementTargetSnapshot,
     type PlayerChaseDebugSnapshot,
+    type PlayerChaseTool,
 } from "./playerChaseDebug";
 import {
     loadEngineModule,
@@ -35,6 +36,21 @@ const engineModuleStatus = ref<"loading" | "loaded" | "failed">("loading");
 const scenario = shallowRef<DevelopmentPlayerChaseScenario | null>(null);
 const snapshot = ref<PlayerChaseDebugSnapshot | null>(null);
 const camera = ref<CameraState | null>(null);
+const toolModes: PlayerChaseTool[] = [
+    "Move Player",
+    "Place NPC",
+    "Remove NPC",
+    "Place Game Object",
+    "Remove Game Object",
+];
+const activeTool = ref<PlayerChaseTool>("Move Player");
+const npcSize = ref(1);
+const npcSpeed = ref(1);
+const gameObjectWidth = ref(3);
+const gameObjectHeight = ref(3);
+const gameObjectDirection = ref<"North" | "East" | "South" | "West">("North");
+const gameObjectBlocksMovement = ref(true);
+const gameObjectBlocksLineOfSight = ref(true);
 let playback: PlayerChasePlaybackControls | null = null;
 
 const cameraCenter = computed(() => {
@@ -124,6 +140,12 @@ function stepWhilePaused(): void {
 
 function resetScenario(): void {
     playback?.reset();
+
+    if (snapshot.value !== null) {
+        activeTool.value = "Move Player";
+        camera.value = createDefaultCamera(snapshot.value);
+        refreshSnapshot();
+    }
 }
 
 function setCameraMode(mode: CameraMode): void {
@@ -217,7 +239,47 @@ function clickTile(tile: DebugTile): void {
         return;
     }
 
-    clickDebugTile(scenario.value, tile);
+    switch (activeTool.value) {
+        case "Move Player":
+            clickDebugTile(scenario.value, tile);
+            break;
+        case "Place NPC":
+            scenario.value.PlaceNpc(
+                npcSize.value,
+                npcSpeed.value,
+                tile.coordinate.x,
+                tile.coordinate.y,
+                tile.coordinate.plane,
+            );
+            break;
+        case "Remove NPC":
+            scenario.value.RemoveNpc(
+                tile.coordinate.x,
+                tile.coordinate.y,
+                tile.coordinate.plane,
+            );
+            break;
+        case "Place Game Object":
+            scenario.value.PlaceGameObject(
+                tile.coordinate.x,
+                tile.coordinate.y,
+                tile.coordinate.plane,
+                gameObjectWidth.value,
+                gameObjectHeight.value,
+                gameObjectDirection.value,
+                gameObjectBlocksMovement.value,
+                gameObjectBlocksLineOfSight.value,
+            );
+            break;
+        case "Remove Game Object":
+            scenario.value.RemoveGameObject(
+                tile.coordinate.x,
+                tile.coordinate.y,
+                tile.coordinate.plane,
+            );
+            break;
+    }
+
     refreshSnapshot();
 }
 
@@ -256,6 +318,19 @@ function formatMovementTarget(target: MovementTargetSnapshot | null): string {
 
     return target.label ?? `Actor #${target.actorId ?? 0}`;
 }
+
+function formatActionFeedback(snapshot: PlayerChaseDebugSnapshot): string {
+    switch (snapshot.actionFeedback.state) {
+        case "none":
+            return "None";
+        case "blocked-movement":
+            return "Rejected on blocked tile";
+        case "placement-failure":
+            return "Placement failed";
+        case "removal-failure":
+            return "Removal failed";
+    }
+}
 </script>
 
 <template>
@@ -279,6 +354,18 @@ function formatMovementTarget(target: MovementTargetSnapshot | null): string {
         <button type="button" @click="resetScenario">
           Reset
         </button>
+
+        <div class="segmented" aria-label="Tool mode">
+          <button
+            v-for="tool in toolModes"
+            :key="tool"
+            type="button"
+            :class="{ selected: activeTool === tool }"
+            @click="activeTool = tool"
+          >
+            {{ tool }}
+          </button>
+        </div>
 
         <div class="segmented" aria-label="Camera mode">
           <button
@@ -326,6 +413,42 @@ function formatMovementTarget(target: MovementTargetSnapshot | null): string {
       </div>
     </header>
 
+    <section v-if="snapshot !== null" class="tool-controls" aria-label="Tool settings">
+      <label v-if="activeTool === 'Place NPC'">
+        <span>NPC size</span>
+        <input v-model.number="npcSize" type="number" min="1" max="9" />
+      </label>
+      <label v-if="activeTool === 'Place NPC'">
+        <span>NPC speed</span>
+        <input v-model.number="npcSpeed" type="number" min="0" max="4" />
+      </label>
+      <label v-if="activeTool === 'Place Game Object'">
+        <span>Width</span>
+        <input v-model.number="gameObjectWidth" type="number" min="1" max="9" />
+      </label>
+      <label v-if="activeTool === 'Place Game Object'">
+        <span>Height</span>
+        <input v-model.number="gameObjectHeight" type="number" min="1" max="9" />
+      </label>
+      <label v-if="activeTool === 'Place Game Object'">
+        <span>Direction</span>
+        <select v-model="gameObjectDirection">
+          <option>North</option>
+          <option>East</option>
+          <option>South</option>
+          <option>West</option>
+        </select>
+      </label>
+      <label v-if="activeTool === 'Place Game Object'" class="checkbox-control">
+        <input v-model="gameObjectBlocksMovement" type="checkbox" />
+        <span>Movement</span>
+      </label>
+      <label v-if="activeTool === 'Place Game Object'" class="checkbox-control">
+        <input v-model="gameObjectBlocksLineOfSight" type="checkbox" />
+        <span>Line of sight</span>
+      </label>
+    </section>
+
     <section v-if="snapshot !== null" class="debug-layout" aria-live="polite">
       <div
         class="viewport"
@@ -367,6 +490,10 @@ function formatMovementTarget(target: MovementTargetSnapshot | null): string {
       <aside class="details" aria-label="Debug state">
         <dl>
           <div>
+            <dt>Tool</dt>
+            <dd>{{ activeTool }}</dd>
+          </div>
+          <div>
             <dt>Tick</dt>
             <dd>{{ snapshot.tick }}</dd>
           </div>
@@ -392,15 +519,21 @@ function formatMovementTarget(target: MovementTargetSnapshot | null): string {
           </div>
           <div>
             <dt>NPC position</dt>
-            <dd>{{ formatCoordinate(snapshot.npc.coordinate) }}</dd>
+            <dd>{{ formatCoordinate(snapshot.selectedNpc?.coordinate ?? null) }}</dd>
           </div>
           <div>
             <dt>NPC size</dt>
-            <dd>{{ snapshot.npc.size }}x{{ snapshot.npc.size }}</dd>
+            <dd>
+              {{
+                snapshot.selectedNpc === null
+                  ? "None"
+                  : `${snapshot.selectedNpc.size}x${snapshot.selectedNpc.size}`
+              }}
+            </dd>
           </div>
           <div>
             <dt>NPC Movement Target</dt>
-            <dd>{{ formatMovementTarget(snapshot.npc.movementTarget) }}</dd>
+            <dd>{{ formatMovementTarget(snapshot.selectedNpc?.movementTarget ?? null) }}</dd>
           </div>
           <div>
             <dt>Tile Flags</dt>
@@ -413,9 +546,9 @@ function formatMovementTarget(target: MovementTargetSnapshot | null): string {
               movement-blocking object tiles
             </dd>
           </div>
-          <div class="feedback" :class="{ blocked: snapshot.blockedClick }">
-            <dt>Blocked click</dt>
-            <dd>{{ snapshot.blockedClick ? "Rejected on blocked tile" : "None" }}</dd>
+          <div class="feedback" :class="{ blocked: snapshot.actionFeedback.state !== 'none' }">
+            <dt>Action feedback</dt>
+            <dd>{{ formatActionFeedback(snapshot) }}</dd>
           </div>
           <div>
             <dt>Pathing</dt>
@@ -542,6 +675,51 @@ button:hover {
 .fov-control span,
 .fov-control strong {
     font-size: 0.86rem;
+}
+
+.tool-controls {
+    align-items: center;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin: 0 auto 20px;
+    max-width: 1180px;
+}
+
+.tool-controls label {
+    align-items: center;
+    background: #ffffff;
+    border: 1px solid #bbc5cf;
+    border-radius: 6px;
+    display: flex;
+    gap: 8px;
+    min-height: 38px;
+    padding: 0 10px;
+}
+
+.tool-controls span {
+    color: #26313f;
+    font-size: 0.86rem;
+    font-weight: 800;
+}
+
+.tool-controls input[type="number"] {
+    border: 1px solid #bbc5cf;
+    border-radius: 4px;
+    font: inherit;
+    max-width: 58px;
+    padding: 4px 6px;
+}
+
+.tool-controls select {
+    border: 1px solid #bbc5cf;
+    border-radius: 4px;
+    font: inherit;
+    padding: 4px 6px;
+}
+
+.tool-controls .checkbox-control {
+    padding-left: 8px;
 }
 
 .debug-layout {
