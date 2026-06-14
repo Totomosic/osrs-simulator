@@ -304,10 +304,70 @@ assert.deepEqual(JSON.parse(scenario.GetSnapshotJson()).actionFeedback, {
     state: "placement-failure",
 });
 
+assert.equal(scenario.PlaceNpc(2, 0, 9, 9, 0), true);
+
+const placedNpcSnapshot = JSON.parse(scenario.GetSnapshotJson());
+
+assert.equal(placedNpcSnapshot.npcs.length, 2);
+assert.equal(placedNpcSnapshot.npc.size, 2);
+assert.equal(placedNpcSnapshot.npc.speed, 0);
+assert.deepEqual(placedNpcSnapshot.npc.coordinate, { x: 9, y: 9, plane: 0 });
+assert.equal(
+    placedNpcSnapshot.npc.movementTarget.actorId,
+    placedNpcSnapshot.player.id,
+);
+assert.equal(placedNpcSnapshot.selectedNpcId, placedNpcSnapshot.npc.id);
+assert.equal(scenario.RemoveNpc(10, 10, 0), true);
+
+const removedByFootprintSnapshot = JSON.parse(scenario.GetSnapshotJson());
+
+assert.equal(removedByFootprintSnapshot.npcs.length, 1);
+assert.equal(
+    removedByFootprintSnapshot.selectedNpcId,
+    removedByFootprintSnapshot.npc.id,
+);
+
 assert.equal(scenario.RemoveNpc(0, 0, 0), false);
 assert.deepEqual(JSON.parse(scenario.GetSnapshotJson()).actionFeedback, {
     state: "removal-failure",
 });
+
+assert.equal(scenario.PlaceNpc(3, 1, 30, 30, 0), true);
+const firstOverlapNpcId = JSON.parse(scenario.GetSnapshotJson()).selectedNpcId;
+assert.equal(scenario.PlaceNpc(3, 1, 31, 31, 0), true);
+const secondOverlapNpcId = JSON.parse(scenario.GetSnapshotJson()).selectedNpcId;
+
+assert.equal(scenario.RemoveNpc(31, 31, 0), true);
+assert.equal(
+    JSON.parse(scenario.GetSnapshotJson()).npcs.some(
+        (npc) => npc.id === secondOverlapNpcId,
+    ),
+    false,
+);
+assert.equal(
+    JSON.parse(scenario.GetSnapshotJson()).npcs.some(
+        (npc) => npc.id === firstOverlapNpcId,
+    ),
+    true,
+);
+assert.equal(scenario.RemoveNpc(32, 32, 0), true);
+assert.equal(
+    JSON.parse(scenario.GetSnapshotJson()).npcs.some(
+        (npc) => npc.id === firstOverlapNpcId,
+    ),
+    false,
+);
+
+assert.equal(scenario.PlaceNpc(2, 1, 40, 40, 0), true);
+assert.equal(scenario.PlaceNpc(2, 1, 41, 41, 0), true);
+const newestOverlapNpcId = JSON.parse(scenario.GetSnapshotJson()).selectedNpcId;
+assert.equal(scenario.RemoveNpc(50, 50, 0), false);
+assert.equal(
+    JSON.parse(scenario.GetSnapshotJson()).npcs.some(
+        (npc) => npc.id === newestOverlapNpcId,
+    ),
+    true,
+);
 
 assert.equal(scenario.PlaceGameObject(20, 20, 0, 1, 1, "North", true, true), true);
 assert.deepEqual(JSON.parse(scenario.GetSnapshotJson()).actionFeedback, {
