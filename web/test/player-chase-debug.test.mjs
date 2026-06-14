@@ -53,6 +53,41 @@ class FakePlayerChaseScenario {
 
     GetSnapshotJson() {
         const tiles = [];
+        const npc =
+            this.npc === null
+                ? null
+                : {
+                      id: this.npc.id,
+                      kind: "NPC",
+                      coordinate: {
+                          x: this.npc.x,
+                          y: this.npc.y,
+                          plane: this.npc.plane,
+                      },
+                      size: this.npc.size,
+                      speed: this.npc.speed,
+                      movementTarget: {
+                          kind: "Actor",
+                          actorId: this.player.id,
+                          label: "Player #1",
+                      },
+                  };
+        const secondNpc =
+            this.secondNpc === null
+                ? null
+                : {
+                      id: this.secondNpc.id,
+                      kind: "NPC",
+                      coordinate: {
+                          x: this.secondNpc.x,
+                          y: this.secondNpc.y,
+                          plane: this.secondNpc.plane,
+                      },
+                      size: this.secondNpc.size,
+                      speed: this.secondNpc.speed,
+                      movementTarget: null,
+                  };
+        const npcs = [npc, secondNpc].filter((candidate) => candidate !== null);
 
         for (let x = 12; x <= 14; x += 1) {
             for (let y = 4; y <= 6; y += 1) {
@@ -99,49 +134,10 @@ class FakePlayerChaseScenario {
                               coordinate: this.playerTarget,
                           },
             },
-            npc: {
-                id: this.npc.id,
-                kind: "NPC",
-                coordinate: { x: this.npc.x, y: this.npc.y, plane: this.npc.plane },
-                size: this.npc.size,
-                speed: this.npc.speed,
-                movementTarget: {
-                    kind: "Actor",
-                    actorId: this.player.id,
-                    label: "Player #1",
-                },
-            },
-            npcs: [
-                {
-                    id: this.npc.id,
-                    kind: "NPC",
-                    coordinate: {
-                        x: this.npc.x,
-                        y: this.npc.y,
-                        plane: this.npc.plane,
-                    },
-                    size: this.npc.size,
-                    speed: this.npc.speed,
-                    movementTarget: {
-                        kind: "Actor",
-                        actorId: this.player.id,
-                        label: "Player #1",
-                    },
-                },
-                {
-                    id: this.secondNpc.id,
-                    kind: "NPC",
-                    coordinate: {
-                        x: this.secondNpc.x,
-                        y: this.secondNpc.y,
-                        plane: this.secondNpc.plane,
-                    },
-                    size: this.secondNpc.size,
-                    speed: this.secondNpc.speed,
-                    movementTarget: null,
-                },
-            ],
-            selectedNpcId: this.npc.id,
+            npc,
+            npcs,
+            selectedNpcId: npc?.id ?? null,
+            selectedNpc: npc,
             tiles,
         });
     }
@@ -239,6 +235,23 @@ class FakePlayerChaseScenario {
     });
     assert.equal(zoomed.fieldOfView, maxFieldOfView);
     assert.equal(zoomedIn.fieldOfView, minFieldOfView);
+}
+
+{
+    const scenario = new FakePlayerChaseScenario();
+    scenario.npc = null;
+    scenario.secondNpc = null;
+    const snapshot = readPlayerChaseDebugSnapshot(
+        scenario,
+        "Follow NPC",
+        defaultFieldOfView,
+    );
+    const camera = setCameraMode(createDefaultCamera(snapshot), "Follow NPC", snapshot);
+
+    assert.deepEqual(snapshot.npcs, []);
+    assert.equal(snapshot.selectedNpcId, null);
+    assert.equal(snapshot.selectedNpc, null);
+    assert.deepEqual(getCameraCenter(camera, snapshot), snapshot.player.coordinate);
 }
 
 {

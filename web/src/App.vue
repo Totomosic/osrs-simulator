@@ -526,11 +526,25 @@ function formatActionFeedback(snapshot: PlayerChaseDebugSnapshot): string {
             <dd>{{ formatMovementTarget(snapshot.player.movementTarget) }}</dd>
           </div>
           <div>
-            <dt>NPC position</dt>
+            <dt>NPC count</dt>
+            <dd>{{ snapshot.npcs.length }}</dd>
+          </div>
+          <div>
+            <dt>Selected NPC</dt>
+            <dd>
+              {{
+                snapshot.selectedNpc === null
+                  ? "None"
+                  : `#${snapshot.selectedNpc.id}`
+              }}
+            </dd>
+          </div>
+          <div>
+            <dt>Selected NPC position</dt>
             <dd>{{ formatCoordinate(snapshot.selectedNpc?.coordinate ?? null) }}</dd>
           </div>
           <div>
-            <dt>NPC size</dt>
+            <dt>Selected NPC size</dt>
             <dd>
               {{
                 snapshot.selectedNpc === null
@@ -540,7 +554,7 @@ function formatActionFeedback(snapshot: PlayerChaseDebugSnapshot): string {
             </dd>
           </div>
           <div>
-            <dt>NPC Movement Target</dt>
+            <dt>Selected NPC Movement Target</dt>
             <dd>{{ formatMovementTarget(snapshot.selectedNpc?.movementTarget ?? null) }}</dd>
           </div>
           <div>

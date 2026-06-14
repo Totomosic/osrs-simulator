@@ -347,6 +347,7 @@ class PlayerChaseScenario implements DevelopmentPlayerChaseScenario {
             npc: selectedNpc ?? null,
             npcs,
             selectedNpcId: selectedNpc?.id ?? null,
+            selectedNpc: selectedNpc ?? null,
             tiles: this.readScenarioTiles(),
         });
     }

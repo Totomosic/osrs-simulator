@@ -67,6 +67,7 @@ export interface EnginePlayerChaseSnapshot {
     npc: ActorSnapshot | null;
     npcs?: ActorSnapshot[];
     selectedNpcId?: number | null;
+    selectedNpc?: ActorSnapshot | null;
     tiles: SnapshotTile[];
 }
 
@@ -116,6 +117,7 @@ export function readPlayerChaseDebugSnapshot(
         engineSnapshot.npc === null ? [] : [engineSnapshot.npc]
     );
     const selectedNpc =
+        engineSnapshot.selectedNpc ??
         npcs.find((npc) => npc.id === engineSnapshot.selectedNpcId) ??
         engineSnapshot.npc ??
         null;
