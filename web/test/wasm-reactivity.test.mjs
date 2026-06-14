@@ -12,20 +12,20 @@ const wasmBinary = await readFile(
 const module = await createGeneratedEngineModule({ wasmBinary });
 
 {
-    const rawScenario = new module.DevelopmentPlayerChaseScenario();
-    const scenario = ref(rawScenario);
+    const rawEngine = new module.Engine();
+    const engine = ref(rawEngine);
 
-    assert.equal(isProxy(scenario.value), true);
+    assert.equal(isProxy(engine.value), true);
     assert.throws(
-        () => scenario.value.GetTick(),
-        /Expected null or instance of DevelopmentPlayerChaseScenario, got an instance of DevelopmentPlayerChaseScenario/,
+        () => engine.value.GetCurrentTick(),
+        /Expected null or instance of Engine, got an instance of Engine/,
     );
 }
 
 {
-    const rawScenario = new module.DevelopmentPlayerChaseScenario();
-    const scenario = shallowRef(rawScenario);
+    const rawEngine = new module.Engine();
+    const engine = shallowRef(rawEngine);
 
-    assert.equal(isProxy(scenario.value), false);
-    assert.equal(scenario.value.GetTick(), 0n);
+    assert.equal(isProxy(engine.value), false);
+    assert.equal(engine.value.GetCurrentTick(), 0n);
 }

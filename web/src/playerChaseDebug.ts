@@ -1,4 +1,4 @@
-import type { DevelopmentPlayerChaseScenario } from "./wasm/EngineModule";
+import type { PlayerChaseScenario } from "./scenarios";
 
 export type ActionFeedbackState =
     | "none"
@@ -105,13 +105,11 @@ export const minFieldOfView = 8;
 export const maxFieldOfView = 40;
 
 export function readPlayerChaseDebugSnapshot(
-    scenario: DevelopmentPlayerChaseScenario,
+    scenario: PlayerChaseScenario,
     cameraMode: CameraMode,
     fieldOfView: number,
 ): PlayerChaseDebugSnapshot {
-    const engineSnapshot = JSON.parse(
-        scenario.GetSnapshotJson(),
-    ) as EnginePlayerChaseSnapshot;
+    const engineSnapshot = scenario.snapshot();
 
     const npcs = engineSnapshot.npcs ?? (
         engineSnapshot.npc === null ? [] : [engineSnapshot.npc]
@@ -260,10 +258,10 @@ export function getSceneScreenCoordinate(
 }
 
 export function clickDebugTile(
-    scenario: DevelopmentPlayerChaseScenario,
+    scenario: PlayerChaseScenario,
     tile: DebugTile,
 ): boolean {
-    return scenario.ClickSceneCoordinate(
+    return scenario.clickSceneCoordinate(
         tile.coordinate.x,
         tile.coordinate.y,
         tile.coordinate.plane,

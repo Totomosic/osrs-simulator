@@ -31,20 +31,20 @@ class FakePlayerChaseScenario {
         this.tick = 0;
     }
 
-    Step() {
+    step() {
         this.tick += 1;
     }
 
-    Reset() {
+    reset() {
         this.running = false;
         this.tick = 0;
     }
 
-    SetRunning(running) {
+    setRunning(running) {
         this.running = running;
     }
 
-    IsRunning() {
+    isRunning() {
         return this.running;
     }
 }

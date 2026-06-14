@@ -62,58 +62,6 @@ export interface World {
 
 export type CardinalDirection = number | "North" | "East" | "South" | "West";
 
-export interface DevelopmentPlayerChaseScenario {
-    Step(): void;
-    Reset(): void;
-    ClickSceneCoordinate(x: number, y: number, plane: number): boolean;
-    PlaceNpc(
-        size: number,
-        speed: number,
-        x: number,
-        y: number,
-        plane: number,
-    ): boolean;
-    RemoveNpc(x: number, y: number, plane: number): boolean;
-    PlaceGameObject(
-        x: number,
-        y: number,
-        plane: number,
-        sizeX: number,
-        sizeY: number,
-        direction: CardinalDirection,
-        blocksMovement: boolean,
-        blocksLineOfSight: boolean,
-    ): boolean;
-    RemoveGameObject(x: number, y: number, plane: number): boolean;
-    SetRunning(running: boolean): void;
-    IsRunning(): boolean;
-    WasLastClickBlocked(): boolean;
-    GetSnapshotJson(): string;
-    GetTick(): number;
-    GetSceneWidth(): number;
-    GetSceneHeight(): number;
-    GetScenePlaneCount(): number;
-    GetPlayerId(): number;
-    GetNpcId(): number;
-    GetPlayerX(): number;
-    GetPlayerY(): number;
-    GetPlayerPlane(): number;
-    HasPlayerMovementTarget(): boolean;
-    GetPlayerMovementTargetX(): number;
-    GetPlayerMovementTargetY(): number;
-    GetPlayerMovementTargetPlane(): number;
-    GetNpcX(): number;
-    GetNpcY(): number;
-    GetNpcPlane(): number;
-    GetNpcSize(): number;
-    HasNpcMovementTarget(): boolean;
-    GetNpcMovementTargetActorId(): number;
-    GetNpcMovementTargetLabel(): string;
-    IsGameObjectTile(x: number, y: number, plane: number): boolean;
-    IsPlayerTile(x: number, y: number, plane: number): boolean;
-    IsNpcTile(x: number, y: number, plane: number): boolean;
-}
-
 export interface EngineModule {
     Engine: new () => Engine;
     CardinalDirection: {
@@ -123,7 +71,6 @@ export interface EngineModule {
         West?: CardinalDirection;
     };
     World?: new () => World;
-    DevelopmentPlayerChaseScenario?: new () => DevelopmentPlayerChaseScenario;
 }
 
 const generatedModuleUrl = new URL(

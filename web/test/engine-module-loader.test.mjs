@@ -246,10 +246,11 @@ assert.equal(engine.GetCurrentTick(), 1);
 assert.equal(engine.GetWorld().GetDefaultSceneId(), 1);
 assert.equal(registeredScenarios.length, 1);
 assert.equal(registeredScenarios[0].name, "Player Chase");
+assert.equal(module.DevelopmentPlayerChaseScenario, undefined);
 assert.match(locateFileResult, /\/generated\/EngineModule\.wasm$/);
 
 const scenario = createPlayerChaseScenario(module);
-const initialSnapshot = JSON.parse(scenario.GetSnapshotJson());
+const initialSnapshot = scenario.snapshot();
 
 assert.equal(initialSnapshot.name, "Player Chase");
 assert.equal(initialSnapshot.tick, 0);
@@ -264,27 +265,27 @@ assert.equal(
     9,
 );
 
-assert.equal(scenario.ClickSceneCoordinate(12, 4, 0), false);
-assert.equal(scenario.WasLastClickBlocked(), true);
-assert.deepEqual(JSON.parse(scenario.GetSnapshotJson()).actionFeedback, {
+assert.equal(scenario.clickSceneCoordinate(12, 4, 0), false);
+assert.equal(scenario.wasLastClickBlocked(), true);
+assert.deepEqual(scenario.snapshot().actionFeedback, {
     state: "blocked-movement",
 });
-assert.equal(scenario.ClickSceneCoordinate(10, 11, 0), true);
-assert.deepEqual(JSON.parse(scenario.GetSnapshotJson()).actionFeedback, {
+assert.equal(scenario.clickSceneCoordinate(10, 11, 0), true);
+assert.deepEqual(scenario.snapshot().actionFeedback, {
     state: "none",
 });
 
-scenario.Step();
+scenario.step();
 
-const movedSnapshot = JSON.parse(scenario.GetSnapshotJson());
+const movedSnapshot = scenario.snapshot();
 
 assert.equal(movedSnapshot.tick, 1);
 assert.deepEqual(movedSnapshot.player.coordinate, { x: 10, y: 11, plane: 0 });
 assert.equal(movedSnapshot.npcs[0].coordinate.y, 11);
 
-scenario.Reset();
+scenario.reset();
 
-const resetSnapshot = JSON.parse(scenario.GetSnapshotJson());
+const resetSnapshot = scenario.snapshot();
 
 assert.equal(resetSnapshot.tick, 0);
 assert.deepEqual(resetSnapshot.player.coordinate, { x: 8, y: 11, plane: 0 });
@@ -298,15 +299,15 @@ assert.equal(
 );
 
 module.Engine.lastCreated.world.failNextActorPlacement = true;
-assert.equal(scenario.PlaceNpc(1, 1, 9, 9, 0), false);
-assert.equal(JSON.parse(scenario.GetSnapshotJson()).npcs.length, 1);
-assert.deepEqual(JSON.parse(scenario.GetSnapshotJson()).actionFeedback, {
+assert.equal(scenario.placeNpc(1, 1, 9, 9, 0), false);
+assert.equal(scenario.snapshot().npcs.length, 1);
+assert.deepEqual(scenario.snapshot().actionFeedback, {
     state: "placement-failure",
 });
 
-assert.equal(scenario.PlaceNpc(2, 0, 9, 9, 0), true);
+assert.equal(scenario.placeNpc(2, 0, 9, 9, 0), true);
 
-const placedNpcSnapshot = JSON.parse(scenario.GetSnapshotJson());
+const placedNpcSnapshot = scenario.snapshot();
 
 assert.equal(placedNpcSnapshot.npcs.length, 2);
 assert.equal(placedNpcSnapshot.npc.size, 2);
@@ -317,9 +318,9 @@ assert.equal(
     placedNpcSnapshot.player.id,
 );
 assert.equal(placedNpcSnapshot.selectedNpcId, placedNpcSnapshot.npc.id);
-assert.equal(scenario.RemoveNpc(10, 10, 0), true);
+assert.equal(scenario.removeNpc(10, 10, 0), true);
 
-const removedByFootprintSnapshot = JSON.parse(scenario.GetSnapshotJson());
+const removedByFootprintSnapshot = scenario.snapshot();
 
 assert.equal(removedByFootprintSnapshot.npcs.length, 1);
 assert.equal(
@@ -327,56 +328,56 @@ assert.equal(
     removedByFootprintSnapshot.npc.id,
 );
 
-assert.equal(scenario.RemoveNpc(0, 0, 0), false);
-assert.deepEqual(JSON.parse(scenario.GetSnapshotJson()).actionFeedback, {
+assert.equal(scenario.removeNpc(0, 0, 0), false);
+assert.deepEqual(scenario.snapshot().actionFeedback, {
     state: "removal-failure",
 });
 
-assert.equal(scenario.PlaceNpc(3, 1, 30, 30, 0), true);
-const firstOverlapNpcId = JSON.parse(scenario.GetSnapshotJson()).selectedNpcId;
-assert.equal(scenario.PlaceNpc(3, 1, 31, 31, 0), true);
-const secondOverlapNpcId = JSON.parse(scenario.GetSnapshotJson()).selectedNpcId;
+assert.equal(scenario.placeNpc(3, 1, 30, 30, 0), true);
+const firstOverlapNpcId = scenario.snapshot().selectedNpcId;
+assert.equal(scenario.placeNpc(3, 1, 31, 31, 0), true);
+const secondOverlapNpcId = scenario.snapshot().selectedNpcId;
 
-assert.equal(scenario.RemoveNpc(31, 31, 0), true);
+assert.equal(scenario.removeNpc(31, 31, 0), true);
 assert.equal(
-    JSON.parse(scenario.GetSnapshotJson()).npcs.some(
+    scenario.snapshot().npcs.some(
         (npc) => npc.id === secondOverlapNpcId,
     ),
     false,
 );
 assert.equal(
-    JSON.parse(scenario.GetSnapshotJson()).npcs.some(
+    scenario.snapshot().npcs.some(
         (npc) => npc.id === firstOverlapNpcId,
     ),
     true,
 );
-assert.equal(scenario.RemoveNpc(32, 32, 0), true);
+assert.equal(scenario.removeNpc(32, 32, 0), true);
 assert.equal(
-    JSON.parse(scenario.GetSnapshotJson()).npcs.some(
+    scenario.snapshot().npcs.some(
         (npc) => npc.id === firstOverlapNpcId,
     ),
     false,
 );
 
-assert.equal(scenario.PlaceNpc(2, 1, 40, 40, 0), true);
-assert.equal(scenario.PlaceNpc(2, 1, 41, 41, 0), true);
-const newestOverlapNpcId = JSON.parse(scenario.GetSnapshotJson()).selectedNpcId;
-assert.equal(scenario.RemoveNpc(50, 50, 0), false);
+assert.equal(scenario.placeNpc(2, 1, 40, 40, 0), true);
+assert.equal(scenario.placeNpc(2, 1, 41, 41, 0), true);
+const newestOverlapNpcId = scenario.snapshot().selectedNpcId;
+assert.equal(scenario.removeNpc(50, 50, 0), false);
 assert.equal(
-    JSON.parse(scenario.GetSnapshotJson()).npcs.some(
+    scenario.snapshot().npcs.some(
         (npc) => npc.id === newestOverlapNpcId,
     ),
     true,
 );
 
-assert.equal(scenario.PlaceGameObject(20, 20, 0, 1, 1, "North", true, true), true);
-assert.deepEqual(JSON.parse(scenario.GetSnapshotJson()).actionFeedback, {
+assert.equal(scenario.placeGameObject(20, 20, 0, 1, 1, "North", true, true), true);
+assert.deepEqual(scenario.snapshot().actionFeedback, {
     state: "none",
 });
 
-assert.equal(scenario.PlaceGameObject(50, 50, 0, 2, 3, "East", false, true), true);
+assert.equal(scenario.placeGameObject(50, 50, 0, 2, 3, "East", false, true), true);
 
-const eastObjectSnapshot = JSON.parse(scenario.GetSnapshotJson());
+const eastObjectSnapshot = scenario.snapshot();
 const eastObjectTiles = eastObjectSnapshot.tiles.filter(
     (tile) => tile.gameObject?.id === 202,
 );
@@ -402,38 +403,38 @@ assert.ok(
     ),
 );
 
-assert.equal(scenario.RemoveGameObject(52, 51, 0), true);
+assert.equal(scenario.removeGameObject(52, 51, 0), true);
 assert.equal(
-    JSON.parse(scenario.GetSnapshotJson()).tiles.some(
+    scenario.snapshot().tiles.some(
         (tile) => tile.gameObject?.id === 202,
     ),
     false,
 );
 assert.equal(
-    JSON.parse(scenario.GetSnapshotJson()).tiles.some(
+    scenario.snapshot().tiles.some(
         (tile) => tile.gameObject?.id === 201,
     ),
     true,
 );
 
 module.Engine.lastCreated.world.scene.failNextPlacement = true;
-assert.equal(scenario.PlaceGameObject(21, 20, 0, 1, 1, "North", true, true), false);
-assert.deepEqual(JSON.parse(scenario.GetSnapshotJson()).actionFeedback, {
+assert.equal(scenario.placeGameObject(21, 20, 0, 1, 1, "North", true, true), false);
+assert.deepEqual(scenario.snapshot().actionFeedback, {
     state: "placement-failure",
 });
 
-assert.equal(scenario.RemoveGameObject(0, 0, 0), false);
-assert.deepEqual(JSON.parse(scenario.GetSnapshotJson()).actionFeedback, {
+assert.equal(scenario.removeGameObject(0, 0, 0), false);
+assert.deepEqual(scenario.snapshot().actionFeedback, {
     state: "removal-failure",
 });
 
-scenario.SetRunning(true);
-assert.equal(scenario.PlaceNpc(1, 1, 30, 30, 0), true);
-assert.equal(scenario.PlaceGameObject(40, 40, 0, 1, 1, "North", true, true), true);
-assert.equal(scenario.RemoveNpc(18, 20, 0), true);
-scenario.Reset();
+scenario.setRunning(true);
+assert.equal(scenario.placeNpc(1, 1, 30, 30, 0), true);
+assert.equal(scenario.placeGameObject(40, 40, 0, 1, 1, "North", true, true), true);
+assert.equal(scenario.removeNpc(18, 20, 0), true);
+scenario.reset();
 
-const resetFromEditedSnapshot = JSON.parse(scenario.GetSnapshotJson());
+const resetFromEditedSnapshot = scenario.snapshot();
 
 assert.equal(resetFromEditedSnapshot.running, false);
 assert.deepEqual(resetFromEditedSnapshot.actionFeedback, { state: "none" });

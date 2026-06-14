@@ -1,8 +1,6 @@
 #include "Engine.h"
-#include "DevelopmentPlayerChaseScenario.h"
 
 #include <cassert>
-#include <string>
 
 int main()
 {
@@ -271,57 +269,46 @@ int main()
     }
 
     {
-        osrssim::DevelopmentPlayerChaseScenario scenario;
+        osrssim::Engine engine;
+        osrssim::World& world = engine.GetWorld();
+        osrssim::Scene* scene = world.TryGetScene(world.GetDefaultSceneId());
+        osrssim::ActorId playerId = world.CreatePlayer(1, 2);
+        osrssim::ActorId npcId = world.CreateNpc(4, 1);
+        osrssim::CollisionProfile blockingObject;
+        blockingObject.blocksMovement = true;
+        blockingObject.blocksLineOfSight = true;
 
-        assert(scenario.GetTick() == 0);
-        assert(scenario.GetPlayerX() == 8);
-        assert(scenario.GetPlayerY() == 11);
-        assert(scenario.GetNpcX() == 18);
-        assert(scenario.GetNpcY() == 20);
-        assert(scenario.GetNpcSize() == 4);
-        assert(scenario.HasNpcMovementTarget());
-        assert(scenario.GetNpcMovementTargetActorId() == scenario.GetPlayerId());
-        assert(scenario.GetNpcMovementTargetLabel() == "Player #1");
-        assert(scenario.IsGameObjectTile(12, 4, 0));
-        assert(scenario.IsGameObjectTile(14, 6, 0));
+        assert(scene != nullptr);
+        assert(scene->PlaceGameObject(
+            {12, 4, 0},
+            200,
+            osrssim::CardinalDirection::North,
+            3,
+            3,
+            blockingObject));
+        assert(world.PlaceActor(
+            playerId,
+            world.GetDefaultSceneId(),
+            {8, 11, 0}));
+        assert(world.PlaceActor(
+            npcId,
+            world.GetDefaultSceneId(),
+            {18, 20, 0}));
+        assert(world.SetActorMovementTarget(npcId, playerId));
+        assert(!world.CanPlayerUseSceneCoordinateMovementTarget(
+            playerId,
+            {12, 4, 0}));
+        assert(engine.QueuePlayerMoveToSceneCoordinate(playerId, {10, 11, 0}));
 
-        const std::string initialSnapshot = scenario.GetSnapshotJson();
-        assert(initialSnapshot.find("\"name\":\"Player Chase\"") !=
-               std::string::npos);
-        assert(initialSnapshot.find("\"size\":4") != std::string::npos);
-        assert(initialSnapshot.find("\"BlockMovementObject\"") !=
-               std::string::npos);
+        engine.Step();
 
-        assert(scenario.ClickSceneCoordinate(10, 11, 0));
-        assert(!scenario.WasLastClickBlocked());
-        assert(scenario.GetTick() == 0);
-        assert(scenario.GetPlayerX() == 8);
-        assert(scenario.GetPlayerY() == 11);
-        assert(scenario.HasPlayerMovementTarget());
-        assert(scenario.GetPlayerMovementTargetX() == 10);
-        assert(scenario.GetPlayerMovementTargetY() == 11);
-        assert(scenario.GetPlayerMovementTargetPlane() == 0);
-
-        assert(scenario.ClickSceneCoordinate(8, 11, 0));
-        assert(!scenario.WasLastClickBlocked());
-        assert(scenario.GetPlayerMovementTargetX() == 8);
-        assert(scenario.GetPlayerMovementTargetY() == 11);
-
-        assert(!scenario.ClickSceneCoordinate(12, 4, 0));
-        assert(scenario.WasLastClickBlocked());
-        assert(scenario.GetPlayerMovementTargetX() == 8);
-        assert(scenario.GetPlayerMovementTargetY() == 11);
-
-        for (int i = 0; i < 9; ++i)
-        {
-            scenario.Step();
-        }
-
-        assert(scenario.GetTick() == 9);
-        assert(scenario.GetNpcX() == 9);
-        assert(scenario.GetNpcY() == 11);
-        assert(scenario.HasNpcMovementTarget());
-        assert(scenario.GetNpcMovementTargetActorId() == scenario.GetPlayerId());
+        assert(engine.GetCurrentTick() == 1);
+        assert(world.GetSceneMembership(playerId)->coordinate ==
+               (osrssim::SceneCoordinate{10, 11, 0}));
+        assert(world.GetNpc(npcId)->movementTarget->actorId == playerId);
+        assert(scene->TryGetTile({14, 6, 0})->gameObject.has_value());
+        assert(scene->TryGetTile({14, 6, 0})
+                   ->HasFlag(osrssim::TileFlag::BlockMovementObject));
     }
 
     return 0;

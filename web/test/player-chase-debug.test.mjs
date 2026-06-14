@@ -51,7 +51,7 @@ class FakePlayerChaseScenario {
         this.height = 104;
     }
 
-    GetSnapshotJson() {
+    snapshot() {
         const tiles = [];
         const npc =
             this.npc === null
@@ -104,7 +104,7 @@ class FakePlayerChaseScenario {
             }
         }
 
-        return JSON.stringify({
+        return {
             name: "Player Chase",
             tick: this.tick,
             running: this.running,
@@ -139,10 +139,10 @@ class FakePlayerChaseScenario {
             selectedNpcId: npc?.id ?? null,
             selectedNpc: npc,
             tiles,
-        });
+        };
     }
 
-    ClickSceneCoordinate(x, y, plane) {
+    clickSceneCoordinate(x, y, plane) {
         if (plane === 0 && x >= 12 && x <= 14 && y >= 4 && y <= 6) {
             this.lastClickBlocked = true;
             this.actionFeedback = { state: "blocked-movement" };
@@ -155,12 +155,12 @@ class FakePlayerChaseScenario {
         return true;
     }
 
-    PlaceNpc() {
+    placeNpc() {
         this.actionFeedback = { state: "placement-failure" };
         return false;
     }
 
-    RemoveNpc() {
+    removeNpc() {
         this.actionFeedback = { state: "removal-failure" };
         return false;
     }
@@ -305,7 +305,7 @@ class FakePlayerChaseScenario {
 {
     const scenario = new FakePlayerChaseScenario();
 
-    assert.equal(scenario.PlaceNpc(), false);
+    assert.equal(scenario.placeNpc(), false);
 
     let snapshot = readPlayerChaseDebugSnapshot(
         scenario,
@@ -315,7 +315,7 @@ class FakePlayerChaseScenario {
 
     assert.deepEqual(snapshot.actionFeedback, { state: "placement-failure" });
 
-    assert.equal(scenario.RemoveNpc(), false);
+    assert.equal(scenario.removeNpc(), false);
 
     snapshot = readPlayerChaseDebugSnapshot(
         scenario,

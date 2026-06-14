@@ -22,18 +22,18 @@ import {
     type PlayerChaseDebugSnapshot,
     type PlayerChaseTool,
 } from "./playerChaseDebug";
+import { loadEngineModule } from "./wasm/EngineModule";
 import {
-    loadEngineModule,
-    type DevelopmentPlayerChaseScenario,
-} from "./wasm/EngineModule";
-import { createPlayerChaseScenario } from "./scenarios";
+    createPlayerChaseScenario,
+    type PlayerChaseScenario,
+} from "./scenarios";
 import {
     createPlayerChasePlayback,
     type PlayerChasePlaybackControls,
 } from "./playerChasePlayback";
 
 const engineModuleStatus = ref<"loading" | "loaded" | "failed">("loading");
-const scenario = shallowRef<DevelopmentPlayerChaseScenario | null>(null);
+const scenario = shallowRef<PlayerChaseScenario | null>(null);
 const snapshot = ref<PlayerChaseDebugSnapshot | null>(null);
 const camera = ref<CameraState | null>(null);
 const toolModes: PlayerChaseTool[] = [
@@ -244,7 +244,7 @@ function clickTile(tile: DebugTile): void {
             clickDebugTile(scenario.value, tile);
             break;
         case "Place NPC":
-            scenario.value.PlaceNpc(
+            scenario.value.placeNpc(
                 npcSize.value,
                 npcSpeed.value,
                 tile.coordinate.x,
@@ -253,14 +253,14 @@ function clickTile(tile: DebugTile): void {
             );
             break;
         case "Remove NPC":
-            scenario.value.RemoveNpc(
+            scenario.value.removeNpc(
                 tile.coordinate.x,
                 tile.coordinate.y,
                 tile.coordinate.plane,
             );
             break;
         case "Place Game Object":
-            scenario.value.PlaceGameObject(
+            scenario.value.placeGameObject(
                 tile.coordinate.x,
                 tile.coordinate.y,
                 tile.coordinate.plane,
@@ -272,7 +272,7 @@ function clickTile(tile: DebugTile): void {
             );
             break;
         case "Remove Game Object":
-            scenario.value.RemoveGameObject(
+            scenario.value.removeGameObject(
                 tile.coordinate.x,
                 tile.coordinate.y,
                 tile.coordinate.plane,

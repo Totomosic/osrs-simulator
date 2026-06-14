@@ -1,4 +1,4 @@
-import type { DevelopmentPlayerChaseScenario } from "./wasm/EngineModule";
+import type { PlayerChaseScenario } from "./scenarios";
 
 export const playbackTickIntervalMs = 600;
 
@@ -17,7 +17,7 @@ export interface PlayerChasePlaybackControls {
 }
 
 export function createPlayerChasePlayback(
-    scenario: DevelopmentPlayerChaseScenario,
+    scenario: PlayerChaseScenario,
     refreshSnapshot: () => void,
     scheduler: PlaybackScheduler = window,
 ): PlayerChasePlaybackControls {
@@ -31,13 +31,13 @@ export function createPlayerChasePlayback(
     }
 
     function tick(): void {
-        scenario.Step();
+        scenario.step();
         refreshSnapshot();
     }
 
     return {
         resume(): void {
-            scenario.SetRunning(true);
+            scenario.setRunning(true);
             refreshSnapshot();
 
             if (timerId === undefined) {
@@ -46,13 +46,13 @@ export function createPlayerChasePlayback(
         },
 
         pause(): void {
-            scenario.SetRunning(false);
+            scenario.setRunning(false);
             clearTimer();
             refreshSnapshot();
         },
 
         toggle(): void {
-            if (scenario.IsRunning()) {
+            if (scenario.isRunning()) {
                 this.pause();
                 return;
             }
@@ -61,7 +61,7 @@ export function createPlayerChasePlayback(
         },
 
         stepWhilePaused(): boolean {
-            if (scenario.IsRunning()) {
+            if (scenario.isRunning()) {
                 return false;
             }
 
@@ -71,7 +71,7 @@ export function createPlayerChasePlayback(
 
         reset(): void {
             clearTimer();
-            scenario.Reset();
+            scenario.reset();
             refreshSnapshot();
         },
 

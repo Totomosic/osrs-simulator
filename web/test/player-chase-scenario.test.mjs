@@ -212,7 +212,7 @@ const module = createFakeEngineModule();
 
 {
     const scenario = createPlayerChaseScenario(module);
-    const snapshot = JSON.parse(scenario.GetSnapshotJson());
+    const snapshot = scenario.snapshot();
 
     assert.equal(snapshot.name, "Player Chase");
     assert.equal(snapshot.npcs.length, 1);
@@ -224,9 +224,9 @@ const module = createFakeEngineModule();
 {
     const scenario = createPlayerChaseScenario(module);
 
-    assert.equal(scenario.PlaceNpc(1, 1, 6, 7, 0), true);
+    assert.equal(scenario.placeNpc(1, 1, 6, 7, 0), true);
 
-    const snapshot = JSON.parse(scenario.GetSnapshotJson());
+    const snapshot = scenario.snapshot();
 
     assert.equal(snapshot.npcs.length, 2);
     assert.equal(snapshot.selectedNpcId, snapshot.npcs[1].id);
@@ -236,10 +236,10 @@ const module = createFakeEngineModule();
 
 {
     const scenario = createPlayerChaseScenario(module);
-    let snapshot = JSON.parse(scenario.GetSnapshotJson());
+    let snapshot = scenario.snapshot();
 
     assert.equal(
-        scenario.RemoveNpc(
+        scenario.removeNpc(
             snapshot.selectedNpc.coordinate.x,
             snapshot.selectedNpc.coordinate.y,
             snapshot.selectedNpc.coordinate.plane,
@@ -247,7 +247,7 @@ const module = createFakeEngineModule();
         true,
     );
 
-    snapshot = JSON.parse(scenario.GetSnapshotJson());
+    snapshot = scenario.snapshot();
 
     assert.deepEqual(snapshot.npcs, []);
     assert.equal(snapshot.selectedNpcId, null);
