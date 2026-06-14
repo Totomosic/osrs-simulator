@@ -49,13 +49,18 @@ export interface EnginePlayerChaseSnapshot {
     };
     player: ActorSnapshot;
     npc: ActorSnapshot;
+    npcs?: ActorSnapshot[];
+    selectedNpcId?: number | null;
     tiles: SnapshotTile[];
 }
 
 export interface PlayerChaseDebugSnapshot extends EnginePlayerChaseSnapshot {
+    npcs: ActorSnapshot[];
+    selectedNpcId: number;
     cameraMode: CameraMode;
     fieldOfView: number;
     noPathfindingNote: string;
+    selectedNpc: ActorSnapshot;
 }
 
 export interface DebugTile {
@@ -90,8 +95,16 @@ export function readPlayerChaseDebugSnapshot(
         scenario.GetSnapshotJson(),
     ) as EnginePlayerChaseSnapshot;
 
+    const npcs = engineSnapshot.npcs ?? [engineSnapshot.npc];
+    const selectedNpc =
+        npcs.find((npc) => npc.id === engineSnapshot.selectedNpcId) ??
+        engineSnapshot.npc;
+
     return {
         ...engineSnapshot,
+        npcs,
+        selectedNpcId: selectedNpc.id,
+        selectedNpc,
         cameraMode,
         fieldOfView,
         noPathfindingNote:
@@ -145,7 +158,7 @@ export function getCameraCenter(
     }
 
     if (camera.mode === "Follow NPC") {
-        return snapshot.npc.coordinate;
+        return snapshot.selectedNpc.coordinate;
     }
 
     return camera.center;
@@ -241,7 +254,7 @@ function getTileKind(
         return "player";
     }
 
-    if (isActorFootprintTile(snapshot.npc, coordinate)) {
+    if (snapshot.npcs.some((npc) => isActorFootprintTile(npc, coordinate))) {
         return "npc";
     }
 

@@ -122,6 +122,10 @@ function stepWhilePaused(): void {
     playback?.stepWhilePaused();
 }
 
+function resetScenario(): void {
+    playback?.reset();
+}
+
 function setCameraMode(mode: CameraMode): void {
     if (scenario.value === null || snapshot.value === null || camera.value === null) {
         return;
@@ -271,6 +275,9 @@ function formatMovementTarget(target: MovementTargetSnapshot | null): string {
         </button>
         <button type="button" :disabled="snapshot.running" @click="stepWhilePaused">
           Step
+        </button>
+        <button type="button" @click="resetScenario">
+          Reset
         </button>
 
         <div class="segmented" aria-label="Camera mode">

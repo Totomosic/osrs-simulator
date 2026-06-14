@@ -12,12 +12,55 @@ export interface Engine {
     GetWorld(): World;
 }
 
+export interface SceneCoordinate {
+    x: number;
+    y: number;
+    plane: number;
+}
+
+export interface CollisionProfile {
+    blocksMovement: boolean;
+    blocksLineOfSight: boolean;
+}
+
+export interface Scene {
+    PlaceGameObject(
+        coordinate: SceneCoordinate,
+        id: number,
+        direction: CardinalDirection,
+        sizeX: number,
+        sizeY: number,
+        collisionProfile: CollisionProfile,
+    ): boolean;
+    RemoveGameObject(coordinate: SceneCoordinate): boolean;
+    IsGameObjectTile(coordinate: SceneCoordinate): boolean;
+    GetTileFlagLabels(coordinate: SceneCoordinate): string[];
+}
+
 export interface World {
     GetDefaultSceneId(): number;
+    TryGetScene(sceneId: number): Scene | null;
+    CreatePlayer(size: number, speed: number): number;
+    CreateNpc(size: number, speed: number): number;
+    PlaceActor(actorId: number, sceneId: number, coordinate: SceneCoordinate): boolean;
+    RemoveActor(actorId: number): boolean;
+    SetActorMovementTarget(actorId: number, targetActorId: number): boolean;
+    SetPlayerSceneCoordinateMovementTarget(
+        actorId: number,
+        coordinate: SceneCoordinate,
+    ): boolean;
+    CanPlayerUseSceneCoordinateMovementTarget(
+        actorId: number,
+        coordinate: SceneCoordinate,
+    ): boolean;
+    GetActorSnapshot(actorId: number): string | null;
 }
+
+export type CardinalDirection = number | "North" | "East" | "South" | "West";
 
 export interface DevelopmentPlayerChaseScenario {
     Step(): void;
+    Reset(): void;
     ClickSceneCoordinate(x: number, y: number, plane: number): boolean;
     SetRunning(running: boolean): void;
     IsRunning(): boolean;
@@ -50,8 +93,14 @@ export interface DevelopmentPlayerChaseScenario {
 
 export interface EngineModule {
     Engine: new () => Engine;
-    World: new () => World;
-    DevelopmentPlayerChaseScenario: new () => DevelopmentPlayerChaseScenario;
+    CardinalDirection: {
+        North: CardinalDirection;
+        East?: CardinalDirection;
+        South?: CardinalDirection;
+        West?: CardinalDirection;
+    };
+    World?: new () => World;
+    DevelopmentPlayerChaseScenario?: new () => DevelopmentPlayerChaseScenario;
 }
 
 const generatedModuleUrl = new URL(

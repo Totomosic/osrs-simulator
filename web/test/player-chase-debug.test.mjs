@@ -45,6 +45,7 @@ class FakePlayerChaseScenario {
         this.playerTarget = null;
         this.player = { id: 1, x: 8, y: 11, plane: 0, size: 1, speed: 2 };
         this.npc = { id: 2, x: 18, y: 20, plane: 0, size: 4, speed: 1 };
+        this.secondNpc = { id: 3, x: 6, y: 7, plane: 0, size: 1, speed: 1 };
         this.width = 104;
         this.height = 104;
     }
@@ -108,6 +109,37 @@ class FakePlayerChaseScenario {
                     label: "Player #1",
                 },
             },
+            npcs: [
+                {
+                    id: this.npc.id,
+                    kind: "NPC",
+                    coordinate: {
+                        x: this.npc.x,
+                        y: this.npc.y,
+                        plane: this.npc.plane,
+                    },
+                    size: this.npc.size,
+                    speed: this.npc.speed,
+                    movementTarget: {
+                        kind: "Actor",
+                        actorId: this.player.id,
+                        label: "Player #1",
+                    },
+                },
+                {
+                    id: this.secondNpc.id,
+                    kind: "NPC",
+                    coordinate: {
+                        x: this.secondNpc.x,
+                        y: this.secondNpc.y,
+                        plane: this.secondNpc.plane,
+                    },
+                    size: this.secondNpc.size,
+                    speed: this.secondNpc.speed,
+                    movementTarget: null,
+                },
+            ],
+            selectedNpcId: this.npc.id,
             tiles,
         });
     }
@@ -148,6 +180,8 @@ class FakePlayerChaseScenario {
         actorId: 1,
         label: "Player #1",
     });
+    assert.equal(snapshot.npcs.length, 2);
+    assert.equal(snapshot.selectedNpc.id, 2);
     assert.equal(
         snapshot.tiles.filter((tile) =>
             tile.flags.includes("BlockMovementObject"),
@@ -287,11 +321,15 @@ class FakePlayerChaseScenario {
         { x: 8, y: 11, plane: 0 },
         tiles,
     );
+    const secondNpcTile = tiles.find(
+        (tile) => tile.coordinate.x === 6 && tile.coordinate.y === 7,
+    );
 
     assert.ok(kinds.has("player"));
     assert.ok(kinds.has("npc"));
     assert.equal(objectTile.kind, "game-object");
     assert.equal(npcTile.kind, "npc");
+    assert.equal(secondNpcTile.kind, "npc");
     assert.deepEqual(objectTile.flags, [
         "BlockMovementObject",
         "BlockLineOfSightFull",

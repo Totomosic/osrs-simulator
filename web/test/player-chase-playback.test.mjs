@@ -35,6 +35,11 @@ class FakePlayerChaseScenario {
         this.tick += 1;
     }
 
+    Reset() {
+        this.running = false;
+        this.tick = 0;
+    }
+
     SetRunning(running) {
         this.running = running;
     }
@@ -123,6 +128,26 @@ class FakeScheduler {
         scheduler,
     );
 
+    playback.toggle();
+    playback.toggle();
+
+    assert.equal(scenario.running, false);
+    assert.deepEqual(scheduler.cleared, [scheduler.intervals[0].id]);
+    assert.equal(refreshCount, 2);
+}
+
+{
+    const scenario = new FakePlayerChaseScenario();
+    const scheduler = new FakeScheduler();
+    let refreshCount = 0;
+    const playback = createPlayerChasePlayback(
+        scenario,
+        () => {
+            refreshCount += 1;
+        },
+        scheduler,
+    );
+
     const stepped = playback.stepWhilePaused();
 
     assert.equal(stepped, true);
@@ -142,4 +167,37 @@ class FakeScheduler {
 
     assert.equal(stepped, false);
     assert.equal(scenario.tick, 0);
+}
+
+{
+    const scenario = new FakePlayerChaseScenario();
+    const scheduler = new FakeScheduler();
+    let refreshCount = 0;
+    const playback = createPlayerChasePlayback(
+        scenario,
+        () => {
+            refreshCount += 1;
+        },
+        scheduler,
+    );
+
+    playback.resume();
+    scheduler.intervals[0].callback();
+    playback.reset();
+
+    assert.equal(scenario.running, false);
+    assert.equal(scenario.tick, 0);
+    assert.deepEqual(scheduler.cleared, [scheduler.intervals[0].id]);
+    assert.equal(refreshCount, 3);
+}
+
+{
+    const scenario = new FakePlayerChaseScenario();
+    const scheduler = new FakeScheduler();
+    const playback = createPlayerChasePlayback(scenario, () => {}, scheduler);
+
+    playback.resume();
+    playback.stop();
+
+    assert.deepEqual(scheduler.cleared, [scheduler.intervals[0].id]);
 }

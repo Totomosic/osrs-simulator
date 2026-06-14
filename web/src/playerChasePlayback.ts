@@ -12,6 +12,7 @@ export interface PlayerChasePlaybackControls {
     pause(): void;
     toggle(): void;
     stepWhilePaused(): boolean;
+    reset(): void;
     stop(): void;
 }
 
@@ -66,6 +67,12 @@ export function createPlayerChasePlayback(
 
             tick();
             return true;
+        },
+
+        reset(): void {
+            clearTimer();
+            scenario.Reset();
+            refreshSnapshot();
         },
 
         stop(): void {
