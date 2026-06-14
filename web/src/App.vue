@@ -264,8 +264,8 @@ function clickTile(tile: DebugTile): void {
                 tile.coordinate.x,
                 tile.coordinate.y,
                 tile.coordinate.plane,
-                gameObjectWidth.value,
-                gameObjectHeight.value,
+                clampGameObjectSize(gameObjectWidth.value),
+                clampGameObjectSize(gameObjectHeight.value),
                 gameObjectDirection.value,
                 gameObjectBlocksMovement.value,
                 gameObjectBlocksLineOfSight.value,
@@ -317,6 +317,14 @@ function formatMovementTarget(target: MovementTargetSnapshot | null): string {
     }
 
     return target.label ?? `Actor #${target.actorId ?? 0}`;
+}
+
+function clampGameObjectSize(value: number): number {
+    if (!Number.isFinite(value)) {
+        return 1;
+    }
+
+    return Math.min(9, Math.max(1, Math.trunc(value)));
 }
 
 function formatActionFeedback(snapshot: PlayerChaseDebugSnapshot): string {

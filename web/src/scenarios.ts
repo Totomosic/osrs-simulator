@@ -54,6 +54,8 @@ interface GameObjectSnapshot {
     origin: SceneCoordinate;
     sizeX: number;
     sizeY: number;
+    footprintWidth: number;
+    footprintHeight: number;
 }
 
 export interface RegisteredScenario {
@@ -196,10 +198,11 @@ class PlayerChaseScenario implements DevelopmentPlayerChaseScenario {
     ): boolean {
         const coordinate = { x, y, plane };
         const id = this.m_NextGameObjectId;
+        const normalizedDirection = this.normalizeCardinalDirection(direction);
         const placed = this.m_Scene.PlaceGameObject(
             coordinate,
             id,
-            direction,
+            normalizedDirection,
             sizeX,
             sizeY,
             {
@@ -219,6 +222,16 @@ class PlayerChaseScenario implements DevelopmentPlayerChaseScenario {
             origin: coordinate,
             sizeX,
             sizeY,
+            footprintWidth: this.getGameObjectFootprintWidth(
+                direction,
+                sizeX,
+                sizeY,
+            ),
+            footprintHeight: this.getGameObjectFootprintHeight(
+                direction,
+                sizeX,
+                sizeY,
+            ),
         });
         this.m_LastClickBlocked = false;
         this.m_ActionFeedback = { state: "none" };
@@ -306,6 +319,8 @@ class PlayerChaseScenario implements DevelopmentPlayerChaseScenario {
                 origin: { x: 12, y: 4, plane: 0 },
                 sizeX: 3,
                 sizeY: 3,
+                footprintWidth: 3,
+                footprintHeight: 3,
             });
         }
     }
@@ -502,12 +517,12 @@ class PlayerChaseScenario implements DevelopmentPlayerChaseScenario {
         for (const gameObject of this.m_GameObjects) {
             for (
                 let x = gameObject.origin.x;
-                x < gameObject.origin.x + gameObject.sizeX;
+                x < gameObject.origin.x + gameObject.footprintWidth;
                 x += 1
             ) {
                 for (
                     let y = gameObject.origin.y;
-                    y < gameObject.origin.y + gameObject.sizeY;
+                    y < gameObject.origin.y + gameObject.footprintHeight;
                     y += 1
                 ) {
                     const coordinate = { x, y, plane: gameObject.origin.plane };
@@ -601,9 +616,60 @@ class PlayerChaseScenario implements DevelopmentPlayerChaseScenario {
         return (
             coordinate.plane === gameObject.origin.plane &&
             coordinate.x >= gameObject.origin.x &&
-            coordinate.x < gameObject.origin.x + gameObject.sizeX &&
+            coordinate.x < gameObject.origin.x + gameObject.footprintWidth &&
             coordinate.y >= gameObject.origin.y &&
-            coordinate.y < gameObject.origin.y + gameObject.sizeY
+            coordinate.y < gameObject.origin.y + gameObject.footprintHeight
         );
+    }
+
+    private normalizeCardinalDirection(
+        direction: CardinalDirection,
+    ): CardinalDirection {
+        if (typeof direction === "number") {
+            return direction;
+        }
+
+        return this.m_Module.CardinalDirection[direction] ?? direction;
+    }
+
+    private getGameObjectFootprintWidth(
+        direction: CardinalDirection,
+        sizeX: number,
+        sizeY: number,
+    ): number {
+        const label = this.getCardinalDirectionLabel(direction);
+
+        return label === "East" || label === "West" ? sizeY : sizeX;
+    }
+
+    private getGameObjectFootprintHeight(
+        direction: CardinalDirection,
+        sizeX: number,
+        sizeY: number,
+    ): number {
+        const label = this.getCardinalDirectionLabel(direction);
+
+        return label === "East" || label === "West" ? sizeX : sizeY;
+    }
+
+    private getCardinalDirectionLabel(
+        direction: CardinalDirection,
+    ): "North" | "East" | "South" | "West" {
+        if (direction === this.m_Module.CardinalDirection.East || direction === "East") {
+            return "East";
+        }
+
+        if (
+            direction === this.m_Module.CardinalDirection.South ||
+            direction === "South"
+        ) {
+            return "South";
+        }
+
+        if (direction === this.m_Module.CardinalDirection.West || direction === "West") {
+            return "West";
+        }
+
+        return "North";
     }
 }

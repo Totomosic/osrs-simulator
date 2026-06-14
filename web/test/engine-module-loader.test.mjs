@@ -25,7 +25,8 @@ const { createPlayerChaseScenario, loadEngineModule, registeredScenarios } =
 
 class FakeScene {
     constructor() {
-        this.gameObjects = new Set();
+        this.gameObjects = new Map();
+        this.placements = [];
         this.failNextPlacement = false;
     }
 
@@ -35,14 +36,27 @@ class FakeScene {
             return false;
         }
 
-        assert.deepEqual(collisionProfile, {
-            blocksMovement: true,
-            blocksLineOfSight: true,
+        this.placements.push({
+            coordinate: { ...coordinate },
+            id,
+            direction,
+            sizeX,
+            sizeY,
+            collisionProfile: { ...collisionProfile },
         });
 
-        for (let x = coordinate.x; x < coordinate.x + sizeX; x += 1) {
-            for (let y = coordinate.y; y < coordinate.y + sizeY; y += 1) {
-                this.gameObjects.add(`${coordinate.plane}:${x}:${y}`);
+        const footprintWidth =
+            direction === "East" || direction === "West" ? sizeY : sizeX;
+        const footprintHeight =
+            direction === "East" || direction === "West" ? sizeX : sizeY;
+
+        for (let x = coordinate.x; x < coordinate.x + footprintWidth; x += 1) {
+            for (let y = coordinate.y; y < coordinate.y + footprintHeight; y += 1) {
+                this.gameObjects.set(`${coordinate.plane}:${x}:${y}`, {
+                    id,
+                    origin: { ...coordinate },
+                    collisionProfile: { ...collisionProfile },
+                });
             }
         }
 
@@ -51,12 +65,18 @@ class FakeScene {
 
     RemoveGameObject(coordinate) {
         const key = `${coordinate.plane}:${coordinate.x}:${coordinate.y}`;
+        const gameObject = this.gameObjects.get(key);
 
-        if (!this.gameObjects.has(key)) {
+        if (gameObject === undefined) {
             return false;
         }
 
-        this.gameObjects.clear();
+        for (const [candidateKey, candidate] of this.gameObjects) {
+            if (candidate.id === gameObject.id) {
+                this.gameObjects.delete(candidateKey);
+            }
+        }
+
         return true;
     }
 
@@ -293,6 +313,48 @@ assert.equal(scenario.PlaceGameObject(20, 20, 0, 1, 1, "North", true, true), tru
 assert.deepEqual(JSON.parse(scenario.GetSnapshotJson()).actionFeedback, {
     state: "none",
 });
+
+assert.equal(scenario.PlaceGameObject(50, 50, 0, 2, 3, "East", false, true), true);
+
+const eastObjectSnapshot = JSON.parse(scenario.GetSnapshotJson());
+const eastObjectTiles = eastObjectSnapshot.tiles.filter(
+    (tile) => tile.gameObject?.id === 202,
+);
+
+assert.deepEqual(
+    module.Engine.lastCreated.world.scene.placements.at(-1),
+    {
+        coordinate: { x: 50, y: 50, plane: 0 },
+        id: 202,
+        direction: "East",
+        sizeX: 2,
+        sizeY: 3,
+        collisionProfile: {
+            blocksMovement: false,
+            blocksLineOfSight: true,
+        },
+    },
+);
+assert.equal(eastObjectTiles.length, 6);
+assert.ok(
+    eastObjectTiles.some(
+        (tile) => tile.coordinate.x === 52 && tile.coordinate.y === 51,
+    ),
+);
+
+assert.equal(scenario.RemoveGameObject(52, 51, 0), true);
+assert.equal(
+    JSON.parse(scenario.GetSnapshotJson()).tiles.some(
+        (tile) => tile.gameObject?.id === 202,
+    ),
+    false,
+);
+assert.equal(
+    JSON.parse(scenario.GetSnapshotJson()).tiles.some(
+        (tile) => tile.gameObject?.id === 201,
+    ),
+    true,
+);
 
 module.Engine.lastCreated.world.scene.failNextPlacement = true;
 assert.equal(scenario.PlaceGameObject(21, 20, 0, 1, 1, "North", true, true), false);
