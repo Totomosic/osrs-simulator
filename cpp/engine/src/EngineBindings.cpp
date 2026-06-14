@@ -1,4 +1,5 @@
 #include "Engine.h"
+#include "LineOfSight.h"
 #include "Scene.h"
 #include "Tile.h"
 #include "World.h"
@@ -45,6 +46,38 @@ bool IsGameObjectTile(
 {
     const osrssim::Tile* tile = scene.TryGetTile(coordinate);
     return tile != nullptr && tile->gameObject.has_value();
+}
+
+bool HasSceneLineOfSight(
+    const osrssim::Scene& scene,
+    osrssim::SceneCoordinate sourceAnchor,
+    int sourceActorSize,
+    osrssim::SceneCoordinate target,
+    int range)
+{
+    osrssim::LineOfSight lineOfSight(scene);
+    return lineOfSight.HasLineOfSight(
+        sourceAnchor,
+        sourceActorSize,
+        target,
+        range);
+}
+
+bool HasSceneActorLineOfSight(
+    const osrssim::Scene& scene,
+    osrssim::SceneCoordinate sourceAnchor,
+    int sourceActorSize,
+    osrssim::SceneCoordinate targetAnchor,
+    int targetActorSize,
+    int range)
+{
+    osrssim::LineOfSight lineOfSight(scene);
+    return lineOfSight.HasLineOfSight(
+        sourceAnchor,
+        sourceActorSize,
+        targetAnchor,
+        targetActorSize,
+        range);
 }
 
 emscripten::val GetTileFlagLabels(
@@ -204,6 +237,8 @@ EMSCRIPTEN_BINDINGS(osrssim_engine)
         .function("PlaceGameObject", &PlaceSceneGameObject)
         .function("RemoveGameObject", &osrssim::Scene::RemoveGameObject)
         .function("IsGameObjectTile", &IsGameObjectTile)
+        .function("HasLineOfSight", &HasSceneLineOfSight)
+        .function("HasActorLineOfSight", &HasSceneActorLineOfSight)
         .function("GetTileFlagLabels", &GetTileFlagLabels);
 
     emscripten::class_<osrssim::World>("World")

@@ -197,6 +197,29 @@ class FakeScene {
             : [];
     }
 
+    HasLineOfSight(sourceAnchor, sourceActorSize, target, range) {
+        return (
+            sourceAnchor.plane === target.plane &&
+            sourceActorSize > 0 &&
+            Math.abs(target.x - sourceAnchor.x) <= range &&
+            Math.abs(target.y - sourceAnchor.y) <= range &&
+            !this.IsGameObjectTile(target)
+        );
+    }
+
+    HasActorLineOfSight(
+        sourceAnchor,
+        sourceActorSize,
+        targetAnchor,
+        targetActorSize,
+        range,
+    ) {
+        return (
+            targetActorSize > 0 &&
+            this.HasLineOfSight(sourceAnchor, sourceActorSize, targetAnchor, range)
+        );
+    }
+
     isGameObjectTile(gameObject, coordinate) {
         return (
             coordinate.plane === gameObject.coordinate.plane &&
@@ -253,4 +276,38 @@ const module = createFakeEngineModule();
     assert.equal(snapshot.selectedNpcId, null);
     assert.equal(snapshot.selectedNpc, null);
     assert.equal(snapshot.npc, null);
+}
+
+{
+    const scenario = createPlayerChaseScenario(module);
+    const snapshot = scenario.snapshot();
+
+    assert.equal(
+        scenario.hasLineOfSight(
+            snapshot.player.id,
+            10,
+            11,
+            0,
+            10,
+        ),
+        true,
+    );
+    assert.equal(
+        scenario.hasLineOfSight(
+            snapshot.player.id,
+            12,
+            4,
+            0,
+            10,
+        ),
+        false,
+    );
+    assert.equal(
+        scenario.hasActorLineOfSight(
+            snapshot.player.id,
+            snapshot.selectedNpc.id,
+            20,
+        ),
+        true,
+    );
 }

@@ -52,6 +52,10 @@ _Avoid_: Coordinate
 A property on a tile that affects simulation rules such as occupancy, compass-directional movement blocking, or compass-directional line-of-sight blocking.
 _Avoid_: Tile state
 
+**Line of Sight**:
+A same-plane visibility relationship from an actor footprint to a target scene coordinate or another actor footprint, limited by range and blocked by line-of-sight tile flags rather than actor occupancy.
+_Avoid_: Visibility, raycast
+
 **Scene Entity**:
 A non-actor thing placed in a scene, such as a wall object or game object. A scene entity can cover one or more tiles.
 _Avoid_: Object, tile content

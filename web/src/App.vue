@@ -51,7 +51,12 @@ const gameObjectHeight = ref(3);
 const gameObjectDirection = ref<"North" | "East" | "South" | "West">("North");
 const gameObjectBlocksMovement = ref(true);
 const gameObjectBlocksLineOfSight = ref(true);
+const lineOfSightSourceActorId = ref<number | null>(null);
+const lineOfSightRange = ref(10);
 let playback: PlayerChasePlaybackControls | null = null;
+
+const minLineOfSightRange = 1;
+const maxLineOfSightRange = 40;
 
 const cameraCenter = computed(() => {
     if (snapshot.value === null || camera.value === null) {
@@ -69,6 +74,83 @@ const renderTiles = computed<DebugTile[]>(() =>
               camera.value.fieldOfView,
           ),
 );
+const lineOfSightSourceOptions = computed(() => {
+    if (snapshot.value === null) {
+        return [];
+    }
+
+    return [
+        {
+            id: snapshot.value.player.id,
+            label: `Player #${snapshot.value.player.id}`,
+        },
+        ...snapshot.value.npcs.map((npc) => ({
+            id: npc.id,
+            label: `NPC #${npc.id}`,
+        })),
+    ];
+});
+const selectedLineOfSightSourceActorId = computed(() => {
+    const options = lineOfSightSourceOptions.value;
+
+    if (options.length === 0) {
+        return null;
+    }
+
+    if (
+        lineOfSightSourceActorId.value !== null &&
+        options.some((option) => option.id === lineOfSightSourceActorId.value)
+    ) {
+        return lineOfSightSourceActorId.value;
+    }
+
+    return options[0].id;
+});
+const lineOfSightSourceLabel = computed(() =>
+    lineOfSightSourceOptions.value.find(
+        (option) => option.id === selectedLineOfSightSourceActorId.value,
+    )?.label ?? "None",
+);
+const lineOfSightTiles = computed<DebugTile[]>(() => {
+    const scenarioInstance = scenario.value;
+    const sourceActorId = selectedLineOfSightSourceActorId.value;
+
+    if (scenarioInstance === null || sourceActorId === null) {
+        return [];
+    }
+
+    return renderTiles.value.filter((tile) =>
+        scenarioInstance.hasLineOfSight(
+            sourceActorId,
+            tile.coordinate.x,
+            tile.coordinate.y,
+            tile.coordinate.plane,
+            lineOfSightRange.value,
+        ),
+    );
+});
+const actorLineOfSightDetails = computed(() => {
+    if (
+        scenario.value === null ||
+        snapshot.value === null ||
+        snapshot.value.selectedNpc === null
+    ) {
+        return null;
+    }
+
+    return {
+        playerToNpc: scenario.value.hasActorLineOfSight(
+            snapshot.value.player.id,
+            snapshot.value.selectedNpc.id,
+            lineOfSightRange.value,
+        ),
+        npcToPlayer: scenario.value.hasActorLineOfSight(
+            snapshot.value.selectedNpc.id,
+            snapshot.value.player.id,
+            lineOfSightRange.value,
+        ),
+    };
+});
 const viewBox = computed(() => {
     const width = getColumnCount(renderTiles.value) * tileSize;
     const height = getRowCount(renderTiles.value) * tileSize;
@@ -124,10 +206,12 @@ function refreshSnapshot(): void {
             camera.value.mode,
             camera.value.fieldOfView,
         );
+        ensureLineOfSightSource(snapshot.value);
         return;
     }
 
     snapshot.value = nextSnapshot;
+    ensureLineOfSightSource(snapshot.value);
 }
 
 function toggleRunning(): void {
@@ -172,6 +256,10 @@ function setFieldOfView(value: number): void {
         snapshot.value,
     );
     refreshSnapshot();
+}
+
+function setLineOfSightRange(value: number): void {
+    lineOfSightRange.value = clampLineOfSightRange(value);
 }
 
 function pan(direction: CameraPanDirection): void {
@@ -339,6 +427,31 @@ function formatActionFeedback(snapshot: PlayerChaseDebugSnapshot): string {
             return "Removal failed";
     }
 }
+
+function ensureLineOfSightSource(nextSnapshot: PlayerChaseDebugSnapshot): void {
+    const actorIds = [
+        nextSnapshot.player.id,
+        ...nextSnapshot.npcs.map((npc) => npc.id),
+    ];
+
+    if (
+        lineOfSightSourceActorId.value === null ||
+        !actorIds.includes(lineOfSightSourceActorId.value)
+    ) {
+        lineOfSightSourceActorId.value = nextSnapshot.player.id;
+    }
+}
+
+function clampLineOfSightRange(value: number): number {
+    if (!Number.isFinite(value)) {
+        return minLineOfSightRange;
+    }
+
+    return Math.min(
+        maxLineOfSightRange,
+        Math.max(minLineOfSightRange, Math.trunc(value)),
+    );
+}
 </script>
 
 <template>
@@ -418,6 +531,32 @@ function formatActionFeedback(snapshot: PlayerChaseDebugSnapshot): string {
           />
           <strong>{{ camera?.fieldOfView ?? defaultFieldOfView }}</strong>
         </label>
+
+        <label class="los-source-control" v-if="lineOfSightSourceOptions.length > 0">
+          <span>LOS</span>
+          <select v-model.number="lineOfSightSourceActorId">
+            <option
+              v-for="option in lineOfSightSourceOptions"
+              :key="option.id"
+              :value="option.id"
+            >
+              {{ option.label }}
+            </option>
+          </select>
+        </label>
+
+        <label class="fov-control">
+          <span>Range</span>
+          <input
+            type="range"
+            :min="minLineOfSightRange"
+            :max="maxLineOfSightRange"
+            step="1"
+            :value="lineOfSightRange"
+            @input="setLineOfSightRange(Number(($event.target as HTMLInputElement).value))"
+          />
+          <strong>{{ lineOfSightRange }}</strong>
+        </label>
       </div>
     </header>
 
@@ -474,6 +613,15 @@ function formatActionFeedback(snapshot: PlayerChaseDebugSnapshot): string {
             :class="['tile', tile.kind]"
             @click="clickTile(tile)"
           />
+          <rect
+            v-for="tile in lineOfSightTiles"
+            :key="`${tile.key}:los`"
+            :x="getTileX(tile)"
+            :y="getTileY(tile)"
+            :width="tileSize"
+            :height="tileSize"
+            class="line-of-sight-tile"
+          />
           <text
             v-for="tile in renderTiles.filter((tile) => tile.kind === 'player' || tile.kind === 'npc')"
             :key="`${tile.key}:label`"
@@ -518,6 +666,18 @@ function formatActionFeedback(snapshot: PlayerChaseDebugSnapshot): string {
             <dd>{{ snapshot.fieldOfView }}</dd>
           </div>
           <div>
+            <dt>Line of Sight Source</dt>
+            <dd>{{ lineOfSightSourceLabel }}</dd>
+          </div>
+          <div>
+            <dt>Line of Sight Range</dt>
+            <dd>{{ lineOfSightRange }}</dd>
+          </div>
+          <div>
+            <dt>Visible Tiles</dt>
+            <dd>{{ lineOfSightTiles.length }}</dd>
+          </div>
+          <div>
             <dt>Player position</dt>
             <dd>{{ formatCoordinate(snapshot.player.coordinate) }}</dd>
           </div>
@@ -556,6 +716,15 @@ function formatActionFeedback(snapshot: PlayerChaseDebugSnapshot): string {
           <div>
             <dt>Selected NPC Movement Target</dt>
             <dd>{{ formatMovementTarget(snapshot.selectedNpc?.movementTarget ?? null) }}</dd>
+          </div>
+          <div v-if="actorLineOfSightDetails !== null">
+            <dt>Actor Line of Sight</dt>
+            <dd>
+              Player -> selected NPC:
+              {{ actorLineOfSightDetails.playerToNpc ? "Yes" : "No" }}<br />
+              Selected NPC -> player:
+              {{ actorLineOfSightDetails.npcToPlayer ? "Yes" : "No" }}
+            </dd>
           </div>
           <div>
             <dt>Tile Flags</dt>
@@ -694,6 +863,30 @@ button:hover {
     padding: 0 10px;
 }
 
+.los-source-control {
+    align-items: center;
+    background: #ffffff;
+    border: 1px solid #bbc5cf;
+    border-radius: 6px;
+    display: flex;
+    gap: 8px;
+    min-height: 38px;
+    padding: 0 10px;
+}
+
+.los-source-control span {
+    font-size: 0.86rem;
+    font-weight: 800;
+}
+
+.los-source-control select {
+    border: 1px solid #bbc5cf;
+    border-radius: 4px;
+    font: inherit;
+    font-size: 0.86rem;
+    padding: 3px 6px;
+}
+
 .fov-control span,
 .fov-control strong {
     font-size: 0.86rem;
@@ -793,6 +986,13 @@ button:hover {
 .tile.npc {
     fill: #315e9f;
     stroke: #ffffff;
+}
+
+.line-of-sight-tile {
+    fill: #f0c24b;
+    opacity: 0.32;
+    pointer-events: none;
+    stroke: none;
 }
 
 .actor-label {

@@ -89,6 +89,29 @@ class FakeScene {
             ? ["BlockMovementObject", "BlockLineOfSightFull"]
             : [];
     }
+
+    HasLineOfSight(sourceAnchor, sourceActorSize, target, range) {
+        return (
+            sourceAnchor.plane === target.plane &&
+            sourceActorSize > 0 &&
+            Math.abs(target.x - sourceAnchor.x) <= range &&
+            Math.abs(target.y - sourceAnchor.y) <= range &&
+            !this.IsGameObjectTile(target)
+        );
+    }
+
+    HasActorLineOfSight(
+        sourceAnchor,
+        sourceActorSize,
+        targetAnchor,
+        targetActorSize,
+        range,
+    ) {
+        return (
+            targetActorSize > 0 &&
+            this.HasLineOfSight(sourceAnchor, sourceActorSize, targetAnchor, range)
+        );
+    }
 }
 
 class FakeWorld {

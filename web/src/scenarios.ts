@@ -108,6 +108,18 @@ export interface PlayerChaseScenario {
         blocksLineOfSight: boolean,
     ): boolean;
     removeGameObject(x: number, y: number, plane: number): boolean;
+    hasLineOfSight(
+        actorId: number,
+        x: number,
+        y: number,
+        plane: number,
+        range: number,
+    ): boolean;
+    hasActorLineOfSight(
+        sourceActorId: number,
+        targetActorId: number,
+        range: number,
+    ): boolean;
     setRunning(running: boolean): void;
     isRunning(): boolean;
     wasLastClickBlocked(): boolean;
@@ -317,6 +329,48 @@ class WebPlayerChaseScenario implements PlayerChaseScenario {
         return true;
     }
 
+    public hasLineOfSight(
+        actorId: number,
+        x: number,
+        y: number,
+        plane: number,
+        range: number,
+    ): boolean {
+        const actor = this.tryReadActorSnapshot(actorId);
+
+        if (actor === null) {
+            return false;
+        }
+
+        return this.m_Scene.HasLineOfSight(
+            actor.coordinate,
+            actor.size,
+            { x, y, plane },
+            this.clampLineOfSightRange(range),
+        );
+    }
+
+    public hasActorLineOfSight(
+        sourceActorId: number,
+        targetActorId: number,
+        range: number,
+    ): boolean {
+        const source = this.tryReadActorSnapshot(sourceActorId);
+        const target = this.tryReadActorSnapshot(targetActorId);
+
+        if (source === null || target === null) {
+            return false;
+        }
+
+        return this.m_Scene.HasActorLineOfSight(
+            source.coordinate,
+            source.size,
+            target.coordinate,
+            target.size,
+            this.clampLineOfSightRange(range),
+        );
+    }
+
     public setRunning(running: boolean): void {
         this.m_Running = running;
     }
@@ -425,10 +479,20 @@ class WebPlayerChaseScenario implements PlayerChaseScenario {
     }
 
     private readActorSnapshot(actorId: number): ActorSnapshot {
+        const snapshot = this.tryReadActorSnapshot(actorId);
+
+        if (snapshot === null) {
+            throw new Error(`Actor #${actorId} is not available.`);
+        }
+
+        return snapshot;
+    }
+
+    private tryReadActorSnapshot(actorId: number): ActorSnapshot | null {
         const snapshotJson = this.m_World.GetActorSnapshot(actorId);
 
         if (snapshotJson === null) {
-            throw new Error(`Actor #${actorId} is not available.`);
+            return null;
         }
 
         const snapshot = JSON.parse(snapshotJson) as EngineActorSnapshot;
@@ -437,6 +501,14 @@ class WebPlayerChaseScenario implements PlayerChaseScenario {
             ...snapshot,
             movementTarget: this.normalizeMovementTarget(snapshot.movementTarget),
         };
+    }
+
+    private clampLineOfSightRange(range: number): number {
+        if (!Number.isFinite(range)) {
+            return 1;
+        }
+
+        return Math.min(104, Math.max(1, Math.trunc(range)));
     }
 
     private normalizeMovementTarget(

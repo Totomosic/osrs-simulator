@@ -1,5 +1,6 @@
 add_library(osrssim_engine
   src/Engine.cpp
+  src/LineOfSight.cpp
   src/Pathing.cpp
   src/Scene.cpp
   src/Tile.cpp
@@ -55,6 +56,10 @@ if(BUILD_TESTING)
     tests/PathingTest.cpp
   )
 
+  add_executable(osrssim_engine_line_of_sight_test
+    tests/LineOfSightTest.cpp
+  )
+
   add_executable(osrssim_engine_world_test
     tests/WorldTest.cpp
   )
@@ -73,6 +78,11 @@ if(BUILD_TESTING)
       osrssim::engine
   )
 
+  target_link_libraries(osrssim_engine_line_of_sight_test
+    PRIVATE
+      osrssim::engine
+  )
+
   target_link_libraries(osrssim_engine_world_test
     PRIVATE
       osrssim::engine
@@ -85,6 +95,7 @@ if(BUILD_TESTING)
 
   add_test(NAME osrssim_engine_scene_test COMMAND osrssim_engine_scene_test)
   add_test(NAME osrssim_engine_pathing_test COMMAND osrssim_engine_pathing_test)
+  add_test(NAME osrssim_engine_line_of_sight_test COMMAND osrssim_engine_line_of_sight_test)
   add_test(NAME osrssim_engine_world_test COMMAND osrssim_engine_world_test)
   add_test(NAME osrssim_engine_engine_test COMMAND osrssim_engine_engine_test)
 endif()

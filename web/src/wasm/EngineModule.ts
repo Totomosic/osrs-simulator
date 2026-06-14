@@ -38,6 +38,19 @@ export interface Scene {
     ): boolean;
     RemoveGameObject(coordinate: SceneCoordinate): boolean;
     IsGameObjectTile(coordinate: SceneCoordinate): boolean;
+    HasLineOfSight(
+        sourceAnchor: SceneCoordinate,
+        sourceActorSize: number,
+        target: SceneCoordinate,
+        range: number,
+    ): boolean;
+    HasActorLineOfSight(
+        sourceAnchor: SceneCoordinate,
+        sourceActorSize: number,
+        targetAnchor: SceneCoordinate,
+        targetActorSize: number,
+        range: number,
+    ): boolean;
     GetTileFlagLabels(coordinate: SceneCoordinate): string[];
 }
 
