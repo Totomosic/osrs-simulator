@@ -24,6 +24,10 @@ public:
         WeaponId weaponId,
         AttackCallback callback);
     void DecrementAttackTimers(World& world) const;
+    bool CanAttackActorTarget(
+        const World& world,
+        ActorId attackerId,
+        ActorId targetId) const;
     bool DispatchAttack(
         World& world,
         ActorId attackerId,

@@ -103,6 +103,43 @@ void Engine::DecrementAttackTimers()
     m_CombatService.DecrementAttackTimers(m_World);
 }
 
+bool Engine::TryHandleActorTargetCombat(ActorId actorId)
+{
+    const Player* player = m_World.GetPlayer(actorId);
+    const Npc* npc = m_World.GetNpc(actorId);
+    const MovementTarget* movementTarget = nullptr;
+
+    if (player != nullptr && player->movementTarget.has_value())
+    {
+        movementTarget = &player->movementTarget.value();
+    }
+    else if (npc != nullptr && npc->movementTarget.has_value())
+    {
+        movementTarget = &npc->movementTarget.value();
+    }
+
+    if (movementTarget == nullptr ||
+        movementTarget->kind != MovementTargetKind::Actor ||
+        !m_CombatService.CanAttackActorTarget(
+            m_World,
+            actorId,
+            movementTarget->actorId))
+    {
+        return false;
+    }
+
+    if (m_World.GetActorAttackTimer(actorId) <= 0)
+    {
+        m_CombatService.DispatchAttack(
+            m_World,
+            actorId,
+            movementTarget->actorId,
+            m_CurrentTick);
+    }
+
+    return true;
+}
+
 void Engine::UpdateNpcs()
 {
     std::vector<ActorId> npcIds;
@@ -117,7 +154,10 @@ void Engine::UpdateNpcs()
 
     for (ActorId actorId : npcIds)
     {
-        m_World.UpdateActorMovement(actorId, m_CurrentTick);
+        if (!TryHandleActorTargetCombat(actorId))
+        {
+            m_World.UpdateActorMovement(actorId, m_CurrentTick);
+        }
     }
 }
 
@@ -135,7 +175,10 @@ void Engine::UpdatePlayers()
 
     for (ActorId actorId : playerIds)
     {
-        m_World.UpdatePlayerMovement(actorId, m_CurrentTick);
+        if (!TryHandleActorTargetCombat(actorId))
+        {
+            m_World.UpdatePlayerMovement(actorId, m_CurrentTick);
+        }
     }
 }
 

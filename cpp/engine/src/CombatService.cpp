@@ -1,5 +1,7 @@
 #include "CombatService.h"
 
+#include "LineOfSight.h"
+
 #include <utility>
 
 namespace osrssim
@@ -28,6 +30,46 @@ void CombatService::DecrementAttackTimers(World& world) const
     {
         world.SetActorAttackTimer(actorId, npc.actor.attackTimer - 1);
     }
+}
+
+bool CombatService::CanAttackActorTarget(
+    const World& world,
+    ActorId attackerId,
+    ActorId targetId) const
+{
+    const ActorCore* attacker = world.GetActorCore(attackerId);
+    const ActorCore* target = world.GetActorCore(targetId);
+    const SceneMembership* attackerMembership =
+        world.GetSceneMembership(attackerId);
+    const SceneMembership* targetMembership =
+        world.GetSceneMembership(targetId);
+    const WeaponDefinition* weapon =
+        world.GetActorWeaponDefinition(attackerId);
+
+    if (attacker == nullptr || target == nullptr ||
+        attackerMembership == nullptr || targetMembership == nullptr ||
+        weapon == nullptr ||
+        attackerMembership->sceneId != targetMembership->sceneId ||
+        attackerMembership->coordinate.plane !=
+            targetMembership->coordinate.plane)
+    {
+        return false;
+    }
+
+    const Scene* scene = world.TryGetScene(attackerMembership->sceneId);
+
+    if (scene == nullptr)
+    {
+        return false;
+    }
+
+    LineOfSight lineOfSight(*scene);
+    return lineOfSight.HasLineOfSight(
+        attackerMembership->coordinate,
+        attacker->size,
+        targetMembership->coordinate,
+        target->size,
+        weapon->range);
 }
 
 bool CombatService::DispatchAttack(

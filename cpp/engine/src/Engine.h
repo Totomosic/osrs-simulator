@@ -41,6 +41,7 @@ public:
 private:
     void ProcessQueuedPlayerMovementActions();
     void DecrementAttackTimers();
+    bool TryHandleActorTargetCombat(ActorId actorId);
     void UpdateNpcs();
     void UpdatePlayers();
 };
