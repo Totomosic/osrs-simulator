@@ -223,6 +223,48 @@ const SceneMembership* World::GetSceneMembership(ActorId actorId) const
     return found == m_SceneMemberships.end() ? nullptr : &found->second;
 }
 
+const WeaponDefinition* World::GetActorWeaponDefinition(ActorId actorId) const
+{
+    const ActorCore* actor = TryGetActorCore(actorId);
+    return actor == nullptr ? nullptr : &actor->weapon;
+}
+
+bool World::SetActorWeaponDefinition(
+    ActorId actorId,
+    WeaponDefinition weaponDefinition)
+{
+    ActorCore* actor = TryGetActorCore(actorId);
+
+    if (actor == nullptr)
+    {
+        return false;
+    }
+
+    actor->weapon = weaponDefinition;
+
+    return true;
+}
+
+int World::GetActorAttackTimer(ActorId actorId) const
+{
+    const ActorCore* actor = TryGetActorCore(actorId);
+    return actor == nullptr ? 0 : actor->attackTimer;
+}
+
+bool World::SetActorAttackTimer(ActorId actorId, int attackTimer)
+{
+    ActorCore* actor = TryGetActorCore(actorId);
+
+    if (actor == nullptr)
+    {
+        return false;
+    }
+
+    actor->attackTimer = attackTimer;
+
+    return true;
+}
+
 bool World::SetActorSpeed(ActorId actorId, int speed)
 {
     ActorCore* actor = TryGetActorCore(actorId);

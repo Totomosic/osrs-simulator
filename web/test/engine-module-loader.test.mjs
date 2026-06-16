@@ -160,6 +160,17 @@ class FakeWorld {
         return this.actors.delete(actorId);
     }
 
+    SetActorWeaponDefinition(actorId, weaponDefinition) {
+        const actor = this.actors.get(actorId);
+
+        if (actor === undefined) {
+            return false;
+        }
+
+        actor.weapon = { ...weaponDefinition };
+        return true;
+    }
+
     SetActorMovementTarget(actorId, targetActorId) {
         const actor = this.actors.get(actorId);
 
@@ -210,6 +221,8 @@ class FakeWorld {
             coordinate: { x: 0, y: 0, plane: 0 },
             size,
             speed,
+            weapon: { id: 0, range: 1, speed: 4 },
+            attackTimer: 0,
             movementTarget: null,
         });
         return id;
@@ -278,8 +291,19 @@ const initialSnapshot = scenario.snapshot();
 assert.equal(initialSnapshot.name, "Player Chase");
 assert.equal(initialSnapshot.tick, 0);
 assert.equal(initialSnapshot.player.coordinate.x, 8);
+assert.deepEqual(initialSnapshot.player.weapon, { id: 0, range: 1, speed: 4 });
+assert.equal(initialSnapshot.player.attackTimer, 0);
 assert.equal(initialSnapshot.npcs.length, 1);
 assert.equal(initialSnapshot.npcs[0].coordinate.x, 18);
+assert.deepEqual(initialSnapshot.npcs[0].weapon, { id: 0, range: 1, speed: 4 });
+assert.equal(
+    module.Engine.lastCreated.world.SetActorWeaponDefinition(
+        initialSnapshot.player.id,
+        { id: 12, range: 6, speed: 3 },
+    ),
+    true,
+);
+assert.deepEqual(scenario.snapshot().player.weapon, { id: 12, range: 6, speed: 3 });
 assert.equal(initialSnapshot.npcs[0].movementTarget.actorId, initialSnapshot.player.id);
 assert.equal(
     initialSnapshot.tiles.filter((tile) =>

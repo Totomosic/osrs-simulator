@@ -15,6 +15,8 @@ struct ActorCore
     ActorId id = 0;
     int size = 1;
     int speed = 0;
+    WeaponDefinition weapon;
+    int attackTimer = 0;
 };
 
 enum class MovementTargetKind
@@ -71,6 +73,12 @@ public:
     const Npc* GetNpc(ActorId actorId) const;
     const ActorCore* GetActorCore(ActorId actorId) const;
     const SceneMembership* GetSceneMembership(ActorId actorId) const;
+    const WeaponDefinition* GetActorWeaponDefinition(ActorId actorId) const;
+    bool SetActorWeaponDefinition(
+        ActorId actorId,
+        WeaponDefinition weaponDefinition);
+    int GetActorAttackTimer(ActorId actorId) const;
+    bool SetActorAttackTimer(ActorId actorId, int attackTimer);
     bool SetActorSpeed(ActorId actorId, int speed);
     bool PlaceActor(ActorId actorId, SceneId sceneId, SceneCoordinate coordinate);
     bool RemoveActorSceneMembership(ActorId actorId);

@@ -23,6 +23,12 @@ export interface CollisionProfile {
     blocksLineOfSight: boolean;
 }
 
+export interface WeaponDefinition {
+    id: number;
+    range: number;
+    speed: number;
+}
+
 export interface ActionFeedback {
     state: "none" | "blocked-movement" | "placement-failure" | "removal-failure";
 }
@@ -61,6 +67,10 @@ export interface World {
     CreateNpc(size: number, speed: number): number;
     PlaceActor(actorId: number, sceneId: number, coordinate: SceneCoordinate): boolean;
     RemoveActor(actorId: number): boolean;
+    SetActorWeaponDefinition(
+        actorId: number,
+        weaponDefinition: WeaponDefinition,
+    ): boolean;
     SetActorMovementTarget(actorId: number, targetActorId: number): boolean;
     SetPlayerSceneCoordinateMovementTarget(
         actorId: number,

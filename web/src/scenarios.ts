@@ -5,6 +5,7 @@ import type {
     EngineModule,
     Scene,
     SceneCoordinate,
+    WeaponDefinition,
     World,
 } from "./wasm/EngineModule";
 export { loadEngineModule } from "./wasm/EngineModule";
@@ -22,6 +23,8 @@ export interface ActorSnapshot {
     coordinate: SceneCoordinate;
     size: number;
     speed: number;
+    weapon: WeaponDefinition;
+    attackTimer: number;
     movementTarget: MovementTargetSnapshot | null;
 }
 
@@ -31,6 +34,8 @@ interface EngineActorSnapshot {
     coordinate: SceneCoordinate;
     size: number;
     speed: number;
+    weapon: WeaponDefinition;
+    attackTimer: number;
     movementTarget:
         | null
         | {

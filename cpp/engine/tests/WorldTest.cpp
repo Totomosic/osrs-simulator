@@ -33,6 +33,42 @@ int main()
 
     {
         osrssim::World world;
+        osrssim::ActorId playerId = world.CreatePlayer(1, 1);
+        osrssim::ActorId npcId = world.CreateNpc(1, 1);
+
+        const osrssim::WeaponDefinition* playerWeapon =
+            world.GetActorWeaponDefinition(playerId);
+        const osrssim::WeaponDefinition* npcWeapon =
+            world.GetActorWeaponDefinition(npcId);
+
+        assert(playerWeapon != nullptr);
+        assert(playerWeapon->id == 0);
+        assert(playerWeapon->range == 1);
+        assert(playerWeapon->speed == 4);
+        assert(npcWeapon != nullptr);
+        assert(*npcWeapon == *playerWeapon);
+        assert(world.GetActorAttackTimer(playerId) == 0);
+        assert(world.GetActorAttackTimer(npcId) == 0);
+
+        assert(world.SetActorAttackTimer(playerId, 3));
+        assert(world.SetActorWeaponDefinition(playerId, {42, 7, 5}));
+        assert(world.GetActorWeaponDefinition(playerId)->id == 42);
+        assert(world.GetActorWeaponDefinition(playerId)->range == 7);
+        assert(world.GetActorWeaponDefinition(playerId)->speed == 5);
+        assert(world.GetActorAttackTimer(playerId) == 3);
+
+        assert(world.SetActorWeaponDefinition(npcId, {99, 12, 2}));
+        assert(world.GetActorWeaponDefinition(npcId)->id == 99);
+        assert(world.SetActorAttackTimer(npcId, -2));
+        assert(world.GetActorAttackTimer(npcId) == -2);
+
+        assert(world.GetActorWeaponDefinition(999) == nullptr);
+        assert(!world.SetActorWeaponDefinition(999, {1, 1, 1}));
+        assert(!world.SetActorAttackTimer(999, 1));
+    }
+
+    {
+        osrssim::World world;
         osrssim::ActorId playerId = world.CreatePlayer(1, 2);
         osrssim::ActorId npcId = world.CreateNpc(2, 1);
 

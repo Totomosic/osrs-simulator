@@ -158,6 +158,15 @@ void AppendActorMovementTargetJson(
            << "}";
 }
 
+void AppendWeaponDefinitionJson(
+    std::ostringstream& output,
+    const osrssim::WeaponDefinition& weaponDefinition)
+{
+    output << "{\"id\":" << weaponDefinition.id
+           << ",\"range\":" << weaponDefinition.range
+           << ",\"speed\":" << weaponDefinition.speed << "}";
+}
+
 std::string GetActorSnapshotJson(
     const osrssim::World& world,
     osrssim::ActorId actorId)
@@ -179,6 +188,9 @@ std::string GetActorSnapshotJson(
            << (player != nullptr ? "Player" : "NPC") << "\",\"coordinate\":";
     AppendCoordinateJson(output, membership->coordinate);
     output << ",\"size\":" << actor->size << ",\"speed\":" << actor->speed
+           << ",\"weapon\":";
+    AppendWeaponDefinitionJson(output, actor->weapon);
+    output << ",\"attackTimer\":" << actor->attackTimer
            << ",\"movementTarget\":";
 
     if (player != nullptr)
@@ -227,6 +239,11 @@ EMSCRIPTEN_BINDINGS(osrssim_engine)
             "blocksLineOfSight",
             &osrssim::CollisionProfile::blocksLineOfSight);
 
+    emscripten::value_object<osrssim::WeaponDefinition>("WeaponDefinition")
+        .field("id", &osrssim::WeaponDefinition::id)
+        .field("range", &osrssim::WeaponDefinition::range)
+        .field("speed", &osrssim::WeaponDefinition::speed);
+
     emscripten::enum_<osrssim::CardinalDirection>("CardinalDirection")
         .value("North", osrssim::CardinalDirection::North)
         .value("East", osrssim::CardinalDirection::East)
@@ -253,6 +270,9 @@ EMSCRIPTEN_BINDINGS(osrssim_engine)
         .function("CreateNpc", &osrssim::World::CreateNpc)
         .function("PlaceActor", &osrssim::World::PlaceActor)
         .function("RemoveActor", &osrssim::World::RemoveActor)
+        .function(
+            "SetActorWeaponDefinition",
+            &osrssim::World::SetActorWeaponDefinition)
         .function(
             "SetActorMovementTarget",
             &osrssim::World::SetActorMovementTarget)
