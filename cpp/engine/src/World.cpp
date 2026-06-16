@@ -223,6 +223,25 @@ const SceneMembership* World::GetSceneMembership(ActorId actorId) const
     return found == m_SceneMemberships.end() ? nullptr : &found->second;
 }
 
+bool World::AreActorFootprintsOverlapping(
+    ActorId firstActorId,
+    ActorId secondActorId) const
+{
+    const ActorCore* firstActor = TryGetActorCore(firstActorId);
+    const ActorCore* secondActor = TryGetActorCore(secondActorId);
+    const SceneMembership* firstMembership = GetSceneMembership(firstActorId);
+    const SceneMembership* secondMembership = GetSceneMembership(secondActorId);
+
+    return firstActor != nullptr && secondActor != nullptr &&
+           firstMembership != nullptr && secondMembership != nullptr &&
+           firstMembership->sceneId == secondMembership->sceneId &&
+           AreActorFootprintsOverlapping(
+               *firstActor,
+               firstMembership->coordinate,
+               *secondActor,
+               secondMembership->coordinate);
+}
+
 const WeaponDefinition* World::GetActorWeaponDefinition(ActorId actorId) const
 {
     const ActorCore* actor = TryGetActorCore(actorId);

@@ -140,6 +140,28 @@ bool Engine::TryHandleActorTargetCombat(ActorId actorId)
     return true;
 }
 
+bool Engine::IsOverlappingActorMovementTarget(ActorId actorId) const
+{
+    const Player* player = m_World.GetPlayer(actorId);
+    const Npc* npc = m_World.GetNpc(actorId);
+    const MovementTarget* movementTarget = nullptr;
+
+    if (player != nullptr && player->movementTarget.has_value())
+    {
+        movementTarget = &player->movementTarget.value();
+    }
+    else if (npc != nullptr && npc->movementTarget.has_value())
+    {
+        movementTarget = &npc->movementTarget.value();
+    }
+
+    return movementTarget != nullptr &&
+           movementTarget->kind == MovementTargetKind::Actor &&
+           m_World.AreActorFootprintsOverlapping(
+               actorId,
+               movementTarget->actorId);
+}
+
 void Engine::UpdateNpcs()
 {
     std::vector<ActorId> npcIds;
@@ -156,10 +178,12 @@ void Engine::UpdateNpcs()
     {
         if (!TryHandleActorTargetCombat(actorId))
         {
+            const bool startedFromOverlap =
+                IsOverlappingActorMovementTarget(actorId);
             const bool moved =
                 m_World.UpdateActorMovement(actorId, m_CurrentTick);
 
-            if (moved)
+            if (moved && !startedFromOverlap)
             {
                 TryHandleActorTargetCombat(actorId);
             }
@@ -183,10 +207,12 @@ void Engine::UpdatePlayers()
     {
         if (!TryHandleActorTargetCombat(actorId))
         {
+            const bool startedFromOverlap =
+                IsOverlappingActorMovementTarget(actorId);
             const bool moved =
                 m_World.UpdatePlayerMovement(actorId, m_CurrentTick);
 
-            if (moved)
+            if (moved && !startedFromOverlap)
             {
                 TryHandleActorTargetCombat(actorId);
             }

@@ -42,6 +42,7 @@ private:
     void ProcessQueuedPlayerMovementActions();
     void DecrementAttackTimers();
     bool TryHandleActorTargetCombat(ActorId actorId);
+    bool IsOverlappingActorMovementTarget(ActorId actorId) const;
     void UpdateNpcs();
     void UpdatePlayers();
 };

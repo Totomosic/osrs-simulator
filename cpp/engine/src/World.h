@@ -73,6 +73,9 @@ public:
     const Npc* GetNpc(ActorId actorId) const;
     const ActorCore* GetActorCore(ActorId actorId) const;
     const SceneMembership* GetSceneMembership(ActorId actorId) const;
+    bool AreActorFootprintsOverlapping(
+        ActorId firstActorId,
+        ActorId secondActorId) const;
     const WeaponDefinition* GetActorWeaponDefinition(ActorId actorId) const;
     bool SetActorWeaponDefinition(
         ActorId actorId,
