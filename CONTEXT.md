@@ -104,8 +104,44 @@ _Avoid_: Underneath, covered by
 The maximum number of per-tile movement steps an actor may take in one tick. A movement attempt may use less than the actor's speed.
 _Avoid_: Run energy, movement mode
 
+**Weapon**:
+An actor's equipped attack profile, whether or not it represents a physical item. Each actor has exactly one weapon equipped.
+_Avoid_: Attack style, attack profile
+
+**Weapon ID**:
+A stable simulator-local numeric identifier for a weapon, used to distinguish generic weapons from weapons with custom attack behavior.
+_Avoid_: Callback key, attack type
+
+**Weapon Name**:
+The display name associated with a weapon definition.
+_Avoid_: Weapon ID
+
+**Unarmed**:
+The built-in default weapon. Unarmed has weapon ID 0, weapon range 1, and weapon speed 4.
+_Avoid_: No weapon
+
+**Weapon Definition**:
+The equipped weapon data carried by an actor, including weapon identity and basic weapon stats.
+_Avoid_: Weapon instance, item definition
+
+**Weapon Range**:
+The maximum line-of-sight range at which a weapon can attack another actor. Weapon range uses actor footprints and same-plane line of sight.
+_Avoid_: Distance, radius
+
+**Weapon Speed**:
+The number of ticks between attacks for a weapon.
+_Avoid_: Attack rate, cooldown
+
+**Attack**:
+A weapon-driven interaction from one actor toward another actor. An attack can occur when the attacker has line of sight to the target within weapon range.
+_Avoid_: Hit, damage roll
+
+**Attack Timer**:
+An actor's per-tick countdown until its next attack can occur. Attacking sets the attack timer from the equipped weapon's speed, changing weapons does not reset it, and values at or below zero mean the actor is ready to attack.
+_Avoid_: Cooldown, delay
+
 **Movement Target**:
-The current destination reference an actor is trying to reach, either a scene coordinate for its own south-west anchor or another actor whose south-west anchor it pursues until edge adjacency is reached. An actor has at most one movement target at a time.
+The current destination reference an actor is trying to reach, either a scene coordinate for its own south-west anchor or another actor it pursues until it can interact with the target. An actor has at most one movement target at a time.
 _Avoid_: Target, target tile
 
 **Partial Movement**:
