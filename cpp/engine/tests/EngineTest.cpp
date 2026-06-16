@@ -35,6 +35,146 @@ int main()
         osrssim::Engine engine;
         osrssim::World& world = engine.GetWorld();
         osrssim::ActorId playerId = world.CreatePlayer(1, 1);
+        osrssim::ActorId npcId = world.CreateNpc(1, 1);
+        osrssim::ActorId unplacedNpcId = world.CreateNpc(1, 1);
+
+        assert(world.PlaceActor(
+            playerId,
+            world.GetDefaultSceneId(),
+            {10, 10, 0}));
+        assert(world.PlaceActor(npcId, world.GetDefaultSceneId(), {20, 20, 0}));
+        assert(world.SetActorAttackTimer(playerId, 3));
+        assert(world.SetActorAttackTimer(npcId, 0));
+        assert(world.SetActorAttackTimer(unplacedNpcId, -2));
+        assert(engine.QueuePlayerMoveToSceneCoordinate(playerId, {11, 10, 0}));
+
+        engine.Step();
+
+        assert(world.GetSceneMembership(playerId)->coordinate ==
+               (osrssim::SceneCoordinate{11, 10, 0}));
+        assert(world.GetActorAttackTimer(playerId) == 2);
+        assert(world.GetActorAttackTimer(npcId) == -1);
+        assert(world.GetActorAttackTimer(unplacedNpcId) == -3);
+    }
+
+    {
+        osrssim::Engine engine;
+        osrssim::World& world = engine.GetWorld();
+        osrssim::ActorId attackerId = world.CreatePlayer(1, 1);
+        osrssim::ActorId targetId = world.CreateNpc(1, 1);
+        int genericAttackCount = 0;
+        osrssim::ActorId callbackAttackerId = 0;
+        osrssim::ActorId callbackTargetId = 0;
+        osrssim::Tick callbackTick = 0;
+        osrssim::WeaponDefinition callbackWeapon;
+        int callbackAttackTimer = 0;
+
+        assert(world.SetActorWeaponDefinition(attackerId, {42, 7, 5}));
+        engine.GetCombatService().RegisterGenericAttackCallback(
+            [&genericAttackCount,
+             &callbackAttackerId,
+             &callbackTargetId,
+             &callbackTick,
+             &callbackWeapon,
+             &callbackAttackTimer](
+                osrssim::World& callbackWorld,
+                osrssim::ActorId attacker,
+                osrssim::ActorId target,
+                osrssim::Tick currentTick,
+                const osrssim::WeaponDefinition& weapon)
+            {
+                ++genericAttackCount;
+                callbackAttackerId = attacker;
+                callbackTargetId = target;
+                callbackTick = currentTick;
+                callbackWeapon = weapon;
+                callbackAttackTimer =
+                    callbackWorld.GetActorAttackTimer(attacker);
+            });
+
+        assert(engine.GetCombatService().DispatchAttack(
+            world,
+            attackerId,
+            targetId,
+            9));
+
+        assert(genericAttackCount == 1);
+        assert(callbackAttackerId == attackerId);
+        assert(callbackTargetId == targetId);
+        assert(callbackTick == 9);
+        assert(callbackWeapon == (osrssim::WeaponDefinition{42, 7, 5}));
+        assert(callbackAttackTimer == 5);
+        assert(world.GetActorAttackTimer(attackerId) == 5);
+    }
+
+    {
+        osrssim::Engine engine;
+        osrssim::World& world = engine.GetWorld();
+        osrssim::ActorId attackerId = world.CreatePlayer(1, 1);
+        osrssim::ActorId targetId = world.CreateNpc(1, 1);
+        int genericAttackCount = 0;
+        int weaponAttackCount = 0;
+
+        assert(world.SetActorWeaponDefinition(attackerId, {42, 7, 5}));
+        engine.GetCombatService().RegisterGenericAttackCallback(
+            [&genericAttackCount](
+                osrssim::World&,
+                osrssim::ActorId,
+                osrssim::ActorId,
+                osrssim::Tick,
+                const osrssim::WeaponDefinition&)
+            {
+                ++genericAttackCount;
+            });
+        engine.GetCombatService().RegisterWeaponAttackCallback(
+            42,
+            [&weaponAttackCount](
+                osrssim::World&,
+                osrssim::ActorId,
+                osrssim::ActorId,
+                osrssim::Tick,
+                const osrssim::WeaponDefinition&)
+            {
+                ++weaponAttackCount;
+            });
+
+        assert(engine.GetCombatService().DispatchAttack(
+            world,
+            attackerId,
+            targetId,
+            1));
+
+        assert(genericAttackCount == 0);
+        assert(weaponAttackCount == 1);
+        assert(world.GetActorAttackTimer(attackerId) == 5);
+    }
+
+    {
+        osrssim::Engine engine;
+        osrssim::World& world = engine.GetWorld();
+        osrssim::ActorId attackerId = world.CreatePlayer(1, 1);
+        osrssim::ActorId targetId = world.CreateNpc(1, 1);
+
+        assert(world.SetActorWeaponDefinition(attackerId, {7, 3, 2}));
+
+        assert(engine.GetCombatService().DispatchAttack(
+            world,
+            attackerId,
+            targetId,
+            1));
+
+        assert(world.GetActorAttackTimer(attackerId) == 2);
+        assert(!engine.GetCombatService().DispatchAttack(
+            world,
+            attackerId,
+            999,
+            1));
+    }
+
+    {
+        osrssim::Engine engine;
+        osrssim::World& world = engine.GetWorld();
+        osrssim::ActorId playerId = world.CreatePlayer(1, 1);
 
         assert(world.PlaceActor(
             playerId,

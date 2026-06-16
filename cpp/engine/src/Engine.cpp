@@ -46,6 +46,7 @@ void Engine::Step()
 {
     ++m_CurrentTick;
     ProcessQueuedPlayerMovementActions();
+    DecrementAttackTimers();
     UpdateNpcs();
     UpdatePlayers();
 }
@@ -63,6 +64,16 @@ World& Engine::GetWorld()
 const World& Engine::GetWorld() const
 {
     return m_World;
+}
+
+CombatService& Engine::GetCombatService()
+{
+    return m_CombatService;
+}
+
+const CombatService& Engine::GetCombatService() const
+{
+    return m_CombatService;
 }
 
 void Engine::ProcessQueuedPlayerMovementActions()
@@ -85,6 +96,11 @@ void Engine::ProcessQueuedPlayerMovementActions()
     }
 
     m_QueuedPlayerMovementActions.clear();
+}
+
+void Engine::DecrementAttackTimers()
+{
+    m_CombatService.DecrementAttackTimers(m_World);
 }
 
 void Engine::UpdateNpcs()

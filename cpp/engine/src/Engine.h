@@ -1,5 +1,6 @@
 #pragma once
 
+#include "CombatService.h"
 #include "Types.h"
 #include "World.h"
 
@@ -19,6 +20,7 @@ private:
 
     Tick m_CurrentTick = 0;
     World m_World;
+    CombatService m_CombatService;
     std::vector<QueuedPlayerMovementAction> m_QueuedPlayerMovementActions;
 
 public:
@@ -33,9 +35,12 @@ public:
     Tick GetCurrentTick() const;
     World& GetWorld();
     const World& GetWorld() const;
+    CombatService& GetCombatService();
+    const CombatService& GetCombatService() const;
 
 private:
     void ProcessQueuedPlayerMovementActions();
+    void DecrementAttackTimers();
     void UpdateNpcs();
     void UpdatePlayers();
 };

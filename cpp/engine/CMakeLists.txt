@@ -1,4 +1,5 @@
 add_library(osrssim_engine
+  src/CombatService.cpp
   src/Engine.cpp
   src/LineOfSight.cpp
   src/Pathing.cpp
