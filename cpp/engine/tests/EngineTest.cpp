@@ -610,6 +610,77 @@ int main()
         assert(world.PlaceActor(
             targetId,
             world.GetDefaultSceneId(),
+            {14, 10, 0}));
+        assert(world.SetActorWeaponDefinition(playerId, {42, 3, 5}));
+        assert(engine.QueuePlayerMoveToActor(playerId, targetId));
+        RegisterAttackObservation(engine, attack);
+
+        engine.Step();
+
+        assert(attack.count == 1);
+        assert(attack.attackerId == playerId);
+        assert(attack.targetId == targetId);
+        assert(attack.tick == 1);
+        assert(world.GetSceneMembership(playerId)->coordinate ==
+               (osrssim::SceneCoordinate{12, 10, 0}));
+        assert(world.GetActorAttackTimer(playerId) == 5);
+        assert(world.GetPlayer(playerId)->movementTarget.has_value());
+        assert(world.GetPlayer(playerId)->movementTarget->actorId == targetId);
+    }
+
+    {
+        osrssim::Engine engine;
+        osrssim::World& world = engine.GetWorld();
+        osrssim::ActorId playerId = world.CreatePlayer(1, 2);
+        osrssim::ActorId targetId = world.CreateNpc(1, 1);
+        AttackObservation attack;
+
+        assert(world.PlaceActor(
+            playerId,
+            world.GetDefaultSceneId(),
+            {10, 10, 0}));
+        assert(world.PlaceActor(
+            targetId,
+            world.GetDefaultSceneId(),
+            {14, 10, 0}));
+        assert(world.SetActorWeaponDefinition(playerId, {42, 3, 5}));
+        assert(world.SetActorAttackTimer(playerId, 3));
+        assert(engine.QueuePlayerMoveToActor(playerId, targetId));
+        RegisterAttackObservation(engine, attack);
+
+        engine.Step();
+
+        assert(attack.count == 0);
+        assert(world.GetSceneMembership(playerId)->coordinate ==
+               (osrssim::SceneCoordinate{12, 10, 0}));
+        assert(world.GetActorAttackTimer(playerId) == 2);
+        assert(world.GetPlayer(playerId)->movementTarget.has_value());
+        assert(world.GetPlayer(playerId)->movementTarget->actorId == targetId);
+
+        engine.Step();
+
+        assert(attack.count == 0);
+        assert(world.GetSceneMembership(playerId)->coordinate ==
+               (osrssim::SceneCoordinate{12, 10, 0}));
+        assert(world.GetActorAttackTimer(playerId) == 1);
+        assert(world.GetPlayer(playerId)->movementTarget.has_value());
+        assert(world.GetPlayer(playerId)->movementTarget->actorId == targetId);
+    }
+
+    {
+        osrssim::Engine engine;
+        osrssim::World& world = engine.GetWorld();
+        osrssim::ActorId playerId = world.CreatePlayer(1, 2);
+        osrssim::ActorId targetId = world.CreateNpc(1, 1);
+        AttackObservation attack;
+
+        assert(world.PlaceActor(
+            playerId,
+            world.GetDefaultSceneId(),
+            {10, 10, 0}));
+        assert(world.PlaceActor(
+            targetId,
+            world.GetDefaultSceneId(),
             {13, 10, 0}));
         assert(world.SetActorWeaponDefinition(playerId, {42, 3, 5}));
         assert(world.SetActorMovementTarget(playerId, targetId));

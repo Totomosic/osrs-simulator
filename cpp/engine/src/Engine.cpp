@@ -156,7 +156,13 @@ void Engine::UpdateNpcs()
     {
         if (!TryHandleActorTargetCombat(actorId))
         {
-            m_World.UpdateActorMovement(actorId, m_CurrentTick);
+            const bool moved =
+                m_World.UpdateActorMovement(actorId, m_CurrentTick);
+
+            if (moved)
+            {
+                TryHandleActorTargetCombat(actorId);
+            }
         }
     }
 }
@@ -177,7 +183,13 @@ void Engine::UpdatePlayers()
     {
         if (!TryHandleActorTargetCombat(actorId))
         {
-            m_World.UpdatePlayerMovement(actorId, m_CurrentTick);
+            const bool moved =
+                m_World.UpdatePlayerMovement(actorId, m_CurrentTick);
+
+            if (moved)
+            {
+                TryHandleActorTargetCombat(actorId);
+            }
         }
     }
 }
