@@ -100,3 +100,5 @@ If no valid issue was found, output only:
 ```text
 RALPH_NO_VALID_ISSUES_TOKEN
 ```
+
+Use `gh` to close the PRD once all issues are complete.
