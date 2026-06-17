@@ -10,6 +10,8 @@ namespace
 {
 
 constexpr double SecondsPerTick = 0.6;
+constexpr int PlayerMagicDefenceMagicPercent = 70;
+constexpr int PlayerMagicDefenceDefencePercent = 30;
 
 }  // namespace
 
@@ -26,11 +28,7 @@ DpsResult DpsService::CalculateExpected(const DpsRequest& request) const
         request.attackPrayerMultiplier,
         request.attackLevelMultiplier,
         SelectAttackStyleBonus(request));
-    const int effectiveDefence = CalculateEffectiveLevel(
-        request.defenderStats.defence,
-        request.defencePrayerMultiplier,
-        request.defenceLevelMultiplier,
-        request.defenderStyle.defence);
+    const int effectiveDefence = CalculateEffectiveDefenceLevel(request);
     const int effectiveStrength = CalculateEffectiveLevel(
         SelectStrengthLevel(request),
         request.strengthPrayerMultiplier,
@@ -363,6 +361,37 @@ int DpsService::CalculateMaximumHit(
         effectiveStrength,
         SelectStrengthBonus(request.attackType, request.attackerBonuses),
         request.finalDamageMultiplier);
+}
+
+int DpsService::CalculateEffectiveDefenceLevel(const DpsRequest& request)
+{
+    if (request.defenderKind == DefenderKind::Npc)
+    {
+        if (request.attackType == AttackType::Magic)
+        {
+            return request.defenderStats.magic + 9;
+        }
+
+        return request.defenderStats.defence + 9;
+    }
+
+    if (request.attackType == AttackType::Magic)
+    {
+        return (request.defenderStats.magic *
+                PlayerMagicDefenceMagicPercent / 100) +
+            static_cast<int>(std::floor(
+                request.defenderStats.defence *
+                request.defencePrayerMultiplier *
+                request.defenceLevelMultiplier *
+                PlayerMagicDefenceDefencePercent / 100.0)) +
+            request.defenderStyle.defence + 8;
+    }
+
+    return CalculateEffectiveLevel(
+        request.defenderStats.defence,
+        request.defencePrayerMultiplier,
+        request.defenceLevelMultiplier,
+        request.defenderStyle.defence);
 }
 
 DpsSampleResult DpsService::SampleSingleAttackWithGenerator(

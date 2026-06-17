@@ -83,18 +83,23 @@ const module = {
         RangedStandard: 5,
         RangedHeavy: 6,
     },
+    DefenderKind: {
+        Player: 0,
+        Npc: 1,
+    },
     DpsService: FakeDpsService,
 };
 
 const scenarios = createFixedMeleeDpsScenarios(module);
 const defaultScenarios = createFixedDpsScenarios(module);
-assert.equal(defaultScenarios.length, 5);
-assert.equal(scenarios.length, 5);
+assert.equal(defaultScenarios.length, 7);
+assert.equal(scenarios.length, 7);
 assert.equal(scenarios[0].name, "Melee slash tracer");
 assert.equal(scenarios[0].attackTypeLabel, "Slash");
 assert.equal(scenarios[0].sampleSeed, 12345);
 assert.equal(scenarios[0].sampleAttackCount, 5);
 assert.equal(scenarios[0].request.attackType, module.AttackType.Slash);
+assert.equal(scenarios[0].request.defenderKind, module.DefenderKind.Player);
 assert.equal(scenarios[0].request.attackerStats.attack, 99);
 assert.equal(scenarios[0].request.attackerStats.strength, 99);
 assert.equal(scenarios[0].request.attackerBonuses.slashAttack, 132);
@@ -102,40 +107,48 @@ assert.equal(scenarios[0].request.attackerBonuses.meleeStrength, 118);
 assert.equal(scenarios[0].request.defenderStats.defence, 80);
 assert.equal(scenarios[0].request.defenderBonuses.slashDefence, 80);
 assert.equal(scenarios[0].request.weaponSpeedTicks, 4);
-assert.equal(scenarios[1].name, "Ranged light tracer");
-assert.equal(scenarios[1].attackTypeLabel, "Ranged Light");
-assert.equal(scenarios[1].request.attackType, module.AttackType.RangedLight);
-assert.equal(scenarios[1].request.attackerStats.ranged, 99);
-assert.equal(scenarios[1].request.attackerBonuses.rangedAttack, 100);
-assert.equal(scenarios[1].request.attackerBonuses.rangedStrength, 80);
-assert.equal(scenarios[1].request.defenderBonuses.rangedDefenceLight, 20);
-assert.equal(scenarios[1].request.defenderBonuses.rangedDefenceHeavy, 60);
-assert.equal(scenarios[1].request.attackPrayerMultiplier, 1.10);
-assert.equal(scenarios[1].request.strengthPrayerMultiplier, 1.05);
-assert.equal(scenarios[2].name, "Ranged standard tracer");
-assert.equal(scenarios[2].attackTypeLabel, "Ranged Standard");
-assert.equal(scenarios[2].request.attackType, module.AttackType.RangedStandard);
-assert.equal(scenarios[2].request.defenderBonuses.rangedDefenceStandard, 40);
-assert.equal(scenarios[3].name, "Ranged heavy tracer");
-assert.equal(scenarios[3].attackTypeLabel, "Ranged Heavy");
-assert.equal(scenarios[3].request.attackType, module.AttackType.RangedHeavy);
-assert.equal(scenarios[3].request.defenderBonuses.rangedDefenceHeavy, 60);
-assert.equal(scenarios[4].name, "Magic fixed-spell tracer");
-assert.equal(scenarios[4].attackTypeLabel, "Magic");
-assert.equal(scenarios[4].request.attackType, module.AttackType.Magic);
-assert.equal(scenarios[4].request.attackerStats.magic, 90);
-assert.equal(scenarios[4].request.attackerBonuses.magicAttack, 70);
-assert.equal(scenarios[4].request.attackerBonuses.magicDamagePercent, 10);
-assert.equal(scenarios[4].request.magicBaseMaximumHit, 24);
+assert.equal(scenarios[1].name, "NPC melee slash tracer");
+assert.equal(scenarios[1].request.defenderKind, module.DefenderKind.Npc);
+assert.equal(scenarios[2].name, "Ranged light tracer");
+assert.equal(scenarios[2].attackTypeLabel, "Ranged Light");
+assert.equal(scenarios[2].request.attackType, module.AttackType.RangedLight);
+assert.equal(scenarios[2].request.defenderKind, module.DefenderKind.Player);
+assert.equal(scenarios[2].request.attackerStats.ranged, 99);
+assert.equal(scenarios[2].request.attackerBonuses.rangedAttack, 100);
+assert.equal(scenarios[2].request.attackerBonuses.rangedStrength, 80);
+assert.equal(scenarios[2].request.defenderBonuses.rangedDefenceLight, 20);
+assert.equal(scenarios[2].request.defenderBonuses.rangedDefenceHeavy, 60);
+assert.equal(scenarios[2].request.attackPrayerMultiplier, 1.10);
+assert.equal(scenarios[2].request.strengthPrayerMultiplier, 1.05);
+assert.equal(scenarios[3].name, "Ranged standard tracer");
+assert.equal(scenarios[3].attackTypeLabel, "Ranged Standard");
+assert.equal(scenarios[3].request.attackType, module.AttackType.RangedStandard);
+assert.equal(scenarios[3].request.defenderBonuses.rangedDefenceStandard, 40);
+assert.equal(scenarios[4].name, "Ranged heavy tracer");
+assert.equal(scenarios[4].attackTypeLabel, "Ranged Heavy");
+assert.equal(scenarios[4].request.attackType, module.AttackType.RangedHeavy);
+assert.equal(scenarios[4].request.defenderBonuses.rangedDefenceHeavy, 60);
+assert.equal(scenarios[5].name, "Magic fixed-spell tracer");
+assert.equal(scenarios[5].attackTypeLabel, "Magic");
+assert.equal(scenarios[5].request.attackType, module.AttackType.Magic);
+assert.equal(scenarios[5].request.defenderKind, module.DefenderKind.Player);
+assert.equal(scenarios[5].request.attackerStats.magic, 90);
+assert.equal(scenarios[5].request.attackerBonuses.magicAttack, 70);
+assert.equal(scenarios[5].request.attackerBonuses.magicDamagePercent, 10);
+assert.equal(scenarios[5].request.defenderStats.magic, 66);
+assert.equal(scenarios[5].request.magicBaseMaximumHit, 24);
+assert.equal(scenarios[6].name, "NPC magic fixed-spell tracer");
+assert.equal(scenarios[6].request.attackType, module.AttackType.Magic);
+assert.equal(scenarios[6].request.defenderKind, module.DefenderKind.Npc);
 
 const results = calculateDpsScenarioResults(module, defaultScenarios);
-assert.equal(results.length, 5);
-assert.equal(FakeDpsService.lastRequest, defaultScenarios[4].request);
-assert.equal(FakeDpsService.lastSampleRequest, defaultScenarios[4].request);
-assert.equal(FakeDpsService.lastSampleSeed, 34567);
-assert.equal(FakeDpsService.lastAggregateRequest, defaultScenarios[4].request);
+assert.equal(results.length, 7);
+assert.equal(FakeDpsService.lastRequest, defaultScenarios[6].request);
+assert.equal(FakeDpsService.lastSampleRequest, defaultScenarios[6].request);
+assert.equal(FakeDpsService.lastSampleSeed, 34568);
+assert.equal(FakeDpsService.lastAggregateRequest, defaultScenarios[6].request);
 assert.equal(FakeDpsService.lastAggregateAttackCount, 5);
-assert.equal(FakeDpsService.lastAggregateSeed, 34567);
+assert.equal(FakeDpsService.lastAggregateSeed, 34568);
 assert.equal(results[0].result.attackRoll, 21560);
 assert.equal(results[0].result.defenceRoll, 12672);
 assert.equal(results[0].result.maximumHit, 31);

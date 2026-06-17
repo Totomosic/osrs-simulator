@@ -16,6 +16,12 @@ enum class AttackType
     RangedHeavy
 };
 
+enum class DefenderKind
+{
+    Player,
+    Npc
+};
+
 struct CombatStats
 {
     int attack = 1;
@@ -63,6 +69,7 @@ struct DpsRequest
     StyleBonus attackerStyle;
     StyleBonus defenderStyle;
     AttackType attackType = AttackType::Slash;
+    DefenderKind defenderKind = DefenderKind::Player;
     int weaponSpeedTicks = 4;
     double attackPrayerMultiplier = 1.0;
     double strengthPrayerMultiplier = 1.0;
@@ -185,6 +192,7 @@ private:
     static int CalculateMaximumHit(
         const DpsRequest& request,
         int effectiveStrength);
+    static int CalculateEffectiveDefenceLevel(const DpsRequest& request);
 };
 
 }  // namespace osrssim

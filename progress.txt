@@ -1,3 +1,12 @@
+2026-06-17 #62 Player and NPC Defender Formula Branches
+- Selected issue: #62, unblocked because #61 is closed. Parent PRD: #56.
+- Docs read: CONTEXT.md, docs/agents/domain.md, docs/architecture/repo-structure.md, docs/adr/0002-deterministic-engine.md, docs/adr/0006-web-development-viewer.md, docs/osrs/combat-rolls.md, PRD #56, feature #62, blocker #61.
+- Plan: TDD defender-kind branch in DpsService; add first-class Player/Npc request field; player melee/ranged use defence prayer/style/multiplier, player magic uses Magic/Defence split; NPC melee/ranged use Defence+9 and NPC magic uses Magic+9; bind through WASM and show fixed player/NPC /dps scenarios.
+- Completed: player/NPC defender formula branches for PRD #56 stories 18-20 plus WASM/web scenario visibility.
+- Decisions: default defender kind is Player to preserve existing request behavior; player magic uses fixed 70/30 percent split with integer floor for Magic component; generated WASM rebuilt but ignored by repo.
+- Files changed: cpp/engine DpsService + bindings/tests; web EngineModule type contract, DPS fixtures/tests; progress.txt.
+- Validation: focused DpsService/generated/helper tests, tools/build_wasm.sh, cmake build, ctest, web test, web typecheck, web build passed. No blockers.
+
 2026-06-17 #61 Ranged and Magic Attack Type Scenarios
 - Selected issue: #61, unblocked because #57 is closed. Parent PRD: #56.
 - Docs read: docs/osrs/combat-rolls.md, docs/adr/0002-deterministic-engine.md, docs/adr/0006-web-development-viewer.md, PRD #56, feature #61, blocker #57.

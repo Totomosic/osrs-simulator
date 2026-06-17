@@ -89,6 +89,7 @@ const meleeDpsRequest = {
     },
     defenderStyle: defaultStyle,
     attackType: module.AttackType.Slash,
+    defenderKind: module.DefenderKind.Player,
     weaponSpeedTicks: 4,
     attackPrayerMultiplier: 1.0,
     strengthPrayerMultiplier: 1.0,
@@ -103,6 +104,10 @@ const meleeDpsRequest = {
 };
 
 const result = service.CalculateExpected(meleeDpsRequest);
+const npcMeleeResult = service.CalculateExpected({
+    ...meleeDpsRequest,
+    defenderKind: module.DefenderKind.Npc,
+});
 
 assert.equal(result.attackRoll, 21560);
 assert.equal(result.defenceRoll, 12672);
@@ -111,6 +116,8 @@ assert.equal(result.hitChance.toFixed(6), "0.706090");
 assert.equal(result.expectedDamagePerAttack.toFixed(6), "10.944390");
 assert.equal(result.secondsPerAttack, 2.4);
 assert.equal(result.dps.toFixed(6), "4.560163");
+assert.equal(npcMeleeResult.defenceRoll, 12816);
+assert.equal(npcMeleeResult.hitChance.toFixed(6), "0.702750");
 
 service.SetSeed(12345);
 const firstSharedSample = service.SampleSingleAttack(meleeDpsRequest);
@@ -181,6 +188,7 @@ const magicDpsRequest = {
     defenderStats: {
         ...defaultStats,
         defence: 65,
+        magic: 66,
     },
     attackerBonuses: {
         ...defaultBonuses,
@@ -199,6 +207,10 @@ const magicDpsRequest = {
     finalDamageMultiplier: 1.20,
 };
 const magicResult = service.CalculateExpected(magicDpsRequest);
+const npcMagicResult = service.CalculateExpected({
+    ...magicDpsRequest,
+    defenderKind: module.DefenderKind.Npc,
+});
 
 assert.equal(firstSharedSample.attackRoll, 21560);
 assert.equal(firstSharedSample.defenceRoll, 12672);
@@ -231,3 +243,5 @@ assert.equal(magicResult.defenceRoll, 7592);
 assert.equal(magicResult.maximumHit, 31);
 assert.equal(magicResult.hitChance.toFixed(6), "0.722218");
 assert.equal(magicResult.dps.toFixed(6), "3.731460");
+assert.equal(npcMagicResult.defenceRoll, 7800);
+assert.equal(npcMagicResult.hitChance.toFixed(6), "0.714610");

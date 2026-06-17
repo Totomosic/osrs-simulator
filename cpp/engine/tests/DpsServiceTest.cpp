@@ -36,6 +36,60 @@ int main()
         osrssim::DpsService::CalculateHitChance(10000, 12571),
         0.39770919503658925));
 
+    osrssim::DpsRequest playerDefenderRequest;
+
+    playerDefenderRequest.defenderKind = osrssim::DefenderKind::Player;
+    playerDefenderRequest.attackType = osrssim::AttackType::Slash;
+    playerDefenderRequest.attackerStats.attack = 99;
+    playerDefenderRequest.attackerStats.strength = 99;
+    playerDefenderRequest.attackerBonuses.slashAttack = 132;
+    playerDefenderRequest.attackerBonuses.meleeStrength = 118;
+    playerDefenderRequest.attackerStyle.attack = 3;
+    playerDefenderRequest.attackerStyle.strength = 3;
+    playerDefenderRequest.defenderStats.defence = 80;
+    playerDefenderRequest.defenderBonuses.slashDefence = 80;
+    playerDefenderRequest.defenderStyle.defence = 3;
+    playerDefenderRequest.defencePrayerMultiplier = 1.15;
+    playerDefenderRequest.defenceLevelMultiplier = 1.10;
+
+    const osrssim::DpsResult playerDefenderResult =
+        service.CalculateExpected(playerDefenderRequest);
+
+    osrssim::DpsRequest npcDefenderRequest = playerDefenderRequest;
+    npcDefenderRequest.defenderKind = osrssim::DefenderKind::Npc;
+
+    const osrssim::DpsResult npcDefenderResult =
+        service.CalculateExpected(npcDefenderRequest);
+
+    assert(playerDefenderResult.defenceRoll == 16128);
+    assert(npcDefenderResult.defenceRoll == 12816);
+    assert(playerDefenderResult.hitChance < npcDefenderResult.hitChance);
+
+    osrssim::DpsRequest playerMagicDefenderRequest = playerDefenderRequest;
+
+    playerMagicDefenderRequest.defenderKind = osrssim::DefenderKind::Player;
+    playerMagicDefenderRequest.attackType = osrssim::AttackType::Magic;
+    playerMagicDefenderRequest.attackerStats.magic = 90;
+    playerMagicDefenderRequest.attackerBonuses.magicAttack = 70;
+    playerMagicDefenderRequest.attackerBonuses.magicDamagePercent = 10.0;
+    playerMagicDefenderRequest.defenderStats.defence = 70;
+    playerMagicDefenderRequest.defenderStats.magic = 90;
+    playerMagicDefenderRequest.defenderBonuses.magicDefence = 40;
+    playerMagicDefenderRequest.magicBaseMaximumHit = 24;
+
+    const osrssim::DpsResult playerMagicDefenderResult =
+        service.CalculateExpected(playerMagicDefenderRequest);
+
+    osrssim::DpsRequest npcMagicDefenderRequest = playerMagicDefenderRequest;
+    npcMagicDefenderRequest.defenderKind = osrssim::DefenderKind::Npc;
+
+    const osrssim::DpsResult npcMagicDefenderResult =
+        service.CalculateExpected(npcMagicDefenderRequest);
+
+    assert(playerMagicDefenderResult.defenceRoll == 10400);
+    assert(npcMagicDefenderResult.defenceRoll == 10296);
+    assert(playerMagicDefenderResult.hitChance < npcMagicDefenderResult.hitChance);
+
     osrssim::DpsRequest request;
 
     request.attackType = osrssim::AttackType::Slash;
@@ -113,6 +167,7 @@ int main()
     magicRequest.attackerBonuses.meleeStrength = 200;
     magicRequest.attackerBonuses.magicDamagePercent = 10.0;
     magicRequest.defenderStats.defence = 65;
+    magicRequest.defenderStats.magic = 66;
     magicRequest.defenderBonuses.magicDefence = 40;
     magicRequest.weaponSpeedTicks = 5;
     magicRequest.magicBaseMaximumHit = 24;

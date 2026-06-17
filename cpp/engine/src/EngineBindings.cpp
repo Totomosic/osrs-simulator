@@ -260,6 +260,10 @@ EMSCRIPTEN_BINDINGS(osrssim_engine)
         .value("RangedStandard", osrssim::AttackType::RangedStandard)
         .value("RangedHeavy", osrssim::AttackType::RangedHeavy);
 
+    emscripten::enum_<osrssim::DefenderKind>("DefenderKind")
+        .value("Player", osrssim::DefenderKind::Player)
+        .value("Npc", osrssim::DefenderKind::Npc);
+
     emscripten::value_object<osrssim::CombatStats>("CombatStats")
         .field("attack", &osrssim::CombatStats::attack)
         .field("strength", &osrssim::CombatStats::strength)
@@ -308,6 +312,7 @@ EMSCRIPTEN_BINDINGS(osrssim_engine)
         .field("attackerStyle", &osrssim::DpsRequest::attackerStyle)
         .field("defenderStyle", &osrssim::DpsRequest::defenderStyle)
         .field("attackType", &osrssim::DpsRequest::attackType)
+        .field("defenderKind", &osrssim::DpsRequest::defenderKind)
         .field("weaponSpeedTicks", &osrssim::DpsRequest::weaponSpeedTicks)
         .field(
             "attackPrayerMultiplier",

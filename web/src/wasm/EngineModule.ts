@@ -72,6 +72,7 @@ export interface DpsRequest {
     attackerStyle: StyleBonus;
     defenderStyle: StyleBonus;
     attackType: AttackType;
+    defenderKind: DefenderKind;
     weaponSpeedTicks: number;
     attackPrayerMultiplier: number;
     strengthPrayerMultiplier: number;
@@ -216,6 +217,7 @@ export type AttackType =
     | "RangedLight"
     | "RangedStandard"
     | "RangedHeavy";
+export type DefenderKind = number | "Player" | "Npc";
 
 export interface EngineModule {
     Engine: new () => Engine;
@@ -234,6 +236,10 @@ export interface EngineModule {
         RangedLight: AttackType;
         RangedStandard: AttackType;
         RangedHeavy: AttackType;
+    };
+    DefenderKind: {
+        Player: DefenderKind;
+        Npc: DefenderKind;
     };
     World?: new () => World;
 }

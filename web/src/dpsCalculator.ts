@@ -1,6 +1,7 @@
 import type {
     AttackType,
     CombatStats,
+    DefenderKind,
     DpsRequest,
     DpsResult,
     DpsSampleAggregateResult,
@@ -40,35 +41,70 @@ export function createFixedDpsScenarios(
             attackTypeLabel: "Slash",
             sampleSeed: 12345,
             sampleAttackCount: 5,
-            request: createMeleeSlashRequest(module.AttackType.Slash),
+            request: createMeleeSlashRequest(
+                module.AttackType.Slash,
+                module.DefenderKind.Player,
+            ),
+        },
+        {
+            name: "NPC melee slash tracer",
+            attackTypeLabel: "Slash",
+            sampleSeed: 12346,
+            sampleAttackCount: 5,
+            request: createMeleeSlashRequest(
+                module.AttackType.Slash,
+                module.DefenderKind.Npc,
+            ),
         },
         {
             name: "Ranged light tracer",
             attackTypeLabel: "Ranged Light",
             sampleSeed: 23456,
             sampleAttackCount: 5,
-            request: createRangedRequest(module.AttackType.RangedLight),
+            request: createRangedRequest(
+                module.AttackType.RangedLight,
+                module.DefenderKind.Player,
+            ),
         },
         {
             name: "Ranged standard tracer",
             attackTypeLabel: "Ranged Standard",
             sampleSeed: 23457,
             sampleAttackCount: 5,
-            request: createRangedRequest(module.AttackType.RangedStandard),
+            request: createRangedRequest(
+                module.AttackType.RangedStandard,
+                module.DefenderKind.Player,
+            ),
         },
         {
             name: "Ranged heavy tracer",
             attackTypeLabel: "Ranged Heavy",
             sampleSeed: 23458,
             sampleAttackCount: 5,
-            request: createRangedRequest(module.AttackType.RangedHeavy),
+            request: createRangedRequest(
+                module.AttackType.RangedHeavy,
+                module.DefenderKind.Player,
+            ),
         },
         {
             name: "Magic fixed-spell tracer",
             attackTypeLabel: "Magic",
             sampleSeed: 34567,
             sampleAttackCount: 5,
-            request: createMagicRequest(module.AttackType.Magic),
+            request: createMagicRequest(
+                module.AttackType.Magic,
+                module.DefenderKind.Player,
+            ),
+        },
+        {
+            name: "NPC magic fixed-spell tracer",
+            attackTypeLabel: "Magic",
+            sampleSeed: 34568,
+            sampleAttackCount: 5,
+            request: createMagicRequest(
+                module.AttackType.Magic,
+                module.DefenderKind.Npc,
+            ),
         },
     ];
 }
@@ -98,7 +134,10 @@ export function formatDpsNumber(value: number, fractionDigits = 3): string {
     return value.toFixed(fractionDigits);
 }
 
-function createMeleeSlashRequest(attackType: AttackType): DpsRequest {
+function createMeleeSlashRequest(
+    attackType: AttackType,
+    defenderKind: DefenderKind,
+): DpsRequest {
     return {
         attackerStats: {
             ...createDefaultCombatStats(),
@@ -125,6 +164,7 @@ function createMeleeSlashRequest(attackType: AttackType): DpsRequest {
         },
         defenderStyle: createDefaultStyleBonus(),
         attackType,
+        defenderKind,
         weaponSpeedTicks: 4,
         attackPrayerMultiplier: 1.0,
         strengthPrayerMultiplier: 1.0,
@@ -139,7 +179,10 @@ function createMeleeSlashRequest(attackType: AttackType): DpsRequest {
     };
 }
 
-function createRangedRequest(attackType: AttackType): DpsRequest {
+function createRangedRequest(
+    attackType: AttackType,
+    defenderKind: DefenderKind,
+): DpsRequest {
     return {
         attackerStats: {
             ...createDefaultCombatStats(),
@@ -166,6 +209,7 @@ function createRangedRequest(attackType: AttackType): DpsRequest {
         },
         defenderStyle: createDefaultStyleBonus(),
         attackType,
+        defenderKind,
         weaponSpeedTicks: 4,
         attackPrayerMultiplier: 1.10,
         strengthPrayerMultiplier: 1.05,
@@ -180,7 +224,10 @@ function createRangedRequest(attackType: AttackType): DpsRequest {
     };
 }
 
-function createMagicRequest(attackType: AttackType): DpsRequest {
+function createMagicRequest(
+    attackType: AttackType,
+    defenderKind: DefenderKind,
+): DpsRequest {
     return {
         attackerStats: {
             ...createDefaultCombatStats(),
@@ -190,6 +237,7 @@ function createMagicRequest(attackType: AttackType): DpsRequest {
         defenderStats: {
             ...createDefaultCombatStats(),
             defence: 65,
+            magic: 66,
         },
         attackerBonuses: {
             ...createDefaultEquipmentBonuses(),
@@ -204,6 +252,7 @@ function createMagicRequest(attackType: AttackType): DpsRequest {
         attackerStyle: createDefaultStyleBonus(),
         defenderStyle: createDefaultStyleBonus(),
         attackType,
+        defenderKind,
         weaponSpeedTicks: 5,
         attackPrayerMultiplier: 1.05,
         strengthPrayerMultiplier: 1.0,
