@@ -151,6 +151,9 @@ export function createPlayerChaseScenario(
     return registeredScenarios[0].create(module);
 }
 
+const playerWeaponRange = 5;
+const npcWeaponRange = 8;
+
 class WebPlayerChaseScenario implements PlayerChaseScenario {
     private m_Module: EngineModule;
     private m_Engine: Engine;
@@ -218,6 +221,7 @@ class WebPlayerChaseScenario implements PlayerChaseScenario {
         plane: number,
     ): boolean {
         const npcId = this.m_World.CreateNpc(size, speed);
+        this.setActorWeaponRange(npcId, npcWeaponRange);
         const placed = this.m_World.PlaceActor(
             npcId,
             this.m_World.GetDefaultSceneId(),
@@ -406,7 +410,9 @@ class WebPlayerChaseScenario implements PlayerChaseScenario {
         this.m_LastClickBlocked = false;
         this.m_ActionFeedback = { state: "none" };
         this.m_PlayerId = this.m_World.CreatePlayer(1, 2);
+        this.setActorWeaponRange(this.m_PlayerId, playerWeaponRange);
         const npcId = this.m_World.CreateNpc(4, 1);
+        this.setActorWeaponRange(npcId, npcWeaponRange);
         this.m_NpcIds = [npcId];
         this.m_SelectedNpcId = npcId;
         this.m_GameObjects = [];
@@ -514,6 +520,14 @@ class WebPlayerChaseScenario implements PlayerChaseScenario {
         }
 
         return Math.min(104, Math.max(1, Math.trunc(range)));
+    }
+
+    private setActorWeaponRange(actorId: number, range: number): void {
+        this.m_World.SetActorWeaponDefinition(actorId, {
+            id: 0,
+            range,
+            speed: 4,
+        });
     }
 
     private normalizeMovementTarget(

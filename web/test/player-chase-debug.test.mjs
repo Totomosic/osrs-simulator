@@ -44,9 +44,33 @@ class FakePlayerChaseScenario {
         this.lastClickBlocked = false;
         this.actionFeedback = { state: "none" };
         this.playerTarget = null;
-        this.player = { id: 1, x: 8, y: 11, plane: 0, size: 1, speed: 2 };
-        this.npc = { id: 2, x: 18, y: 20, plane: 0, size: 4, speed: 1 };
-        this.secondNpc = { id: 3, x: 6, y: 7, plane: 0, size: 1, speed: 1 };
+        this.player = {
+            id: 1,
+            x: 8,
+            y: 11,
+            plane: 0,
+            size: 1,
+            speed: 2,
+            weapon: { id: 0, range: 5, speed: 4 },
+        };
+        this.npc = {
+            id: 2,
+            x: 18,
+            y: 20,
+            plane: 0,
+            size: 4,
+            speed: 1,
+            weapon: { id: 0, range: 8, speed: 4 },
+        };
+        this.secondNpc = {
+            id: 3,
+            x: 6,
+            y: 7,
+            plane: 0,
+            size: 1,
+            speed: 1,
+            weapon: { id: 0, range: 8, speed: 4 },
+        };
         this.width = 104;
         this.height = 104;
     }
@@ -66,6 +90,7 @@ class FakePlayerChaseScenario {
                       },
                       size: this.npc.size,
                       speed: this.npc.speed,
+                      weapon: this.npc.weapon,
                       movementTarget: {
                           kind: "Actor",
                           actorId: this.player.id,
@@ -85,6 +110,7 @@ class FakePlayerChaseScenario {
                       },
                       size: this.secondNpc.size,
                       speed: this.secondNpc.speed,
+                      weapon: this.secondNpc.weapon,
                       movementTarget: null,
                   };
         const npcs = [npc, secondNpc].filter((candidate) => candidate !== null);
@@ -126,6 +152,7 @@ class FakePlayerChaseScenario {
                 },
                 size: this.player.size,
                 speed: this.player.speed,
+                weapon: this.player.weapon,
                 movementTarget:
                     this.playerTarget === null
                         ? null
@@ -181,10 +208,12 @@ class FakePlayerChaseScenario {
     assert.deepEqual(snapshot.player.coordinate, { x: 8, y: 11, plane: 0 });
     assert.equal(snapshot.player.size, 1);
     assert.equal(snapshot.player.speed, 2);
+    assert.equal(snapshot.player.weapon.range, 5);
     assert.equal(snapshot.player.movementTarget, null);
     assert.deepEqual(snapshot.npc.coordinate, { x: 18, y: 20, plane: 0 });
     assert.equal(snapshot.npc.size, 4);
     assert.equal(snapshot.npc.speed, 1);
+    assert.equal(snapshot.npc.weapon.range, 8);
     assert.deepEqual(snapshot.npc.movementTarget, {
         kind: "Actor",
         actorId: 1,

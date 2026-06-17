@@ -5,12 +5,13 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "test": "node test/player-chase-debug.test.mjs && node test/player-chase-scenario.test.mjs && node test/player-chase-playback.test.mjs && node test/engine-module-loader.test.mjs && node test/wasm-reactivity.test.mjs",
+    "test": "node test/player-chase-debug.test.mjs && node test/player-chase-scenario.test.mjs && node test/player-chase-playback.test.mjs && node test/dps-calculator.test.mjs && node test/routes.test.mjs && node test/engine-module-loader.test.mjs && node test/generated-dps-service.test.mjs && node test/wasm-reactivity.test.mjs",
     "typecheck": "vue-tsc --noEmit",
     "build": "yarn typecheck && vite build"
   },
   "dependencies": {
-    "vue": "^3.5.13"
+    "vue": "^3.5.13",
+    "vue-router": "^4.5.1"
   },
   "devDependencies": {
     "@vitejs/plugin-vue": "^5.2.4",

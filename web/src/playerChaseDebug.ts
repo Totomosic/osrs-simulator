@@ -1,4 +1,5 @@
 import type { PlayerChaseScenario } from "./scenarios";
+import type { WeaponDefinition } from "./wasm/EngineModule";
 
 export type ActionFeedbackState =
     | "none"
@@ -37,6 +38,7 @@ export interface ActorSnapshot {
     coordinate: SceneCoordinate;
     size: number;
     speed: number;
+    weapon: WeaponDefinition;
     movementTarget: MovementTargetSnapshot | null;
 }
 

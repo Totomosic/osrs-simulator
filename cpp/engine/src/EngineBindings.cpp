@@ -1,4 +1,5 @@
 #include "Engine.h"
+#include "DpsService.h"
 #include "LineOfSight.h"
 #include "Scene.h"
 #include "Tile.h"
@@ -249,6 +250,103 @@ EMSCRIPTEN_BINDINGS(osrssim_engine)
         .value("East", osrssim::CardinalDirection::East)
         .value("South", osrssim::CardinalDirection::South)
         .value("West", osrssim::CardinalDirection::West);
+
+    emscripten::enum_<osrssim::AttackType>("AttackType")
+        .value("Stab", osrssim::AttackType::Stab)
+        .value("Slash", osrssim::AttackType::Slash)
+        .value("Crush", osrssim::AttackType::Crush);
+
+    emscripten::value_object<osrssim::CombatStats>("CombatStats")
+        .field("attack", &osrssim::CombatStats::attack)
+        .field("strength", &osrssim::CombatStats::strength)
+        .field("defence", &osrssim::CombatStats::defence)
+        .field("ranged", &osrssim::CombatStats::ranged)
+        .field("magic", &osrssim::CombatStats::magic)
+        .field("hitpoints", &osrssim::CombatStats::hitpoints);
+
+    emscripten::value_object<osrssim::EquipmentBonuses>("EquipmentBonuses")
+        .field("stabAttack", &osrssim::EquipmentBonuses::stabAttack)
+        .field("slashAttack", &osrssim::EquipmentBonuses::slashAttack)
+        .field("crushAttack", &osrssim::EquipmentBonuses::crushAttack)
+        .field("magicAttack", &osrssim::EquipmentBonuses::magicAttack)
+        .field("rangedAttack", &osrssim::EquipmentBonuses::rangedAttack)
+        .field("stabDefence", &osrssim::EquipmentBonuses::stabDefence)
+        .field("slashDefence", &osrssim::EquipmentBonuses::slashDefence)
+        .field("crushDefence", &osrssim::EquipmentBonuses::crushDefence)
+        .field("magicDefence", &osrssim::EquipmentBonuses::magicDefence)
+        .field(
+            "rangedDefenceLight",
+            &osrssim::EquipmentBonuses::rangedDefenceLight)
+        .field(
+            "rangedDefenceStandard",
+            &osrssim::EquipmentBonuses::rangedDefenceStandard)
+        .field(
+            "rangedDefenceHeavy",
+            &osrssim::EquipmentBonuses::rangedDefenceHeavy)
+        .field("meleeStrength", &osrssim::EquipmentBonuses::meleeStrength)
+        .field("rangedStrength", &osrssim::EquipmentBonuses::rangedStrength)
+        .field(
+            "magicDamagePercent",
+            &osrssim::EquipmentBonuses::magicDamagePercent);
+
+    emscripten::value_object<osrssim::StyleBonus>("StyleBonus")
+        .field("attack", &osrssim::StyleBonus::attack)
+        .field("strength", &osrssim::StyleBonus::strength)
+        .field("defence", &osrssim::StyleBonus::defence)
+        .field("ranged", &osrssim::StyleBonus::ranged)
+        .field("magic", &osrssim::StyleBonus::magic);
+
+    emscripten::value_object<osrssim::DpsRequest>("DpsRequest")
+        .field("attackerStats", &osrssim::DpsRequest::attackerStats)
+        .field("defenderStats", &osrssim::DpsRequest::defenderStats)
+        .field("attackerBonuses", &osrssim::DpsRequest::attackerBonuses)
+        .field("defenderBonuses", &osrssim::DpsRequest::defenderBonuses)
+        .field("attackerStyle", &osrssim::DpsRequest::attackerStyle)
+        .field("defenderStyle", &osrssim::DpsRequest::defenderStyle)
+        .field("attackType", &osrssim::DpsRequest::attackType)
+        .field("weaponSpeedTicks", &osrssim::DpsRequest::weaponSpeedTicks)
+        .field(
+            "attackPrayerMultiplier",
+            &osrssim::DpsRequest::attackPrayerMultiplier)
+        .field(
+            "strengthPrayerMultiplier",
+            &osrssim::DpsRequest::strengthPrayerMultiplier)
+        .field(
+            "defencePrayerMultiplier",
+            &osrssim::DpsRequest::defencePrayerMultiplier)
+        .field(
+            "attackLevelMultiplier",
+            &osrssim::DpsRequest::attackLevelMultiplier)
+        .field(
+            "strengthLevelMultiplier",
+            &osrssim::DpsRequest::strengthLevelMultiplier)
+        .field(
+            "defenceLevelMultiplier",
+            &osrssim::DpsRequest::defenceLevelMultiplier)
+        .field(
+            "finalAttackRollMultiplier",
+            &osrssim::DpsRequest::finalAttackRollMultiplier)
+        .field(
+            "finalDefenceRollMultiplier",
+            &osrssim::DpsRequest::finalDefenceRollMultiplier)
+        .field(
+            "finalDamageMultiplier",
+            &osrssim::DpsRequest::finalDamageMultiplier);
+
+    emscripten::value_object<osrssim::DpsResult>("DpsResult")
+        .field("attackRoll", &osrssim::DpsResult::attackRoll)
+        .field("defenceRoll", &osrssim::DpsResult::defenceRoll)
+        .field("maximumHit", &osrssim::DpsResult::maximumHit)
+        .field("hitChance", &osrssim::DpsResult::hitChance)
+        .field(
+            "expectedDamagePerAttack",
+            &osrssim::DpsResult::expectedDamagePerAttack)
+        .field("secondsPerAttack", &osrssim::DpsResult::secondsPerAttack)
+        .field("dps", &osrssim::DpsResult::dps);
+
+    emscripten::class_<osrssim::DpsService>("DpsService")
+        .constructor<>()
+        .function("CalculateExpected", &osrssim::DpsService::CalculateExpected);
 
     emscripten::class_<osrssim::Scene>("Scene")
         .function("PlaceGameObject", &PlaceSceneGameObject)

@@ -291,11 +291,11 @@ const initialSnapshot = scenario.snapshot();
 assert.equal(initialSnapshot.name, "Player Chase");
 assert.equal(initialSnapshot.tick, 0);
 assert.equal(initialSnapshot.player.coordinate.x, 8);
-assert.deepEqual(initialSnapshot.player.weapon, { id: 0, range: 1, speed: 4 });
+assert.deepEqual(initialSnapshot.player.weapon, { id: 0, range: 5, speed: 4 });
 assert.equal(initialSnapshot.player.attackTimer, 0);
 assert.equal(initialSnapshot.npcs.length, 1);
 assert.equal(initialSnapshot.npcs[0].coordinate.x, 18);
-assert.deepEqual(initialSnapshot.npcs[0].weapon, { id: 0, range: 1, speed: 4 });
+assert.deepEqual(initialSnapshot.npcs[0].weapon, { id: 0, range: 8, speed: 4 });
 assert.equal(
     module.Engine.lastCreated.world.SetActorWeaponDefinition(
         initialSnapshot.player.id,

@@ -29,6 +29,75 @@ export interface WeaponDefinition {
     speed: number;
 }
 
+export interface CombatStats {
+    attack: number;
+    strength: number;
+    defence: number;
+    ranged: number;
+    magic: number;
+    hitpoints: number;
+}
+
+export interface EquipmentBonuses {
+    stabAttack: number;
+    slashAttack: number;
+    crushAttack: number;
+    magicAttack: number;
+    rangedAttack: number;
+    stabDefence: number;
+    slashDefence: number;
+    crushDefence: number;
+    magicDefence: number;
+    rangedDefenceLight: number;
+    rangedDefenceStandard: number;
+    rangedDefenceHeavy: number;
+    meleeStrength: number;
+    rangedStrength: number;
+    magicDamagePercent: number;
+}
+
+export interface StyleBonus {
+    attack: number;
+    strength: number;
+    defence: number;
+    ranged: number;
+    magic: number;
+}
+
+export interface DpsRequest {
+    attackerStats: CombatStats;
+    defenderStats: CombatStats;
+    attackerBonuses: EquipmentBonuses;
+    defenderBonuses: EquipmentBonuses;
+    attackerStyle: StyleBonus;
+    defenderStyle: StyleBonus;
+    attackType: AttackType;
+    weaponSpeedTicks: number;
+    attackPrayerMultiplier: number;
+    strengthPrayerMultiplier: number;
+    defencePrayerMultiplier: number;
+    attackLevelMultiplier: number;
+    strengthLevelMultiplier: number;
+    defenceLevelMultiplier: number;
+    finalAttackRollMultiplier: number;
+    finalDefenceRollMultiplier: number;
+    finalDamageMultiplier: number;
+}
+
+export interface DpsResult {
+    attackRoll: number;
+    defenceRoll: number;
+    maximumHit: number;
+    hitChance: number;
+    expectedDamagePerAttack: number;
+    secondsPerAttack: number;
+    dps: number;
+}
+
+export interface DpsService {
+    CalculateExpected(request: DpsRequest): DpsResult;
+}
+
 export interface ActionFeedback {
     state: "none" | "blocked-movement" | "placement-failure" | "removal-failure";
 }
@@ -84,14 +153,21 @@ export interface World {
 }
 
 export type CardinalDirection = number | "North" | "East" | "South" | "West";
+export type AttackType = number | "Stab" | "Slash" | "Crush";
 
 export interface EngineModule {
     Engine: new () => Engine;
+    DpsService: new () => DpsService;
     CardinalDirection: {
         North: CardinalDirection;
         East?: CardinalDirection;
         South?: CardinalDirection;
         West?: CardinalDirection;
+    };
+    AttackType: {
+        Stab: AttackType;
+        Slash: AttackType;
+        Crush: AttackType;
     };
     World?: new () => World;
 }
