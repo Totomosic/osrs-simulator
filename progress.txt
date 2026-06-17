@@ -51,3 +51,12 @@
 - Decisions: aggregate result only carries aggregate outputs requested by the slice; sampled DPS divides sampled average damage by expected-result seconds per attack; seed overload named SampleAttacksWithSeed in WASM to avoid JS overload ambiguity.
 - Files changed: cpp/engine DpsService + bindings/tests; web EngineModule type contract, DPS calculator/view/tests; progress.txt.
 - Validation: cmake build + ctest, web test, web typecheck, web build passed. Initial wasm build needed emsdk env. No blockers.
+
+2026-06-17 #63 DPS Calculator Regression Coverage
+- Selected issue: #63, unblocked because #58, #60, #62 are closed. Parent PRD: #56.
+- Docs read: CONTEXT.md, docs/agents/domain.md, docs/adr/0002-deterministic-engine.md, docs/adr/0006-web-development-viewer.md, docs/osrs/combat-rolls.md, PRD #56, feature #63, blockers #58/#60/#62.
+- Plan: TDD web regression coverage only; protect / and /dps routes; verify generated-module expected, sampled single-attack, and sampled aggregate bindings across full fixed DPS scenario set via public helpers.
+- Completed: DPS calculator regression coverage for PRD #56 testing decisions; generated-module fixed scenarios now assert expected, sampled single-attack, and sampled aggregate outputs across melee/ranged/magic/player/NPC rows.
+- Decisions: keep route assertions in existing routes.test.mjs; generated-module regression imports public DPS helpers and real WASM module to avoid duplicating TypeScript formula behavior.
+- Files changed: web/test/generated-dps-service.test.mjs; progress.txt.
+- Validation: node web/test/generated-dps-service.test.mjs, yarn --cwd web test, yarn --cwd web typecheck, yarn --cwd web build passed. No blockers.

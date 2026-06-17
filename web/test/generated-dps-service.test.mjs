@@ -1,10 +1,30 @@
 import assert from "node:assert/strict";
-import { readFile } from "node:fs/promises";
+import { mkdir, readFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
+import { build } from "esbuild";
 import createGeneratedEngineModule from "../src/wasm/generated/EngineModule.js";
 
 const root = dirname(dirname(fileURLToPath(import.meta.url)));
+const outfile = resolve(
+    root,
+    "../node_modules/.cache/osrs-simulator/generated-dps-scenarios-test.mjs",
+);
+
+await mkdir(dirname(outfile), { recursive: true });
+await build({
+    entryPoints: [resolve(root, "src/dpsCalculator.ts")],
+    outfile,
+    bundle: true,
+    format: "esm",
+    platform: "node",
+    logLevel: "silent",
+});
+
+const { calculateDpsScenarioResults, createFixedDpsScenarios } = await import(
+    pathToFileURL(outfile)
+);
+
 const wasmBinary = await readFile(
     resolve(root, "src/wasm/generated/EngineModule.wasm"),
 );
@@ -245,3 +265,162 @@ assert.equal(magicResult.hitChance.toFixed(6), "0.722218");
 assert.equal(magicResult.dps.toFixed(6), "3.731460");
 assert.equal(npcMagicResult.defenceRoll, 7800);
 assert.equal(npcMagicResult.hitChance.toFixed(6), "0.714610");
+
+const fixedScenarioExpectations = [
+    {
+        name: "Melee slash tracer",
+        attackRoll: 21560,
+        defenceRoll: 12672,
+        maximumHit: 31,
+        hitChance: "0.706090",
+        expectedDamagePerAttack: "10.944390",
+        secondsPerAttack: "2.4",
+        dps: "4.560163",
+        accuracyPassed: true,
+        sampledDamage: 29,
+        attackCount: 5,
+        totalSampledDamage: 74,
+        averageSampledDamagePerAttack: "14.800000",
+        sampledDps: "6.166667",
+    },
+    {
+        name: "NPC melee slash tracer",
+        attackRoll: 21560,
+        defenceRoll: 12816,
+        maximumHit: 31,
+        hitChance: "0.702750",
+        expectedDamagePerAttack: "10.892630",
+        secondsPerAttack: "2.4",
+        dps: "4.538596",
+        accuracyPassed: true,
+        sampledDamage: 20,
+        attackCount: 5,
+        totalSampledDamage: 63,
+        averageSampledDamagePerAttack: "12.600000",
+        sampledDps: "5.250000",
+    },
+    {
+        name: "Ranged light tracer",
+        attackRoll: 22008,
+        defenceRoll: 6552,
+        maximumHit: 31,
+        hitChance: "0.851106",
+        expectedDamagePerAttack: "13.192149",
+        secondsPerAttack: "2.4",
+        dps: "5.496729",
+        accuracyPassed: false,
+        sampledDamage: 0,
+        attackCount: 5,
+        totalSampledDamage: 70,
+        averageSampledDamagePerAttack: "14.000000",
+        sampledDps: "5.833333",
+    },
+    {
+        name: "Ranged standard tracer",
+        attackRoll: 22008,
+        defenceRoll: 8112,
+        maximumHit: 31,
+        hitChance: "0.815666",
+        expectedDamagePerAttack: "12.642828",
+        secondsPerAttack: "2.4",
+        dps: "5.267845",
+        accuracyPassed: true,
+        sampledDamage: 16,
+        attackCount: 5,
+        totalSampledDamage: 68,
+        averageSampledDamagePerAttack: "13.600000",
+        sampledDps: "5.666667",
+    },
+    {
+        name: "Ranged heavy tracer",
+        attackRoll: 22008,
+        defenceRoll: 9672,
+        maximumHit: 31,
+        hitChance: "0.780226",
+        expectedDamagePerAttack: "12.093507",
+        secondsPerAttack: "2.4",
+        dps: "5.038961",
+        accuracyPassed: true,
+        sampledDamage: 23,
+        attackCount: 5,
+        totalSampledDamage: 82,
+        averageSampledDamagePerAttack: "16.400000",
+        sampledDps: "6.833333",
+    },
+    {
+        name: "Magic fixed-spell tracer",
+        attackRoll: 13668,
+        defenceRoll: 7592,
+        maximumHit: 31,
+        hitChance: "0.722218",
+        expectedDamagePerAttack: "11.194381",
+        secondsPerAttack: "3.0",
+        dps: "3.731460",
+        accuracyPassed: true,
+        sampledDamage: 18,
+        attackCount: 5,
+        totalSampledDamage: 49,
+        averageSampledDamagePerAttack: "9.800000",
+        sampledDps: "3.266667",
+    },
+    {
+        name: "NPC magic fixed-spell tracer",
+        attackRoll: 13668,
+        defenceRoll: 7800,
+        maximumHit: 31,
+        hitChance: "0.714610",
+        expectedDamagePerAttack: "11.076450",
+        secondsPerAttack: "3.0",
+        dps: "3.692150",
+        accuracyPassed: false,
+        sampledDamage: 0,
+        attackCount: 5,
+        totalSampledDamage: 22,
+        averageSampledDamagePerAttack: "4.400000",
+        sampledDps: "1.466667",
+    },
+];
+
+const fixedScenarioResults = calculateDpsScenarioResults(
+    module,
+    createFixedDpsScenarios(module),
+);
+
+assert.equal(fixedScenarioResults.length, fixedScenarioExpectations.length);
+
+for (const [index, expectation] of fixedScenarioExpectations.entries()) {
+    const entry = fixedScenarioResults[index];
+
+    assert.equal(entry.scenario.name, expectation.name);
+    assert.equal(entry.result.attackRoll, expectation.attackRoll);
+    assert.equal(entry.result.defenceRoll, expectation.defenceRoll);
+    assert.equal(entry.result.maximumHit, expectation.maximumHit);
+    assert.equal(entry.result.hitChance.toFixed(6), expectation.hitChance);
+    assert.equal(
+        entry.result.expectedDamagePerAttack.toFixed(6),
+        expectation.expectedDamagePerAttack,
+    );
+    assert.equal(
+        entry.result.secondsPerAttack.toFixed(1),
+        expectation.secondsPerAttack,
+    );
+    assert.equal(entry.result.dps.toFixed(6), expectation.dps);
+    assert.equal(
+        entry.sampledResult.accuracyPassed,
+        expectation.accuracyPassed,
+    );
+    assert.equal(entry.sampledResult.sampledDamage, expectation.sampledDamage);
+    assert.equal(entry.aggregateResult.attackCount, expectation.attackCount);
+    assert.equal(
+        entry.aggregateResult.totalSampledDamage,
+        expectation.totalSampledDamage,
+    );
+    assert.equal(
+        entry.aggregateResult.averageSampledDamagePerAttack.toFixed(6),
+        expectation.averageSampledDamagePerAttack,
+    );
+    assert.equal(
+        entry.aggregateResult.sampledDps.toFixed(6),
+        expectation.sampledDps,
+    );
+}
