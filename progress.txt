@@ -1,3 +1,12 @@
+2026-06-17 #61 Ranged and Magic Attack Type Scenarios
+- Selected issue: #61, unblocked because #57 is closed. Parent PRD: #56.
+- Docs read: docs/osrs/combat-rolls.md, docs/adr/0002-deterministic-engine.md, docs/adr/0006-web-development-viewer.md, PRD #56, feature #61, blocker #57.
+- Plan: TDD ranged/magic high-level DpsRequest path; add attack type enum branches and explicit magic max hit; bind to WASM; add fixed ranged/magic /dps scenarios with generated-module and helper tests.
+- Completed: ranged light/standard/heavy and magic expected/sample-compatible DPS request path for PRD #56 stories 14-17, 21-24, 29-34.
+- Decisions: reuse generic attack/strength scalar fields for ranged and magic accuracy/damage inputs in this slice; magic max hit is explicit `magicBaseMaximumHit` plus magic damage percent and final damage multiplier; /dps shows all ranged subtype rows.
+- Files changed: cpp/engine DpsService + bindings/tests; web EngineModule type contract, DPS scenario fixtures/tests; generated WASM rebuilt; progress.txt.
+- Validation: targeted DpsService/helper/generated tests, cmake build, ctest, web test, web typecheck, web build passed. No blockers.
+
 2026-06-17 #57 Expected Melee DPS Tracer Through /dps
 - Selected issue: #57, unblocked, ready-for-agent. Parent PRD: #56.
 - Docs read: CONTEXT.md, docs/agents/domain.md, docs/adr/0002-deterministic-engine.md, docs/adr/0006-web-development-viewer.md, docs/osrs/combat-rolls.md.

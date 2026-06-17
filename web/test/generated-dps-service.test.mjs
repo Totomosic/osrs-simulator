@@ -99,6 +99,7 @@ const meleeDpsRequest = {
     finalAttackRollMultiplier: 1.0,
     finalDefenceRollMultiplier: 1.0,
     finalDamageMultiplier: 1.0,
+    magicBaseMaximumHit: 0,
 };
 
 const result = service.CalculateExpected(meleeDpsRequest);
@@ -127,6 +128,78 @@ const aggregateSample = service.SampleAttacksWithSeed(
     12345,
 );
 
+const rangedDpsRequest = {
+    ...meleeDpsRequest,
+    attackerStats: {
+        ...defaultStats,
+        ranged: 99,
+    },
+    defenderStats: {
+        ...defaultStats,
+        defence: 70,
+    },
+    attackerBonuses: {
+        ...defaultBonuses,
+        rangedAttack: 100,
+        rangedStrength: 80,
+    },
+    defenderBonuses: {
+        ...defaultBonuses,
+        rangedDefenceLight: 20,
+        rangedDefenceStandard: 40,
+        rangedDefenceHeavy: 60,
+    },
+    attackerStyle: {
+        ...defaultStyle,
+        ranged: 3,
+    },
+    attackType: module.AttackType.RangedHeavy,
+    attackPrayerMultiplier: 1.10,
+    strengthPrayerMultiplier: 1.05,
+    attackLevelMultiplier: 1.02,
+    strengthLevelMultiplier: 1.03,
+    finalAttackRollMultiplier: 1.10,
+    finalDamageMultiplier: 1.15,
+};
+const rangedResult = service.CalculateExpected(rangedDpsRequest);
+const rangedLightResult = service.CalculateExpected({
+    ...rangedDpsRequest,
+    attackType: module.AttackType.RangedLight,
+});
+const rangedStandardResult = service.CalculateExpected({
+    ...rangedDpsRequest,
+    attackType: module.AttackType.RangedStandard,
+});
+
+const magicDpsRequest = {
+    ...meleeDpsRequest,
+    attackerStats: {
+        ...defaultStats,
+        magic: 90,
+        strength: 99,
+    },
+    defenderStats: {
+        ...defaultStats,
+        defence: 65,
+    },
+    attackerBonuses: {
+        ...defaultBonuses,
+        magicAttack: 70,
+        meleeStrength: 200,
+        magicDamagePercent: 10,
+    },
+    defenderBonuses: {
+        ...defaultBonuses,
+        magicDefence: 40,
+    },
+    attackType: module.AttackType.Magic,
+    weaponSpeedTicks: 5,
+    magicBaseMaximumHit: 24,
+    attackPrayerMultiplier: 1.05,
+    finalDamageMultiplier: 1.20,
+};
+const magicResult = service.CalculateExpected(magicDpsRequest);
+
 assert.equal(firstSharedSample.attackRoll, 21560);
 assert.equal(firstSharedSample.defenceRoll, 12672);
 assert.equal(firstSharedSample.maximumHit, 31);
@@ -142,3 +215,19 @@ assert.equal(aggregateSample.attackCount, 5);
 assert.equal(aggregateSample.totalSampledDamage, 74);
 assert.equal(aggregateSample.averageSampledDamagePerAttack.toFixed(6), "14.800000");
 assert.equal(aggregateSample.sampledDps.toFixed(6), "6.166667");
+
+assert.equal(rangedResult.attackRoll, 22008);
+assert.equal(rangedResult.defenceRoll, 9672);
+assert.equal(rangedResult.maximumHit, 31);
+assert.equal(rangedResult.hitChance.toFixed(6), "0.780226");
+assert.equal(rangedResult.dps.toFixed(6), "5.038961");
+assert.equal(rangedLightResult.defenceRoll, 6552);
+assert.equal(rangedLightResult.dps.toFixed(6), "5.496729");
+assert.equal(rangedStandardResult.defenceRoll, 8112);
+assert.equal(rangedStandardResult.dps.toFixed(6), "5.267845");
+
+assert.equal(magicResult.attackRoll, 13668);
+assert.equal(magicResult.defenceRoll, 7592);
+assert.equal(magicResult.maximumHit, 31);
+assert.equal(magicResult.hitChance.toFixed(6), "0.722218");
+assert.equal(magicResult.dps.toFixed(6), "3.731460");

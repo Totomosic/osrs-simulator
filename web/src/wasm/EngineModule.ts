@@ -82,6 +82,7 @@ export interface DpsRequest {
     finalAttackRollMultiplier: number;
     finalDefenceRollMultiplier: number;
     finalDamageMultiplier: number;
+    magicBaseMaximumHit: number;
 }
 
 export interface DpsResult {
@@ -206,7 +207,15 @@ export interface World {
 }
 
 export type CardinalDirection = number | "North" | "East" | "South" | "West";
-export type AttackType = number | "Stab" | "Slash" | "Crush";
+export type AttackType =
+    | number
+    | "Stab"
+    | "Slash"
+    | "Crush"
+    | "Magic"
+    | "RangedLight"
+    | "RangedStandard"
+    | "RangedHeavy";
 
 export interface EngineModule {
     Engine: new () => Engine;
@@ -221,6 +230,10 @@ export interface EngineModule {
         Stab: AttackType;
         Slash: AttackType;
         Crush: AttackType;
+        Magic: AttackType;
+        RangedLight: AttackType;
+        RangedStandard: AttackType;
+        RangedHeavy: AttackType;
     };
     World?: new () => World;
 }

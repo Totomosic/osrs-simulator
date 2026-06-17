@@ -59,6 +59,75 @@ int main()
     assert(NearlyEqual(result.secondsPerAttack, 2.4));
     assert(NearlyEqual(result.dps, 4.560162645324535));
 
+    osrssim::DpsRequest rangedRequest;
+
+    rangedRequest.attackType = osrssim::AttackType::RangedHeavy;
+    rangedRequest.attackerStats.ranged = 99;
+    rangedRequest.attackerBonuses.rangedAttack = 100;
+    rangedRequest.attackerBonuses.rangedStrength = 80;
+    rangedRequest.attackerStyle.ranged = 3;
+    rangedRequest.defenderStats.defence = 70;
+    rangedRequest.defenderBonuses.rangedDefenceLight = 20;
+    rangedRequest.defenderBonuses.rangedDefenceStandard = 40;
+    rangedRequest.defenderBonuses.rangedDefenceHeavy = 60;
+    rangedRequest.weaponSpeedTicks = 4;
+    rangedRequest.attackPrayerMultiplier = 1.10;
+    rangedRequest.strengthPrayerMultiplier = 1.05;
+    rangedRequest.attackLevelMultiplier = 1.02;
+    rangedRequest.strengthLevelMultiplier = 1.03;
+    rangedRequest.finalAttackRollMultiplier = 1.10;
+    rangedRequest.finalDamageMultiplier = 1.15;
+
+    const osrssim::DpsResult rangedResult =
+        service.CalculateExpected(rangedRequest);
+
+    assert(rangedResult.attackRoll == 22008);
+    assert(rangedResult.defenceRoll == 9672);
+    assert(rangedResult.maximumHit == 31);
+    assert(NearlyEqual(rangedResult.hitChance, 0.7802262710709256));
+    assert(NearlyEqual(rangedResult.dps, 5.038961333999728));
+
+    rangedRequest.attackType = osrssim::AttackType::RangedLight;
+    const osrssim::DpsResult rangedLightResult =
+        service.CalculateExpected(rangedRequest);
+
+    rangedRequest.attackType = osrssim::AttackType::RangedStandard;
+    const osrssim::DpsResult rangedStandardResult =
+        service.CalculateExpected(rangedRequest);
+
+    assert(rangedLightResult.attackRoll == 22008);
+    assert(rangedLightResult.defenceRoll == 6552);
+    assert(rangedLightResult.maximumHit == 31);
+    assert(NearlyEqual(rangedLightResult.dps, 5.496728611022764));
+    assert(rangedStandardResult.attackRoll == 22008);
+    assert(rangedStandardResult.defenceRoll == 8112);
+    assert(rangedStandardResult.maximumHit == 31);
+    assert(NearlyEqual(rangedStandardResult.dps, 5.267844972511246));
+
+    osrssim::DpsRequest magicRequest;
+
+    magicRequest.attackType = osrssim::AttackType::Magic;
+    magicRequest.attackerStats.magic = 90;
+    magicRequest.attackerStats.strength = 99;
+    magicRequest.attackerBonuses.magicAttack = 70;
+    magicRequest.attackerBonuses.meleeStrength = 200;
+    magicRequest.attackerBonuses.magicDamagePercent = 10.0;
+    magicRequest.defenderStats.defence = 65;
+    magicRequest.defenderBonuses.magicDefence = 40;
+    magicRequest.weaponSpeedTicks = 5;
+    magicRequest.magicBaseMaximumHit = 24;
+    magicRequest.attackPrayerMultiplier = 1.05;
+    magicRequest.finalDamageMultiplier = 1.20;
+
+    const osrssim::DpsResult magicResult =
+        service.CalculateExpected(magicRequest);
+
+    assert(magicResult.attackRoll == 13668);
+    assert(magicResult.defenceRoll == 7592);
+    assert(magicResult.maximumHit == 31);
+    assert(NearlyEqual(magicResult.hitChance, 0.7222181578754847));
+    assert(NearlyEqual(magicResult.dps, 3.731460482356671));
+
     service.SetSeed(12345);
     const osrssim::DpsSampleResult firstSharedSample =
         service.SampleSingleAttack(request);

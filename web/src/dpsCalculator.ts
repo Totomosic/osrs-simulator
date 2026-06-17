@@ -28,6 +28,12 @@ export interface DpsScenarioResult {
 export function createFixedMeleeDpsScenarios(
     module: EngineModule,
 ): DpsScenario[] {
+    return createFixedDpsScenarios(module);
+}
+
+export function createFixedDpsScenarios(
+    module: EngineModule,
+): DpsScenario[] {
     return [
         {
             name: "Melee slash tracer",
@@ -36,12 +42,40 @@ export function createFixedMeleeDpsScenarios(
             sampleAttackCount: 5,
             request: createMeleeSlashRequest(module.AttackType.Slash),
         },
+        {
+            name: "Ranged light tracer",
+            attackTypeLabel: "Ranged Light",
+            sampleSeed: 23456,
+            sampleAttackCount: 5,
+            request: createRangedRequest(module.AttackType.RangedLight),
+        },
+        {
+            name: "Ranged standard tracer",
+            attackTypeLabel: "Ranged Standard",
+            sampleSeed: 23457,
+            sampleAttackCount: 5,
+            request: createRangedRequest(module.AttackType.RangedStandard),
+        },
+        {
+            name: "Ranged heavy tracer",
+            attackTypeLabel: "Ranged Heavy",
+            sampleSeed: 23458,
+            sampleAttackCount: 5,
+            request: createRangedRequest(module.AttackType.RangedHeavy),
+        },
+        {
+            name: "Magic fixed-spell tracer",
+            attackTypeLabel: "Magic",
+            sampleSeed: 34567,
+            sampleAttackCount: 5,
+            request: createMagicRequest(module.AttackType.Magic),
+        },
     ];
 }
 
 export function calculateDpsScenarioResults(
     module: EngineModule,
-    scenarios = createFixedMeleeDpsScenarios(module),
+    scenarios = createFixedDpsScenarios(module),
 ): DpsScenarioResult[] {
     const service = new module.DpsService();
 
@@ -101,6 +135,86 @@ function createMeleeSlashRequest(attackType: AttackType): DpsRequest {
         finalAttackRollMultiplier: 1.0,
         finalDefenceRollMultiplier: 1.0,
         finalDamageMultiplier: 1.0,
+        magicBaseMaximumHit: 0,
+    };
+}
+
+function createRangedRequest(attackType: AttackType): DpsRequest {
+    return {
+        attackerStats: {
+            ...createDefaultCombatStats(),
+            ranged: 99,
+        },
+        defenderStats: {
+            ...createDefaultCombatStats(),
+            defence: 70,
+        },
+        attackerBonuses: {
+            ...createDefaultEquipmentBonuses(),
+            rangedAttack: 100,
+            rangedStrength: 80,
+        },
+        defenderBonuses: {
+            ...createDefaultEquipmentBonuses(),
+            rangedDefenceLight: 20,
+            rangedDefenceStandard: 40,
+            rangedDefenceHeavy: 60,
+        },
+        attackerStyle: {
+            ...createDefaultStyleBonus(),
+            ranged: 3,
+        },
+        defenderStyle: createDefaultStyleBonus(),
+        attackType,
+        weaponSpeedTicks: 4,
+        attackPrayerMultiplier: 1.10,
+        strengthPrayerMultiplier: 1.05,
+        defencePrayerMultiplier: 1.0,
+        attackLevelMultiplier: 1.02,
+        strengthLevelMultiplier: 1.03,
+        defenceLevelMultiplier: 1.0,
+        finalAttackRollMultiplier: 1.10,
+        finalDefenceRollMultiplier: 1.0,
+        finalDamageMultiplier: 1.15,
+        magicBaseMaximumHit: 0,
+    };
+}
+
+function createMagicRequest(attackType: AttackType): DpsRequest {
+    return {
+        attackerStats: {
+            ...createDefaultCombatStats(),
+            strength: 99,
+            magic: 90,
+        },
+        defenderStats: {
+            ...createDefaultCombatStats(),
+            defence: 65,
+        },
+        attackerBonuses: {
+            ...createDefaultEquipmentBonuses(),
+            magicAttack: 70,
+            meleeStrength: 200,
+            magicDamagePercent: 10,
+        },
+        defenderBonuses: {
+            ...createDefaultEquipmentBonuses(),
+            magicDefence: 40,
+        },
+        attackerStyle: createDefaultStyleBonus(),
+        defenderStyle: createDefaultStyleBonus(),
+        attackType,
+        weaponSpeedTicks: 5,
+        attackPrayerMultiplier: 1.05,
+        strengthPrayerMultiplier: 1.0,
+        defencePrayerMultiplier: 1.0,
+        attackLevelMultiplier: 1.0,
+        strengthLevelMultiplier: 1.0,
+        defenceLevelMultiplier: 1.0,
+        finalAttackRollMultiplier: 1.0,
+        finalDefenceRollMultiplier: 1.0,
+        finalDamageMultiplier: 1.20,
+        magicBaseMaximumHit: 24,
     };
 }
 

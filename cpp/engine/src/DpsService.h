@@ -9,7 +9,11 @@ enum class AttackType
 {
     Stab,
     Slash,
-    Crush
+    Crush,
+    Magic,
+    RangedLight,
+    RangedStandard,
+    RangedHeavy
 };
 
 struct CombatStats
@@ -69,6 +73,7 @@ struct DpsRequest
     double finalAttackRollMultiplier = 1.0;
     double finalDefenceRollMultiplier = 1.0;
     double finalDamageMultiplier = 1.0;
+    int magicBaseMaximumHit = 0;
 };
 
 struct DpsResult
@@ -160,6 +165,26 @@ private:
     static int SelectMeleeDefenceBonus(
         AttackType attackType,
         const EquipmentBonuses& bonuses);
+    static int SelectAttackLevel(
+        const DpsRequest& request);
+    static int SelectAttackStyleBonus(
+        const DpsRequest& request);
+    static int SelectStrengthLevel(
+        const DpsRequest& request);
+    static int SelectStrengthStyleBonus(
+        const DpsRequest& request);
+    static int SelectAttackBonus(
+        AttackType attackType,
+        const EquipmentBonuses& bonuses);
+    static int SelectDefenceBonus(
+        AttackType attackType,
+        const EquipmentBonuses& bonuses);
+    static int SelectStrengthBonus(
+        AttackType attackType,
+        const EquipmentBonuses& bonuses);
+    static int CalculateMaximumHit(
+        const DpsRequest& request,
+        int effectiveStrength);
 };
 
 }  // namespace osrssim

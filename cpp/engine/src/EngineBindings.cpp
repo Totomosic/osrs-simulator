@@ -254,7 +254,11 @@ EMSCRIPTEN_BINDINGS(osrssim_engine)
     emscripten::enum_<osrssim::AttackType>("AttackType")
         .value("Stab", osrssim::AttackType::Stab)
         .value("Slash", osrssim::AttackType::Slash)
-        .value("Crush", osrssim::AttackType::Crush);
+        .value("Crush", osrssim::AttackType::Crush)
+        .value("Magic", osrssim::AttackType::Magic)
+        .value("RangedLight", osrssim::AttackType::RangedLight)
+        .value("RangedStandard", osrssim::AttackType::RangedStandard)
+        .value("RangedHeavy", osrssim::AttackType::RangedHeavy);
 
     emscripten::value_object<osrssim::CombatStats>("CombatStats")
         .field("attack", &osrssim::CombatStats::attack)
@@ -331,7 +335,10 @@ EMSCRIPTEN_BINDINGS(osrssim_engine)
             &osrssim::DpsRequest::finalDefenceRollMultiplier)
         .field(
             "finalDamageMultiplier",
-            &osrssim::DpsRequest::finalDamageMultiplier);
+            &osrssim::DpsRequest::finalDamageMultiplier)
+        .field(
+            "magicBaseMaximumHit",
+            &osrssim::DpsRequest::magicBaseMaximumHit);
 
     emscripten::value_object<osrssim::DpsResult>("DpsResult")
         .field("attackRoll", &osrssim::DpsResult::attackRoll)

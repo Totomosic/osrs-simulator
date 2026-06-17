@@ -22,33 +22,30 @@ DpsResult DpsService::CalculateExpected(const DpsRequest& request) const
     DpsResult result;
 
     const int effectiveAttack = CalculateEffectiveLevel(
-        request.attackerStats.attack,
+        SelectAttackLevel(request),
         request.attackPrayerMultiplier,
         request.attackLevelMultiplier,
-        request.attackerStyle.attack);
+        SelectAttackStyleBonus(request));
     const int effectiveDefence = CalculateEffectiveLevel(
         request.defenderStats.defence,
         request.defencePrayerMultiplier,
         request.defenceLevelMultiplier,
         request.defenderStyle.defence);
     const int effectiveStrength = CalculateEffectiveLevel(
-        request.attackerStats.strength,
+        SelectStrengthLevel(request),
         request.strengthPrayerMultiplier,
         request.strengthLevelMultiplier,
-        request.attackerStyle.strength);
+        SelectStrengthStyleBonus(request));
 
     result.attackRoll = CalculateAttackRoll(
         effectiveAttack,
-        SelectMeleeAttackBonus(request.attackType, request.attackerBonuses),
+        SelectAttackBonus(request.attackType, request.attackerBonuses),
         request.finalAttackRollMultiplier);
     result.defenceRoll = CalculateDefenceRoll(
         effectiveDefence,
-        SelectMeleeDefenceBonus(request.attackType, request.defenderBonuses),
+        SelectDefenceBonus(request.attackType, request.defenderBonuses),
         request.finalDefenceRollMultiplier);
-    result.maximumHit = CalculateStandardMaximumHit(
-        effectiveStrength,
-        request.attackerBonuses.meleeStrength,
-        request.finalDamageMultiplier);
+    result.maximumHit = CalculateMaximumHit(request, effectiveStrength);
     result.hitChance =
         CalculateHitChance(result.attackRoll, result.defenceRoll);
     result.expectedDamagePerAttack =
@@ -174,6 +171,11 @@ int DpsService::SelectMeleeAttackBonus(
             return bonuses.slashAttack;
         case AttackType::Crush:
             return bonuses.crushAttack;
+        case AttackType::Magic:
+        case AttackType::RangedLight:
+        case AttackType::RangedStandard:
+        case AttackType::RangedHeavy:
+            break;
     }
 
     return bonuses.slashAttack;
@@ -191,9 +193,176 @@ int DpsService::SelectMeleeDefenceBonus(
             return bonuses.slashDefence;
         case AttackType::Crush:
             return bonuses.crushDefence;
+        case AttackType::Magic:
+        case AttackType::RangedLight:
+        case AttackType::RangedStandard:
+        case AttackType::RangedHeavy:
+            break;
     }
 
     return bonuses.slashDefence;
+}
+
+int DpsService::SelectAttackLevel(const DpsRequest& request)
+{
+    switch (request.attackType)
+    {
+        case AttackType::Stab:
+        case AttackType::Slash:
+        case AttackType::Crush:
+            return request.attackerStats.attack;
+        case AttackType::Magic:
+            return request.attackerStats.magic;
+        case AttackType::RangedLight:
+        case AttackType::RangedStandard:
+        case AttackType::RangedHeavy:
+            return request.attackerStats.ranged;
+    }
+
+    return request.attackerStats.attack;
+}
+
+int DpsService::SelectAttackStyleBonus(const DpsRequest& request)
+{
+    switch (request.attackType)
+    {
+        case AttackType::Stab:
+        case AttackType::Slash:
+        case AttackType::Crush:
+            return request.attackerStyle.attack;
+        case AttackType::Magic:
+            return request.attackerStyle.magic;
+        case AttackType::RangedLight:
+        case AttackType::RangedStandard:
+        case AttackType::RangedHeavy:
+            return request.attackerStyle.ranged;
+    }
+
+    return request.attackerStyle.attack;
+}
+
+int DpsService::SelectStrengthLevel(const DpsRequest& request)
+{
+    switch (request.attackType)
+    {
+        case AttackType::Stab:
+        case AttackType::Slash:
+        case AttackType::Crush:
+            return request.attackerStats.strength;
+        case AttackType::Magic:
+            return 1;
+        case AttackType::RangedLight:
+        case AttackType::RangedStandard:
+        case AttackType::RangedHeavy:
+            return request.attackerStats.ranged;
+    }
+
+    return request.attackerStats.strength;
+}
+
+int DpsService::SelectStrengthStyleBonus(const DpsRequest& request)
+{
+    switch (request.attackType)
+    {
+        case AttackType::Stab:
+        case AttackType::Slash:
+        case AttackType::Crush:
+            return request.attackerStyle.strength;
+        case AttackType::Magic:
+            return 0;
+        case AttackType::RangedLight:
+        case AttackType::RangedStandard:
+        case AttackType::RangedHeavy:
+            return request.attackerStyle.ranged;
+    }
+
+    return request.attackerStyle.strength;
+}
+
+int DpsService::SelectAttackBonus(
+    AttackType attackType,
+    const EquipmentBonuses& bonuses)
+{
+    switch (attackType)
+    {
+        case AttackType::Magic:
+            return bonuses.magicAttack;
+        case AttackType::RangedLight:
+        case AttackType::RangedStandard:
+        case AttackType::RangedHeavy:
+            return bonuses.rangedAttack;
+        case AttackType::Stab:
+        case AttackType::Slash:
+        case AttackType::Crush:
+            return SelectMeleeAttackBonus(attackType, bonuses);
+    }
+
+    return bonuses.slashAttack;
+}
+
+int DpsService::SelectDefenceBonus(
+    AttackType attackType,
+    const EquipmentBonuses& bonuses)
+{
+    switch (attackType)
+    {
+        case AttackType::Magic:
+            return bonuses.magicDefence;
+        case AttackType::RangedLight:
+            return bonuses.rangedDefenceLight;
+        case AttackType::RangedStandard:
+            return bonuses.rangedDefenceStandard;
+        case AttackType::RangedHeavy:
+            return bonuses.rangedDefenceHeavy;
+        case AttackType::Stab:
+        case AttackType::Slash:
+        case AttackType::Crush:
+            return SelectMeleeDefenceBonus(attackType, bonuses);
+    }
+
+    return bonuses.slashDefence;
+}
+
+int DpsService::SelectStrengthBonus(
+    AttackType attackType,
+    const EquipmentBonuses& bonuses)
+{
+    switch (attackType)
+    {
+        case AttackType::Stab:
+        case AttackType::Slash:
+        case AttackType::Crush:
+            return bonuses.meleeStrength;
+        case AttackType::RangedLight:
+        case AttackType::RangedStandard:
+        case AttackType::RangedHeavy:
+            return bonuses.rangedStrength;
+        case AttackType::Magic:
+            return 0;
+    }
+
+    return bonuses.meleeStrength;
+}
+
+int DpsService::CalculateMaximumHit(
+    const DpsRequest& request,
+    int effectiveStrength)
+{
+    if (request.attackType == AttackType::Magic)
+    {
+        const double magicDamageMultiplier =
+            1.0 + request.attackerBonuses.magicDamagePercent / 100.0;
+
+        return static_cast<int>(std::floor(
+            request.magicBaseMaximumHit *
+            magicDamageMultiplier *
+            request.finalDamageMultiplier));
+    }
+
+    return CalculateStandardMaximumHit(
+        effectiveStrength,
+        SelectStrengthBonus(request.attackType, request.attackerBonuses),
+        request.finalDamageMultiplier);
 }
 
 DpsSampleResult DpsService::SampleSingleAttackWithGenerator(
