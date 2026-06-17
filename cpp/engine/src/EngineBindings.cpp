@@ -357,6 +357,17 @@ EMSCRIPTEN_BINDINGS(osrssim_engine)
         .field("accuracyPassed", &osrssim::DpsSampleResult::accuracyPassed)
         .field("sampledDamage", &osrssim::DpsSampleResult::sampledDamage);
 
+    emscripten::value_object<osrssim::DpsSampleAggregateResult>(
+        "DpsSampleAggregateResult")
+        .field("attackCount", &osrssim::DpsSampleAggregateResult::attackCount)
+        .field(
+            "totalSampledDamage",
+            &osrssim::DpsSampleAggregateResult::totalSampledDamage)
+        .field(
+            "averageSampledDamagePerAttack",
+            &osrssim::DpsSampleAggregateResult::averageSampledDamagePerAttack)
+        .field("sampledDps", &osrssim::DpsSampleAggregateResult::sampledDps);
+
     emscripten::class_<osrssim::DpsService>("DpsService")
         .constructor<>()
         .function("CalculateExpected", &osrssim::DpsService::CalculateExpected)
@@ -371,6 +382,17 @@ EMSCRIPTEN_BINDINGS(osrssim_engine)
             emscripten::select_overload<osrssim::DpsSampleResult(
                 const osrssim::DpsRequest&,
                 unsigned int) const>(&osrssim::DpsService::SampleSingleAttack))
+        .function(
+            "SampleAttacks",
+            emscripten::select_overload<osrssim::DpsSampleAggregateResult(
+                const osrssim::DpsRequest&,
+                int)>(&osrssim::DpsService::SampleAttacks))
+        .function(
+            "SampleAttacksWithSeed",
+            emscripten::select_overload<osrssim::DpsSampleAggregateResult(
+                const osrssim::DpsRequest&,
+                int,
+                unsigned int) const>(&osrssim::DpsService::SampleAttacks))
         .class_function(
             "CalculateEffectiveLevel",
             &osrssim::DpsService::CalculateEffectiveLevel)

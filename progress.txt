@@ -24,3 +24,12 @@
 - Decisions: shared generator lives inside DpsService and defaults to seed 0; C++ exposes seed-argument overload, WASM exposes it as SampleSingleAttackWithSeed to avoid JS overload ambiguity; generated module builds for web,node so existing Node binding tests can load it.
 - Files changed: cpp/engine DpsService + bindings/tests/CMake; web EngineModule type contract, DPS calculator/view/tests; progress.txt.
 - Validation: cmake build + ctest, web test, web typecheck via web build, web production build passed. No blockers.
+
+2026-06-17 #60 Sampled DPS Aggregate
+- Selected issue: #60, unblocked because #59 is closed. Parent PRD: #56.
+- Docs read: docs/osrs/combat-rolls.md, docs/adr/0002-deterministic-engine.md, docs/adr/0006-web-development-viewer.md, PRD #56, feature #60, blocker #59.
+- Plan: TDD aggregate sampled DPS seam in DpsService; verify shared-generator advancement and seed-argument isolation; bind aggregate result through WASM; show sampled average and sampled DPS on /dps.
+- Completed: sampled DPS aggregate for PRD #56 stories 9, 10, 12, 24, 33.
+- Decisions: aggregate result only carries aggregate outputs requested by the slice; sampled DPS divides sampled average damage by expected-result seconds per attack; seed overload named SampleAttacksWithSeed in WASM to avoid JS overload ambiguity.
+- Files changed: cpp/engine DpsService + bindings/tests; web EngineModule type contract, DPS calculator/view/tests; progress.txt.
+- Validation: cmake build + ctest, web test, web typecheck, web build passed. Initial wasm build needed emsdk env. No blockers.

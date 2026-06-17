@@ -57,6 +57,19 @@ class FakeDpsService {
             sampledDamage: 29,
         };
     }
+
+    SampleAttacksWithSeed(request, attackCount, seed) {
+        FakeDpsService.lastAggregateRequest = request;
+        FakeDpsService.lastAggregateAttackCount = attackCount;
+        FakeDpsService.lastAggregateSeed = seed;
+
+        return {
+            attackCount,
+            totalSampledDamage: 74,
+            averageSampledDamagePerAttack: 14.8,
+            sampledDps: 6.166666666666667,
+        };
+    }
 }
 
 const module = {
@@ -73,6 +86,7 @@ assert.equal(scenarios.length, 1);
 assert.equal(scenarios[0].name, "Melee slash tracer");
 assert.equal(scenarios[0].attackTypeLabel, "Slash");
 assert.equal(scenarios[0].sampleSeed, 12345);
+assert.equal(scenarios[0].sampleAttackCount, 5);
 assert.equal(scenarios[0].request.attackType, module.AttackType.Slash);
 assert.equal(scenarios[0].request.attackerStats.attack, 99);
 assert.equal(scenarios[0].request.attackerStats.strength, 99);
@@ -87,9 +101,15 @@ assert.equal(results.length, 1);
 assert.equal(FakeDpsService.lastRequest, scenarios[0].request);
 assert.equal(FakeDpsService.lastSampleRequest, scenarios[0].request);
 assert.equal(FakeDpsService.lastSampleSeed, 12345);
+assert.equal(FakeDpsService.lastAggregateRequest, scenarios[0].request);
+assert.equal(FakeDpsService.lastAggregateAttackCount, 5);
+assert.equal(FakeDpsService.lastAggregateSeed, 12345);
 assert.equal(results[0].result.attackRoll, 21560);
 assert.equal(results[0].result.defenceRoll, 12672);
 assert.equal(results[0].result.maximumHit, 31);
 assert.equal(results[0].sampledResult.accuracyPassed, true);
 assert.equal(results[0].sampledResult.sampledDamage, 29);
+assert.equal(results[0].aggregateResult.attackCount, 5);
+assert.equal(results[0].aggregateResult.totalSampledDamage, 74);
+assert.equal(results[0].aggregateResult.sampledDps.toFixed(6), "6.166667");
 assert.equal(formatDpsNumber(results[0].result.dps), "4.560");

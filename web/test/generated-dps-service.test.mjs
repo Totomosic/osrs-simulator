@@ -121,6 +121,11 @@ const seededArgumentSample = service.SampleSingleAttackWithSeed(
     12345,
 );
 const nextSharedSample = service.SampleSingleAttack(meleeDpsRequest);
+const aggregateSample = service.SampleAttacksWithSeed(
+    meleeDpsRequest,
+    5,
+    12345,
+);
 
 assert.equal(firstSharedSample.attackRoll, 21560);
 assert.equal(firstSharedSample.defenceRoll, 12672);
@@ -133,3 +138,7 @@ assert.equal(secondSharedSample.sampledDamage, 0);
 assert.equal(replayedSharedSample.sampledDamage, firstSharedSample.sampledDamage);
 assert.equal(seededArgumentSample.sampledDamage, firstSharedSample.sampledDamage);
 assert.equal(nextSharedSample.sampledDamage, secondSharedSample.sampledDamage);
+assert.equal(aggregateSample.attackCount, 5);
+assert.equal(aggregateSample.totalSampledDamage, 74);
+assert.equal(aggregateSample.averageSampledDamagePerAttack.toFixed(6), "14.800000");
+assert.equal(aggregateSample.sampledDps.toFixed(6), "6.166667");

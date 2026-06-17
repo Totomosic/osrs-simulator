@@ -89,6 +89,31 @@ DpsSampleResult DpsService::SampleSingleAttack(
         CalculateExpected(request));
 }
 
+DpsSampleAggregateResult DpsService::SampleAttacks(
+    const DpsRequest& request,
+    int attackCount)
+{
+    return SampleAttacksWithGenerator(
+        request,
+        attackCount,
+        m_RandomGenerator,
+        CalculateExpected(request));
+}
+
+DpsSampleAggregateResult DpsService::SampleAttacks(
+    const DpsRequest& request,
+    int attackCount,
+    unsigned int seed) const
+{
+    std::mt19937 generator(seed);
+
+    return SampleAttacksWithGenerator(
+        request,
+        attackCount,
+        generator,
+        CalculateExpected(request));
+}
+
 int DpsService::CalculateEffectiveLevel(
     int level,
     double prayerMultiplier,
@@ -202,6 +227,44 @@ DpsSampleResult DpsService::SampleSingleAttackWithGenerator(
             0,
             result.maximumHit);
         result.sampledDamage = damageDistribution(generator);
+    }
+
+    return result;
+}
+
+DpsSampleAggregateResult DpsService::SampleAttacksWithGenerator(
+    const DpsRequest& request,
+    int attackCount,
+    std::mt19937& generator,
+    const DpsResult& expectedResult)
+{
+    DpsSampleAggregateResult result;
+
+    if (attackCount <= 0)
+    {
+        return result;
+    }
+
+    result.attackCount = attackCount;
+
+    for (int attackIndex = 0; attackIndex < attackCount; ++attackIndex)
+    {
+        const DpsSampleResult sample = SampleSingleAttackWithGenerator(
+            request,
+            generator,
+            expectedResult);
+
+        result.totalSampledDamage += sample.sampledDamage;
+    }
+
+    result.averageSampledDamagePerAttack =
+        static_cast<double>(result.totalSampledDamage) / attackCount;
+
+    if (expectedResult.secondsPerAttack > 0.0)
+    {
+        result.sampledDps =
+            result.averageSampledDamagePerAttack /
+            expectedResult.secondsPerAttack;
     }
 
     return result;

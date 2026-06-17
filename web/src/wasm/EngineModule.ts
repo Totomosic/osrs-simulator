@@ -99,6 +99,13 @@ export interface DpsSampleResult extends DpsResult {
     sampledDamage: number;
 }
 
+export interface DpsSampleAggregateResult {
+    attackCount: number;
+    totalSampledDamage: number;
+    averageSampledDamagePerAttack: number;
+    sampledDps: number;
+}
+
 export interface DpsService {
     CalculateExpected(request: DpsRequest): DpsResult;
     SetSeed(seed: number): void;
@@ -107,6 +114,15 @@ export interface DpsService {
         request: DpsRequest,
         seed: number,
     ): DpsSampleResult;
+    SampleAttacks(
+        request: DpsRequest,
+        attackCount: number,
+    ): DpsSampleAggregateResult;
+    SampleAttacksWithSeed(
+        request: DpsRequest,
+        attackCount: number,
+        seed: number,
+    ): DpsSampleAggregateResult;
 }
 
 export interface DpsServiceConstructor {

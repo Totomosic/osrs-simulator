@@ -95,6 +95,14 @@ struct DpsSampleResult
     int sampledDamage = 0;
 };
 
+struct DpsSampleAggregateResult
+{
+    int attackCount = 0;
+    int totalSampledDamage = 0;
+    double averageSampledDamagePerAttack = 0.0;
+    double sampledDps = 0.0;
+};
+
 class DpsService
 {
 private:
@@ -108,6 +116,13 @@ public:
     DpsSampleResult SampleSingleAttack(const DpsRequest& request);
     DpsSampleResult SampleSingleAttack(
         const DpsRequest& request,
+        unsigned int seed) const;
+    DpsSampleAggregateResult SampleAttacks(
+        const DpsRequest& request,
+        int attackCount);
+    DpsSampleAggregateResult SampleAttacks(
+        const DpsRequest& request,
+        int attackCount,
         unsigned int seed) const;
 
     static int CalculateEffectiveLevel(
@@ -132,6 +147,11 @@ public:
 private:
     static DpsSampleResult SampleSingleAttackWithGenerator(
         const DpsRequest& request,
+        std::mt19937& generator,
+        const DpsResult& expectedResult);
+    static DpsSampleAggregateResult SampleAttacksWithGenerator(
+        const DpsRequest& request,
+        int attackCount,
         std::mt19937& generator,
         const DpsResult& expectedResult);
     static int SelectMeleeAttackBonus(

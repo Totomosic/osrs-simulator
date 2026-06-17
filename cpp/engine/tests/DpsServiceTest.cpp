@@ -85,4 +85,26 @@ int main()
     assert(replayedSharedSample.sampledDamage == firstSharedSample.sampledDamage);
     assert(seededArgumentSample.sampledDamage == firstSharedSample.sampledDamage);
     assert(nextSharedSample.sampledDamage == secondSharedSample.sampledDamage);
+
+    service.SetSeed(12345);
+    const osrssim::DpsSampleAggregateResult aggregateSample =
+        service.SampleAttacks(request, 5);
+
+    assert(aggregateSample.attackCount == 5);
+    assert(aggregateSample.totalSampledDamage == 44);
+    assert(NearlyEqual(aggregateSample.averageSampledDamagePerAttack, 8.8));
+    assert(NearlyEqual(aggregateSample.sampledDps, 3.666666666666667));
+
+    const osrssim::DpsSampleResult sampleAfterAggregate =
+        service.SampleSingleAttack(request);
+    assert(sampleAfterAggregate.sampledDamage == 23);
+
+    service.SetSeed(12345);
+    const osrssim::DpsSampleAggregateResult seededAggregateSample =
+        service.SampleAttacks(request, 5, 12345);
+    const osrssim::DpsSampleResult sampleAfterSeededAggregate =
+        service.SampleSingleAttack(request);
+
+    assert(seededAggregateSample.totalSampledDamage == 44);
+    assert(sampleAfterSeededAggregate.sampledDamage == firstSharedSample.sampledDamage);
 }
