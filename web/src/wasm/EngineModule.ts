@@ -94,8 +94,19 @@ export interface DpsResult {
     dps: number;
 }
 
+export interface DpsSampleResult extends DpsResult {
+    accuracyPassed: boolean;
+    sampledDamage: number;
+}
+
 export interface DpsService {
     CalculateExpected(request: DpsRequest): DpsResult;
+    SetSeed(seed: number): void;
+    SampleSingleAttack(request: DpsRequest): DpsSampleResult;
+    SampleSingleAttackWithSeed(
+        request: DpsRequest,
+        seed: number,
+    ): DpsSampleResult;
 }
 
 export interface DpsServiceConstructor {

@@ -344,9 +344,33 @@ EMSCRIPTEN_BINDINGS(osrssim_engine)
         .field("secondsPerAttack", &osrssim::DpsResult::secondsPerAttack)
         .field("dps", &osrssim::DpsResult::dps);
 
+    emscripten::value_object<osrssim::DpsSampleResult>("DpsSampleResult")
+        .field("attackRoll", &osrssim::DpsSampleResult::attackRoll)
+        .field("defenceRoll", &osrssim::DpsSampleResult::defenceRoll)
+        .field("maximumHit", &osrssim::DpsSampleResult::maximumHit)
+        .field("hitChance", &osrssim::DpsSampleResult::hitChance)
+        .field(
+            "expectedDamagePerAttack",
+            &osrssim::DpsSampleResult::expectedDamagePerAttack)
+        .field("secondsPerAttack", &osrssim::DpsSampleResult::secondsPerAttack)
+        .field("dps", &osrssim::DpsSampleResult::dps)
+        .field("accuracyPassed", &osrssim::DpsSampleResult::accuracyPassed)
+        .field("sampledDamage", &osrssim::DpsSampleResult::sampledDamage);
+
     emscripten::class_<osrssim::DpsService>("DpsService")
         .constructor<>()
         .function("CalculateExpected", &osrssim::DpsService::CalculateExpected)
+        .function("SetSeed", &osrssim::DpsService::SetSeed)
+        .function(
+            "SampleSingleAttack",
+            emscripten::select_overload<osrssim::DpsSampleResult(
+                const osrssim::DpsRequest&)>(
+                &osrssim::DpsService::SampleSingleAttack))
+        .function(
+            "SampleSingleAttackWithSeed",
+            emscripten::select_overload<osrssim::DpsSampleResult(
+                const osrssim::DpsRequest&,
+                unsigned int) const>(&osrssim::DpsService::SampleSingleAttack))
         .class_function(
             "CalculateEffectiveLevel",
             &osrssim::DpsService::CalculateEffectiveLevel)

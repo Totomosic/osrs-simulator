@@ -63,7 +63,7 @@ const defaultStyle = {
     magic: 0,
 };
 
-const result = service.CalculateExpected({
+const meleeDpsRequest = {
     attackerStats: {
         ...defaultStats,
         attack: 99,
@@ -99,7 +99,9 @@ const result = service.CalculateExpected({
     finalAttackRollMultiplier: 1.0,
     finalDefenceRollMultiplier: 1.0,
     finalDamageMultiplier: 1.0,
-});
+};
+
+const result = service.CalculateExpected(meleeDpsRequest);
 
 assert.equal(result.attackRoll, 21560);
 assert.equal(result.defenceRoll, 12672);
@@ -108,3 +110,26 @@ assert.equal(result.hitChance.toFixed(6), "0.706090");
 assert.equal(result.expectedDamagePerAttack.toFixed(6), "10.944390");
 assert.equal(result.secondsPerAttack, 2.4);
 assert.equal(result.dps.toFixed(6), "4.560163");
+
+service.SetSeed(12345);
+const firstSharedSample = service.SampleSingleAttack(meleeDpsRequest);
+const secondSharedSample = service.SampleSingleAttack(meleeDpsRequest);
+service.SetSeed(12345);
+const replayedSharedSample = service.SampleSingleAttack(meleeDpsRequest);
+const seededArgumentSample = service.SampleSingleAttackWithSeed(
+    meleeDpsRequest,
+    12345,
+);
+const nextSharedSample = service.SampleSingleAttack(meleeDpsRequest);
+
+assert.equal(firstSharedSample.attackRoll, 21560);
+assert.equal(firstSharedSample.defenceRoll, 12672);
+assert.equal(firstSharedSample.maximumHit, 31);
+assert.equal(firstSharedSample.hitChance.toFixed(6), "0.706090");
+assert.equal(firstSharedSample.accuracyPassed, true);
+assert.equal(firstSharedSample.sampledDamage, 29);
+assert.equal(secondSharedSample.accuracyPassed, false);
+assert.equal(secondSharedSample.sampledDamage, 0);
+assert.equal(replayedSharedSample.sampledDamage, firstSharedSample.sampledDamage);
+assert.equal(seededArgumentSample.sampledDamage, firstSharedSample.sampledDamage);
+assert.equal(nextSharedSample.sampledDamage, secondSharedSample.sampledDamage);

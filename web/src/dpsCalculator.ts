@@ -3,6 +3,7 @@ import type {
     CombatStats,
     DpsRequest,
     DpsResult,
+    DpsSampleResult,
     EngineModule,
     EquipmentBonuses,
     StyleBonus,
@@ -11,12 +12,14 @@ import type {
 export interface DpsScenario {
     name: string;
     attackTypeLabel: string;
+    sampleSeed: number;
     request: DpsRequest;
 }
 
 export interface DpsScenarioResult {
     scenario: DpsScenario;
     result: DpsResult;
+    sampledResult: DpsSampleResult;
 }
 
 export function createFixedMeleeDpsScenarios(
@@ -26,6 +29,7 @@ export function createFixedMeleeDpsScenarios(
         {
             name: "Melee slash tracer",
             attackTypeLabel: "Slash",
+            sampleSeed: 12345,
             request: createMeleeSlashRequest(module.AttackType.Slash),
         },
     ];
@@ -40,6 +44,10 @@ export function calculateDpsScenarioResults(
     return scenarios.map((scenario) => ({
         scenario,
         result: service.CalculateExpected(scenario.request),
+        sampledResult: service.SampleSingleAttackWithSeed(
+            scenario.request,
+            scenario.sampleSeed,
+        ),
     }));
 }
 

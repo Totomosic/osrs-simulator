@@ -42,7 +42,7 @@ if(EMSCRIPTEN)
     PRIVATE
       --bind
       -sALLOW_MEMORY_GROWTH=1
-      -sENVIRONMENT=web
+      -sENVIRONMENT=web,node
       -sEXPORT_ES6=1
       -sEXPORT_NAME=createGeneratedEngineModule
       -sMODULARIZE=1

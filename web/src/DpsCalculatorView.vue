@@ -56,6 +56,9 @@ onMounted(async () => {
             <th>Hit Chance</th>
             <th>Maximum Hit</th>
             <th>Expected Damage</th>
+            <th>Sample Seed</th>
+            <th>Accuracy</th>
+            <th>Sampled Damage</th>
             <th>Seconds</th>
             <th>DPS</th>
           </tr>
@@ -69,6 +72,9 @@ onMounted(async () => {
             <td>{{ formatDpsNumber(entry.result.hitChance * 100, 2) }}%</td>
             <td>{{ entry.result.maximumHit }}</td>
             <td>{{ formatDpsNumber(entry.result.expectedDamagePerAttack) }}</td>
+            <td>{{ entry.scenario.sampleSeed }}</td>
+            <td>{{ entry.sampledResult.accuracyPassed ? "Passed" : "Failed" }}</td>
+            <td>{{ entry.sampledResult.sampledDamage }}</td>
             <td>{{ formatDpsNumber(entry.result.secondsPerAttack, 1) }}</td>
             <td>{{ formatDpsNumber(entry.result.dps) }}</td>
           </tr>
@@ -143,7 +149,7 @@ h1 {
 
 .dps-table {
     border-collapse: collapse;
-    min-width: 980px;
+    min-width: 1180px;
     width: 100%;
 }
 

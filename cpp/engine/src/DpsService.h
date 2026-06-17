@@ -1,5 +1,7 @@
 #pragma once
 
+#include <random>
+
 namespace osrssim
 {
 
@@ -80,10 +82,33 @@ struct DpsResult
     double dps = 0.0;
 };
 
+struct DpsSampleResult
+{
+    int attackRoll = 0;
+    int defenceRoll = 0;
+    int maximumHit = 0;
+    double hitChance = 0.0;
+    double expectedDamagePerAttack = 0.0;
+    double secondsPerAttack = 0.0;
+    double dps = 0.0;
+    bool accuracyPassed = false;
+    int sampledDamage = 0;
+};
+
 class DpsService
 {
+private:
+    std::mt19937 m_RandomGenerator;
+
 public:
+    DpsService();
+
     DpsResult CalculateExpected(const DpsRequest& request) const;
+    void SetSeed(unsigned int seed);
+    DpsSampleResult SampleSingleAttack(const DpsRequest& request);
+    DpsSampleResult SampleSingleAttack(
+        const DpsRequest& request,
+        unsigned int seed) const;
 
     static int CalculateEffectiveLevel(
         int level,
@@ -105,6 +130,10 @@ public:
     static double CalculateHitChance(int attackRoll, int defenceRoll);
 
 private:
+    static DpsSampleResult SampleSingleAttackWithGenerator(
+        const DpsRequest& request,
+        std::mt19937& generator,
+        const DpsResult& expectedResult);
     static int SelectMeleeAttackBonus(
         AttackType attackType,
         const EquipmentBonuses& bonuses);

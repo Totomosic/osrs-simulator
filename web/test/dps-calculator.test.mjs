@@ -40,6 +40,23 @@ class FakeDpsService {
             dps: 4.560162645324535,
         };
     }
+
+    SampleSingleAttackWithSeed(request, seed) {
+        FakeDpsService.lastSampleRequest = request;
+        FakeDpsService.lastSampleSeed = seed;
+
+        return {
+            attackRoll: 21560,
+            defenceRoll: 12672,
+            maximumHit: 31,
+            hitChance: 0.7060896999211539,
+            expectedDamagePerAttack: 10.944390348778885,
+            secondsPerAttack: 2.4,
+            dps: 4.560162645324535,
+            accuracyPassed: true,
+            sampledDamage: 29,
+        };
+    }
 }
 
 const module = {
@@ -55,6 +72,7 @@ const scenarios = createFixedMeleeDpsScenarios(module);
 assert.equal(scenarios.length, 1);
 assert.equal(scenarios[0].name, "Melee slash tracer");
 assert.equal(scenarios[0].attackTypeLabel, "Slash");
+assert.equal(scenarios[0].sampleSeed, 12345);
 assert.equal(scenarios[0].request.attackType, module.AttackType.Slash);
 assert.equal(scenarios[0].request.attackerStats.attack, 99);
 assert.equal(scenarios[0].request.attackerStats.strength, 99);
@@ -67,7 +85,11 @@ assert.equal(scenarios[0].request.weaponSpeedTicks, 4);
 const results = calculateDpsScenarioResults(module, scenarios);
 assert.equal(results.length, 1);
 assert.equal(FakeDpsService.lastRequest, scenarios[0].request);
+assert.equal(FakeDpsService.lastSampleRequest, scenarios[0].request);
+assert.equal(FakeDpsService.lastSampleSeed, 12345);
 assert.equal(results[0].result.attackRoll, 21560);
 assert.equal(results[0].result.defenceRoll, 12672);
 assert.equal(results[0].result.maximumHit, 31);
+assert.equal(results[0].sampledResult.accuracyPassed, true);
+assert.equal(results[0].sampledResult.sampledDamage, 29);
 assert.equal(formatDpsNumber(results[0].result.dps), "4.560");

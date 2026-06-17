@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <random>
 
 namespace osrssim
 {
@@ -11,6 +12,10 @@ namespace
 constexpr double SecondsPerTick = 0.6;
 
 }  // namespace
+
+DpsService::DpsService() : m_RandomGenerator(0)
+{
+}
 
 DpsResult DpsService::CalculateExpected(const DpsRequest& request) const
 {
@@ -57,6 +62,31 @@ DpsResult DpsService::CalculateExpected(const DpsRequest& request) const
     }
 
     return result;
+}
+
+void DpsService::SetSeed(unsigned int seed)
+{
+    m_RandomGenerator.seed(seed);
+}
+
+DpsSampleResult DpsService::SampleSingleAttack(const DpsRequest& request)
+{
+    return SampleSingleAttackWithGenerator(
+        request,
+        m_RandomGenerator,
+        CalculateExpected(request));
+}
+
+DpsSampleResult DpsService::SampleSingleAttack(
+    const DpsRequest& request,
+    unsigned int seed) const
+{
+    std::mt19937 generator(seed);
+
+    return SampleSingleAttackWithGenerator(
+        request,
+        generator,
+        CalculateExpected(request));
 }
 
 int DpsService::CalculateEffectiveLevel(
@@ -139,6 +169,42 @@ int DpsService::SelectMeleeDefenceBonus(
     }
 
     return bonuses.slashDefence;
+}
+
+DpsSampleResult DpsService::SampleSingleAttackWithGenerator(
+    const DpsRequest& request,
+    std::mt19937& generator,
+    const DpsResult& expectedResult)
+{
+    DpsSampleResult result;
+
+    result.attackRoll = expectedResult.attackRoll;
+    result.defenceRoll = expectedResult.defenceRoll;
+    result.maximumHit = expectedResult.maximumHit;
+    result.hitChance = expectedResult.hitChance;
+    result.expectedDamagePerAttack = expectedResult.expectedDamagePerAttack;
+    result.secondsPerAttack = expectedResult.secondsPerAttack;
+    result.dps = expectedResult.dps;
+
+    std::uniform_int_distribution<int> attackRollDistribution(
+        0,
+        result.attackRoll);
+    std::uniform_int_distribution<int> defenceRollDistribution(
+        0,
+        result.defenceRoll);
+
+    result.accuracyPassed =
+        attackRollDistribution(generator) > defenceRollDistribution(generator);
+
+    if (result.accuracyPassed)
+    {
+        std::uniform_int_distribution<int> damageDistribution(
+            0,
+            result.maximumHit);
+        result.sampledDamage = damageDistribution(generator);
+    }
+
+    return result;
 }
 
 double DpsService::CalculateHitChance(int attackRoll, int defenceRoll)

@@ -58,4 +58,31 @@ int main()
     assert(NearlyEqual(result.expectedDamagePerAttack, 10.944390348778885));
     assert(NearlyEqual(result.secondsPerAttack, 2.4));
     assert(NearlyEqual(result.dps, 4.560162645324535));
+
+    service.SetSeed(12345);
+    const osrssim::DpsSampleResult firstSharedSample =
+        service.SampleSingleAttack(request);
+    const osrssim::DpsSampleResult secondSharedSample =
+        service.SampleSingleAttack(request);
+
+    service.SetSeed(12345);
+    const osrssim::DpsSampleResult replayedSharedSample =
+        service.SampleSingleAttack(request);
+    const osrssim::DpsSampleResult seededArgumentSample =
+        service.SampleSingleAttack(request, 12345);
+    const osrssim::DpsSampleResult nextSharedSample =
+        service.SampleSingleAttack(request);
+
+    assert(firstSharedSample.attackRoll == result.attackRoll);
+    assert(firstSharedSample.defenceRoll == result.defenceRoll);
+    assert(firstSharedSample.maximumHit == result.maximumHit);
+    assert(NearlyEqual(firstSharedSample.hitChance, result.hitChance));
+    assert(firstSharedSample.accuracyPassed);
+    assert(firstSharedSample.sampledDamage == 10);
+
+    assert(secondSharedSample.accuracyPassed);
+    assert(secondSharedSample.sampledDamage == 1);
+    assert(replayedSharedSample.sampledDamage == firstSharedSample.sampledDamage);
+    assert(seededArgumentSample.sampledDamage == firstSharedSample.sampledDamage);
+    assert(nextSharedSample.sampledDamage == secondSharedSample.sampledDamage);
 }
