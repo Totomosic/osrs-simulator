@@ -32,6 +32,10 @@ _Avoid_: Scale, pixel zoom
 A discrete simulation step. A tick is distinct from a rendered frame or real-time playback interval.
 _Avoid_: Frame, update loop
 
+**Seconds Per Tick**:
+The real-time duration represented by one OSRS simulation tick. OSRS combat timing uses 0.6 seconds per tick.
+_Avoid_: Frame duration, playback interval
+
 **Scene Membership**:
 The relationship between an actor and the loaded scene it currently occupies. Scene membership can change without changing the actor's identity.
 _Avoid_: Actor scene ownership
@@ -135,6 +139,26 @@ _Avoid_: Attack rate, cooldown
 **Attack**:
 A weapon-driven interaction from one actor toward another actor. An attack can occur when the attacker has line of sight to the target within weapon range.
 _Avoid_: Hit, damage roll
+
+**Attack Type**:
+The offensive category used to choose matching attack and defence bonuses for a combat roll, such as stab, slash, crush, magic, or a ranged defence subtype.
+_Avoid_: Damage style, weapon type
+
+**Maximum Hit**:
+The highest damage value a successful damage roll can produce before post-roll reductions. Maximum hit is distinct from expected damage.
+_Avoid_: Damage, expected damage
+
+**Expected Damage**:
+The average damage implied by combat rolls without sampling a specific hit. Expected damage accounts for hit chance and maximum hit.
+_Avoid_: Average hit, deterministic damage
+
+**Damage Roll**:
+The sampled damage result for an attack after accuracy has been evaluated. A successful accuracy check can still produce a zero damage roll.
+_Avoid_: Expected damage, max hit
+
+**Random Seed**:
+An explicit value used to initialize sampled combat outcomes so they are reproducible across simulation runs. Randomness inside the engine is deterministic when driven from the same random seed and inputs.
+_Avoid_: Hidden randomness, ambient random state
 
 **Attack Timer**:
 An actor's per-tick countdown until its next attack can occur. Attacking sets the attack timer from the equipped weapon's speed, changing weapons does not reset it, and values at or below zero mean the actor is ready to attack.

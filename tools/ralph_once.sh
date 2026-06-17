@@ -3,6 +3,7 @@ set -euo pipefail
 
 script_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 repo_root="$(cd -- "${script_dir}/.." && pwd)"
+prompt_file="${script_dir}/ralph_prompt.md"
 
 codex_bin="${CODEX_BIN:-codex}"
 model="${RALPH_MODEL:-gpt-5.5}"
@@ -21,32 +22,19 @@ fi
 
 if [[ -z "${prompt}" ]]; then
     uses_default_prompt=1
+    if [[ ! -f "${prompt_file}" ]]; then
+        echo "ralph_once: prompt file not found: ${prompt_file}" >&2
+        exit 2
+    fi
+
     if ! [[ "${issue_limit}" =~ ^[1-9][0-9]*$ ]]; then
         echo "RALPH_ISSUE_LIMIT must be a positive integer" >&2
         exit 2
     fi
 
-    prompt="$(cat <<'PROMPT'
-You are Ralph, an AFK coding agent loop running through Codex.
-
-Run exactly one autonomous implementation pass in this repository:
-1. Read AGENTS.md, docs/agents/issue-tracker.md, docs/agents/triage-labels.md, and docs/agents/domain.md.
-2. Use the gh CLI to find one open non-PRD GitHub issue labelled ready-for-agent, then work only on that issue.
-3. Use this command as the starting point for issue selection: gh issue list --state open --label ready-for-agent --limit RALPH_ISSUE_LIMIT --json number,title,body,labels,comments
-4. For the selected issue, inspect the relevant code and docs, use /tdd to make the smallest coherent implementation, and run focused verification.
-5. When the issue is complete and verification has passed, create a local git commit for the issue.
-6. Do not push or open a PR.
-7. Leave a concise final report that includes the issue number, commit hash, changed files, and verification result.
-8. After completing the issue close the GitHub issue with a comment linking to the commit and report that in the final report.
-9. Do not work on PRD issues. A PRD issue is planning context, not an implementation task.
-10. If no ready-for-agent implementation issue exists, and no open non-PRD issues remain, close open PRD issues with a comment explaining that all implementation issues are complete.
-PROMPT
-)"
-    prompt="${prompt}
-
-If no open non-PRD GitHub issue labelled ready-for-agent exists, output exactly this token on its own line and exit successfully without changing files:
-${no_valid_issues_token}"
-    prompt="${prompt/RALPH_ISSUE_LIMIT/${issue_limit}}"
+    prompt="$(<"${prompt_file}")"
+    prompt="${prompt//RALPH_ISSUE_LIMIT/${issue_limit}}"
+    prompt="${prompt//RALPH_NO_VALID_ISSUES_TOKEN/${no_valid_issues_token}}"
 fi
 
 if [[ "${github_preflight}" == "1" && "${uses_default_prompt}" == "1" ]]; then
