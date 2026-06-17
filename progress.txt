@@ -6,3 +6,12 @@
 - Decisions: DpsService stays standalone from World/Engine/CombatService; v1 request includes resolved stats/bonuses/styles/multipliers; / remains Player Chase, /dps new fixed validation route; generated WASM rebuilt via /home/jordan/dev/emsdk.
 - Files changed: cpp/engine DpsService + bindings/tests/CMake; web router/DPS view/types/tests/package lock; progress.txt.
 - Validation: cmake build + ctest, web test, web typecheck, web build passed. No blockers.
+
+2026-06-17 #58 Low-Level Combat Roll API and Formula Tests
+- Selected issue: #58, unblocked because #57 is closed. Parent PRD: #56.
+- Docs read: CONTEXT.md, docs/agents/domain.md, docs/adr/0002-deterministic-engine.md, docs/adr/0006-web-development-viewer.md, docs/osrs/combat-rolls.md.
+- Plan: TDD public low-level DpsService formula seam; cover floor-sensitive effective level/max hit and both hit chance branches; keep /dps values sourced from service result.
+- Completed: low-level combat-roll API for PRD #56 stories 2, 11, 12; C++ and WASM tests cover effective level, attack roll, defence roll, hit chance branches, and standard max hit.
+- Decisions: expose formula methods as static DpsService calls; keep attack-type bonus selectors private; bind low-level methods as Embind class functions so generated module consumers can validate formulas directly.
+- Files changed: cpp/engine DpsService + bindings/tests; web EngineModule type contract + generated-DPS test; generated WASM rebuilt; progress.txt.
+- Validation: targeted DpsService test, generated WASM DPS test, cmake build + ctest, web test, web typecheck, web build passed. No blockers.

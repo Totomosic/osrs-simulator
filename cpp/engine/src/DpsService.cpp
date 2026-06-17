@@ -32,30 +32,18 @@ DpsResult DpsService::CalculateExpected(const DpsRequest& request) const
         request.strengthLevelMultiplier,
         request.attackerStyle.strength);
 
-    const int baseAttackRoll =
-        effectiveAttack *
-        (SelectMeleeAttackBonus(
-             request.attackType,
-             request.attackerBonuses) +
-         64);
-    const int baseDefenceRoll =
-        effectiveDefence *
-        (SelectMeleeDefenceBonus(
-             request.attackType,
-             request.defenderBonuses) +
-         64);
-    const int baseMaximumHit = static_cast<int>(std::floor(
-        0.5 +
-        effectiveStrength *
-            (request.attackerBonuses.meleeStrength + 64) /
-            640.0));
-
-    result.attackRoll = static_cast<int>(std::floor(
-        baseAttackRoll * request.finalAttackRollMultiplier));
-    result.defenceRoll = static_cast<int>(std::floor(
-        baseDefenceRoll * request.finalDefenceRollMultiplier));
-    result.maximumHit = static_cast<int>(std::floor(
-        baseMaximumHit * request.finalDamageMultiplier));
+    result.attackRoll = CalculateAttackRoll(
+        effectiveAttack,
+        SelectMeleeAttackBonus(request.attackType, request.attackerBonuses),
+        request.finalAttackRollMultiplier);
+    result.defenceRoll = CalculateDefenceRoll(
+        effectiveDefence,
+        SelectMeleeDefenceBonus(request.attackType, request.defenderBonuses),
+        request.finalDefenceRollMultiplier);
+    result.maximumHit = CalculateStandardMaximumHit(
+        effectiveStrength,
+        request.attackerBonuses.meleeStrength,
+        request.finalDamageMultiplier);
     result.hitChance =
         CalculateHitChance(result.attackRoll, result.defenceRoll);
     result.expectedDamagePerAttack =
@@ -80,6 +68,43 @@ int DpsService::CalculateEffectiveLevel(
     return static_cast<int>(
         std::floor(level * prayerMultiplier * levelMultiplier)) +
         styleBonus + 8;
+}
+
+int DpsService::CalculateAttackRoll(
+    int effectiveAttackLevel,
+    int offensiveEquipmentBonus,
+    double finalAttackRollMultiplier)
+{
+    const int baseAttackRoll =
+        effectiveAttackLevel * (offensiveEquipmentBonus + 64);
+
+    return static_cast<int>(
+        std::floor(baseAttackRoll * finalAttackRollMultiplier));
+}
+
+int DpsService::CalculateDefenceRoll(
+    int effectiveDefenceLevel,
+    int defensiveEquipmentBonus,
+    double finalDefenceRollMultiplier)
+{
+    const int baseDefenceRoll =
+        effectiveDefenceLevel * (defensiveEquipmentBonus + 64);
+
+    return static_cast<int>(
+        std::floor(baseDefenceRoll * finalDefenceRollMultiplier));
+}
+
+int DpsService::CalculateStandardMaximumHit(
+    int effectiveStrengthLevel,
+    int strengthEquipmentBonus,
+    double finalDamageMultiplier)
+{
+    const int baseMaximumHit = static_cast<int>(std::floor(
+        0.5 +
+        effectiveStrengthLevel * (strengthEquipmentBonus + 64) / 640.0));
+
+    return static_cast<int>(
+        std::floor(baseMaximumHit * finalDamageMultiplier));
 }
 
 int DpsService::SelectMeleeAttackBonus(

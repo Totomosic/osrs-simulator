@@ -85,19 +85,32 @@ class DpsService
 public:
     DpsResult CalculateExpected(const DpsRequest& request) const;
 
-private:
     static int CalculateEffectiveLevel(
         int level,
         double prayerMultiplier,
         double levelMultiplier,
         int styleBonus);
+    static int CalculateAttackRoll(
+        int effectiveAttackLevel,
+        int offensiveEquipmentBonus,
+        double finalAttackRollMultiplier);
+    static int CalculateDefenceRoll(
+        int effectiveDefenceLevel,
+        int defensiveEquipmentBonus,
+        double finalDefenceRollMultiplier);
+    static int CalculateStandardMaximumHit(
+        int effectiveStrengthLevel,
+        int strengthEquipmentBonus,
+        double finalDamageMultiplier);
+    static double CalculateHitChance(int attackRoll, int defenceRoll);
+
+private:
     static int SelectMeleeAttackBonus(
         AttackType attackType,
         const EquipmentBonuses& bonuses);
     static int SelectMeleeDefenceBonus(
         AttackType attackType,
         const EquipmentBonuses& bonuses);
-    static double CalculateHitChance(int attackRoll, int defenceRoll);
 };
 
 }  // namespace osrssim

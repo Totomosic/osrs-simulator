@@ -98,6 +98,32 @@ export interface DpsService {
     CalculateExpected(request: DpsRequest): DpsResult;
 }
 
+export interface DpsServiceConstructor {
+    new (): DpsService;
+    CalculateEffectiveLevel(
+        level: number,
+        prayerMultiplier: number,
+        levelMultiplier: number,
+        styleBonus: number,
+    ): number;
+    CalculateAttackRoll(
+        effectiveAttackLevel: number,
+        offensiveEquipmentBonus: number,
+        finalAttackRollMultiplier: number,
+    ): number;
+    CalculateDefenceRoll(
+        effectiveDefenceLevel: number,
+        defensiveEquipmentBonus: number,
+        finalDefenceRollMultiplier: number,
+    ): number;
+    CalculateStandardMaximumHit(
+        effectiveStrengthLevel: number,
+        strengthEquipmentBonus: number,
+        finalDamageMultiplier: number,
+    ): number;
+    CalculateHitChance(attackRoll: number, defenceRoll: number): number;
+}
+
 export interface ActionFeedback {
     state: "none" | "blocked-movement" | "placement-failure" | "removal-failure";
 }
@@ -157,7 +183,7 @@ export type AttackType = number | "Stab" | "Slash" | "Crush";
 
 export interface EngineModule {
     Engine: new () => Engine;
-    DpsService: new () => DpsService;
+    DpsService: DpsServiceConstructor;
     CardinalDirection: {
         North: CardinalDirection;
         East?: CardinalDirection;

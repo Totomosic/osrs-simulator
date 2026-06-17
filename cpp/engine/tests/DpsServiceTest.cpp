@@ -16,6 +16,26 @@ bool NearlyEqual(double left, double right)
 int main()
 {
     osrssim::DpsService service;
+
+    assert(
+        osrssim::DpsService::CalculateEffectiveLevel(99, 1.15, 1.10, 3) ==
+        136);
+    assert(
+        osrssim::DpsService::CalculateAttackRoll(136, 132, 1.15) ==
+        30654);
+    assert(
+        osrssim::DpsService::CalculateDefenceRoll(97, 80, 0.90) ==
+        12571);
+    assert(
+        osrssim::DpsService::CalculateStandardMaximumHit(136, 118, 1.10) ==
+        42);
+    assert(NearlyEqual(
+        osrssim::DpsService::CalculateHitChance(30654, 12571),
+        0.7949274180394715));
+    assert(NearlyEqual(
+        osrssim::DpsService::CalculateHitChance(10000, 12571),
+        0.39770919503658925));
+
     osrssim::DpsRequest request;
 
     request.attackType = osrssim::AttackType::Slash;

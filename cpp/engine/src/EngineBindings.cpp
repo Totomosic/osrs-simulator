@@ -346,7 +346,22 @@ EMSCRIPTEN_BINDINGS(osrssim_engine)
 
     emscripten::class_<osrssim::DpsService>("DpsService")
         .constructor<>()
-        .function("CalculateExpected", &osrssim::DpsService::CalculateExpected);
+        .function("CalculateExpected", &osrssim::DpsService::CalculateExpected)
+        .class_function(
+            "CalculateEffectiveLevel",
+            &osrssim::DpsService::CalculateEffectiveLevel)
+        .class_function(
+            "CalculateAttackRoll",
+            &osrssim::DpsService::CalculateAttackRoll)
+        .class_function(
+            "CalculateDefenceRoll",
+            &osrssim::DpsService::CalculateDefenceRoll)
+        .class_function(
+            "CalculateStandardMaximumHit",
+            &osrssim::DpsService::CalculateStandardMaximumHit)
+        .class_function(
+            "CalculateHitChance",
+            &osrssim::DpsService::CalculateHitChance);
 
     emscripten::class_<osrssim::Scene>("Scene")
         .function("PlaceGameObject", &PlaceSceneGameObject)

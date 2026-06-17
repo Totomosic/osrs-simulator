@@ -11,6 +11,25 @@ const wasmBinary = await readFile(
 const module = await createGeneratedEngineModule({ wasmBinary });
 const service = new module.DpsService();
 
+assert.equal(
+    module.DpsService.CalculateEffectiveLevel(99, 1.15, 1.10, 3),
+    136,
+);
+assert.equal(module.DpsService.CalculateAttackRoll(136, 132, 1.15), 30654);
+assert.equal(module.DpsService.CalculateDefenceRoll(97, 80, 0.90), 12571);
+assert.equal(
+    module.DpsService.CalculateStandardMaximumHit(136, 118, 1.10),
+    42,
+);
+assert.equal(
+    module.DpsService.CalculateHitChance(30654, 12571).toFixed(6),
+    "0.794927",
+);
+assert.equal(
+    module.DpsService.CalculateHitChance(10000, 12571).toFixed(6),
+    "0.397709",
+);
+
 const defaultStats = {
     attack: 1,
     strength: 1,
