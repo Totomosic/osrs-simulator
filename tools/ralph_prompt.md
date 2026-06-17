@@ -80,6 +80,7 @@ When the selected issue is complete:
 1. Review the diff with `git status` and `git diff`.
 2. Ensure the changes only relate to the selected issue.
 3. Commit the work, including `progress.txt`.
+4. Use `gh` to close the issue being worked on.
 
 ```bash
 git add <relevant-files> progress.txt
@@ -91,6 +92,8 @@ Do not push.
 Do not create a pull request.
 
 In the final response, report the completed issue, summary of changes, validation run, and commit hash.
+
+Close the issue.
 
 If no valid issue was found, output only:
 
