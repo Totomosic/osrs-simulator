@@ -110,3 +110,13 @@
 - Decisions: keep route assertions in existing routes.test.mjs; generated-module regression imports public DPS helpers and real WASM module to avoid duplicating TypeScript formula behavior.
 - Files changed: web/test/generated-dps-service.test.mjs; progress.txt.
 - Validation: node web/test/generated-dps-service.test.mjs, yarn --cwd web test, yarn --cwd web typecheck, yarn --cwd web build passed. No blockers.
+
+2026-06-19 #71 Engine-Owned Equipment Database
+- Selected issue: #71, unblocked ready-for-agent. Parent PRD: #69.
+- Docs read: CONTEXT.md, docs/agents/domain.md, docs/architecture/repo-structure.md, docs/adr/0007-engine-owned-equipment-database.md, PRD #69, feature #71.
+- Plan: TDD C++ EquipmentDatabase for versioned JSON string loading, validation, default bonuses, lookup/list APIs, representative seed data; bind through WASM and update TypeScript/generated WASM tests.
+- Scope guard: only implement #71 equipment database. Do not start equipment sets (#72), NPC defence composition path (#73), weapon-slot equipment UI (#74), or full equipment UI (#75).
+- Completed: PRD #69 stories 14-15, 20, 22-32, 34 and feature #71 acceptance for engine-owned versioned equipment JSON loading, validation, default bonus values, lookup/list APIs, seed equipment, and WASM/TypeScript access.
+- Decisions: use `nlohmann_json` through CMake FetchContent for strict C++ parsing; represent optional weapon data as `hasWeapon` plus `weapon` for straightforward native and Embind value objects; keep validation failures covered in native tests because Embind prints noisy abort diagnostics for thrown C++ exceptions.
+- Files changed: CMakeLists.txt, cpp/engine/CMakeLists.txt, cpp/engine/src/EquipmentDatabase.h, cpp/engine/src/EquipmentDatabase.cpp, cpp/engine/src/EngineBindings.cpp, cpp/engine/tests/EquipmentDatabaseTest.cpp, web/src/wasm/EngineModule.ts, web/test/generated-dps-service.test.mjs, progress.txt.
+- Validation: cmake --build build, ctest --test-dir build --output-on-failure, source /home/jordan/dev/emsdk/emsdk_env.sh && yarn wasm:build && node web/test/generated-dps-service.test.mjs, yarn --cwd web typecheck, yarn --cwd web test, yarn --cwd web build passed. No blockers.

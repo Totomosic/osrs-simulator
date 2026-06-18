@@ -31,6 +31,59 @@ const wasmBinary = await readFile(
 const module = await createGeneratedEngineModule({ wasmBinary });
 const service = new module.DpsService();
 
+const defaultEquipmentJson = module.EquipmentDatabase.GetDefaultJson();
+assert.match(defaultEquipmentJson, /"equipmentPieces"/);
+
+const equipmentDatabase = module.EquipmentDatabase.LoadFromJson(`{
+    "version": 1,
+    "equipmentPieces": [
+        {
+            "id": 500,
+            "name": "Rune scimitar",
+            "slot": "weapon",
+            "bonuses": {
+                "slashAttack": 45,
+                "meleeStrength": 44
+            },
+            "weapon": {
+                "id": 900,
+                "range": 1,
+                "speed": 4
+            }
+        },
+        {
+            "id": 501,
+            "name": "Explorer ring",
+            "slot": "ring",
+            "bonuses": {
+                "stabDefence": 1
+            }
+        }
+    ]
+}`);
+
+assert.equal(equipmentDatabase.HasEquipmentPiece(500), true);
+assert.equal(equipmentDatabase.HasEquipmentPiece(999), false);
+
+const runeScimitar = equipmentDatabase.GetEquipmentPiece(500);
+assert.equal(runeScimitar.name, "Rune scimitar");
+assert.equal(runeScimitar.slot, module.EquipmentSlot.Weapon);
+assert.equal(runeScimitar.bonuses.slashAttack, 45);
+assert.equal(runeScimitar.bonuses.stabAttack, 0);
+assert.equal(runeScimitar.hasWeapon, true);
+assert.equal(runeScimitar.weapon.id, 900n);
+
+const allEquipmentPieces = equipmentDatabase.GetAllEquipmentPieces();
+assert.equal(allEquipmentPieces.size(), 2);
+allEquipmentPieces.delete();
+
+const weaponPieces = equipmentDatabase.GetEquipmentPiecesBySlot(
+    module.EquipmentSlot.Weapon,
+);
+assert.equal(weaponPieces.size(), 1);
+assert.equal(weaponPieces.get(0).id, 500);
+weaponPieces.delete();
+
 assert.equal(
     module.DpsService.CalculateEffectiveLevel(99, 1.15, 1.10, 3),
     136,

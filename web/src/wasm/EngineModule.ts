@@ -24,7 +24,7 @@ export interface CollisionProfile {
 }
 
 export interface WeaponDefinition {
-    id: number;
+    id: number | bigint;
     range: number;
     speed: number;
 }
@@ -74,6 +74,21 @@ export interface AttackComposition {
 export interface DefenceComposition {
     stats: CombatStats;
     bonuses: EquipmentBonuses;
+}
+
+export interface EquipmentPiece {
+    id: number;
+    name: string;
+    slot: EquipmentSlot;
+    bonuses: EquipmentBonuses;
+    hasWeapon: boolean;
+    weapon: WeaponDefinition;
+}
+
+export interface EquipmentPieceVector {
+    size(): number;
+    get(index: number): EquipmentPiece | undefined;
+    delete(): void;
 }
 
 export interface DpsRequest {
@@ -161,6 +176,20 @@ export interface DpsServiceConstructor {
     CalculateHitChance(attackRoll: number, defenceRoll: number): number;
 }
 
+export interface EquipmentDatabase {
+    HasEquipmentPiece(id: number): boolean;
+    GetEquipmentPiece(id: number): EquipmentPiece;
+    GetAllEquipmentPieces(): EquipmentPieceVector;
+    GetEquipmentPiecesBySlot(slot: EquipmentSlot): EquipmentPieceVector;
+}
+
+export interface EquipmentDatabaseConstructor {
+    new (): EquipmentDatabase;
+    LoadFromJson(json: string): EquipmentDatabase;
+    LoadDefault(): EquipmentDatabase;
+    GetDefaultJson(): string;
+}
+
 export interface ActionFeedback {
     state: "none" | "blocked-movement" | "placement-failure" | "removal-failure";
 }
@@ -226,10 +255,24 @@ export type AttackType =
     | "RangedStandard"
     | "RangedHeavy";
 export type DefenderKind = number | "Player" | "Npc";
+export type EquipmentSlot =
+    | number
+    | "Head"
+    | "Cape"
+    | "Amulet"
+    | "Weapon"
+    | "Body"
+    | "Shield"
+    | "Legs"
+    | "Hands"
+    | "Feet"
+    | "Ring"
+    | "Ammo";
 
 export interface EngineModule {
     Engine: new () => Engine;
     DpsService: DpsServiceConstructor;
+    EquipmentDatabase: EquipmentDatabaseConstructor;
     CardinalDirection: {
         North: CardinalDirection;
         East?: CardinalDirection;
@@ -248,6 +291,19 @@ export interface EngineModule {
     DefenderKind: {
         Player: DefenderKind;
         Npc: DefenderKind;
+    };
+    EquipmentSlot: {
+        Head: EquipmentSlot;
+        Cape: EquipmentSlot;
+        Amulet: EquipmentSlot;
+        Weapon: EquipmentSlot;
+        Body: EquipmentSlot;
+        Shield: EquipmentSlot;
+        Legs: EquipmentSlot;
+        Hands: EquipmentSlot;
+        Feet: EquipmentSlot;
+        Ring: EquipmentSlot;
+        Ammo: EquipmentSlot;
     };
     World?: new () => World;
 }

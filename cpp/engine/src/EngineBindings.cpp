@@ -1,5 +1,6 @@
 #include "Engine.h"
 #include "DpsService.h"
+#include "EquipmentDatabase.h"
 #include "LineOfSight.h"
 #include "Scene.h"
 #include "Tile.h"
@@ -9,6 +10,8 @@
 #include <emscripten/val.h>
 
 #include <sstream>
+#include <string>
+#include <vector>
 
 namespace
 {
@@ -225,10 +228,18 @@ emscripten::val GetActorSnapshot(
     return emscripten::val(snapshot);
 }
 
+std::string GetDefaultEquipmentJson()
+{
+    return osrssim::EquipmentDatabase::GetDefaultJson();
+}
+
 }  // namespace
 
 EMSCRIPTEN_BINDINGS(osrssim_engine)
 {
+    emscripten::register_vector<osrssim::EquipmentPiece>(
+        "EquipmentPieceVector");
+
     emscripten::value_object<osrssim::SceneCoordinate>("SceneCoordinate")
         .field("x", &osrssim::SceneCoordinate::x)
         .field("y", &osrssim::SceneCoordinate::y)
@@ -263,6 +274,19 @@ EMSCRIPTEN_BINDINGS(osrssim_engine)
     emscripten::enum_<osrssim::DefenderKind>("DefenderKind")
         .value("Player", osrssim::DefenderKind::Player)
         .value("Npc", osrssim::DefenderKind::Npc);
+
+    emscripten::enum_<osrssim::EquipmentSlot>("EquipmentSlot")
+        .value("Head", osrssim::EquipmentSlot::Head)
+        .value("Cape", osrssim::EquipmentSlot::Cape)
+        .value("Amulet", osrssim::EquipmentSlot::Amulet)
+        .value("Weapon", osrssim::EquipmentSlot::Weapon)
+        .value("Body", osrssim::EquipmentSlot::Body)
+        .value("Shield", osrssim::EquipmentSlot::Shield)
+        .value("Legs", osrssim::EquipmentSlot::Legs)
+        .value("Hands", osrssim::EquipmentSlot::Hands)
+        .value("Feet", osrssim::EquipmentSlot::Feet)
+        .value("Ring", osrssim::EquipmentSlot::Ring)
+        .value("Ammo", osrssim::EquipmentSlot::Ammo);
 
     emscripten::value_object<osrssim::CombatStats>("CombatStats")
         .field("attack", &osrssim::CombatStats::attack)
@@ -315,6 +339,14 @@ EMSCRIPTEN_BINDINGS(osrssim_engine)
         "DefenceComposition")
         .field("stats", &osrssim::DefenceComposition::stats)
         .field("bonuses", &osrssim::DefenceComposition::bonuses);
+
+    emscripten::value_object<osrssim::EquipmentPiece>("EquipmentPiece")
+        .field("id", &osrssim::EquipmentPiece::id)
+        .field("name", &osrssim::EquipmentPiece::name)
+        .field("slot", &osrssim::EquipmentPiece::slot)
+        .field("bonuses", &osrssim::EquipmentPiece::bonuses)
+        .field("hasWeapon", &osrssim::EquipmentPiece::hasWeapon)
+        .field("weapon", &osrssim::EquipmentPiece::weapon);
 
     emscripten::value_object<osrssim::DpsRequest>("DpsRequest")
         .field(
@@ -432,6 +464,28 @@ EMSCRIPTEN_BINDINGS(osrssim_engine)
         .class_function(
             "CalculateHitChance",
             &osrssim::DpsService::CalculateHitChance);
+
+    emscripten::class_<osrssim::EquipmentDatabase>("EquipmentDatabase")
+        .constructor<>()
+        .class_function(
+            "LoadFromJson",
+            &osrssim::EquipmentDatabase::LoadFromJson)
+        .class_function(
+            "LoadDefault",
+            &osrssim::EquipmentDatabase::LoadDefault)
+        .class_function("GetDefaultJson", &GetDefaultEquipmentJson)
+        .function(
+            "HasEquipmentPiece",
+            &osrssim::EquipmentDatabase::HasEquipmentPiece)
+        .function(
+            "GetEquipmentPiece",
+            &osrssim::EquipmentDatabase::GetEquipmentPiece)
+        .function(
+            "GetAllEquipmentPieces",
+            &osrssim::EquipmentDatabase::GetAllEquipmentPieces)
+        .function(
+            "GetEquipmentPiecesBySlot",
+            &osrssim::EquipmentDatabase::GetEquipmentPiecesBySlot);
 
     emscripten::class_<osrssim::Scene>("Scene")
         .function("PlaceGameObject", &PlaceSceneGameObject)
