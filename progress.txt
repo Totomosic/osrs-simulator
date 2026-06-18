@@ -1,3 +1,13 @@
+2026-06-18 #66 Attack Type Fields and Combat Style Presets
+- Selected issue: #66, unblocked because #65 is closed. Parent PRD: #64.
+- Docs read: CONTEXT.md, docs/architecture/repo-structure.md, docs/osrs/combat-rolls.md, docs/adr/0006-web-development-viewer.md, PRD #64, feature #66, blocker #65.
+- Plan: TDD calculator model helpers for all seven attack types, family-specific combat style presets, attack-type reset behavior, NPC defence fields, and validation; then expose attack-type-specific controls in DpsCalculatorView.
+- Scope guard: only implement #66 single setup attack-type/style/validation slice; do not start setup tabs (#67) or responsive layout refinement (#68).
+- Completed: PRD #64 stories 13-24, 38-40, 48 for single player attack setup attack-type selection, combat style presets, NPC defence fields, and model request validation.
+- Decisions: calculator stores semantic attack type/style preset strings and maps them to WASM enum/style bonus values at request construction; changing attack family resets preset to melee accurate, ranged accurate, or magic standard; blank/invalid minimum-bound fields clamp at request construction so editing does not crash calculation.
+- Files changed: web/src/dpsCalculator.ts, web/src/DpsCalculatorView.vue, web/test/dps-calculator.test.mjs, progress.txt.
+- Validation: node web/test/dps-calculator.test.mjs, yarn --cwd web typecheck, yarn --cwd web test, yarn --cwd web build passed. No blockers.
+
 2026-06-18 #65 Single Baseline NPC DPS Calculator
 - Selected issue: #65, unblocked ready-for-agent. Parent PRD: #64.
 - Docs read: CONTEXT.md, docs/osrs/combat-rolls.md, docs/adr/0006-web-development-viewer.md, PRD #64, feature #65.

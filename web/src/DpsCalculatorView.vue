@@ -3,6 +3,11 @@ import { computed, onMounted, reactive, ref } from "vue";
 import {
     buildSingleSetupResultRow,
     createDefaultCalculatorState,
+    isMeleeAttackType,
+    isRangedAttackType,
+    setPlayerAttackType,
+    type CalculatorAttackType,
+    type CombatStylePreset,
     type DpsResultRow,
 } from "./dpsCalculator";
 import {
@@ -13,6 +18,76 @@ import {
 const engineModuleStatus = ref<"loading" | "loaded" | "failed">("loading");
 const engineModule = ref<EngineModule | null>(null);
 const calculatorState = reactive(createDefaultCalculatorState());
+
+const attackTypeOptions: Array<{ value: CalculatorAttackType; label: string }> = [
+    { value: "stab", label: "Stab" },
+    { value: "slash", label: "Slash" },
+    { value: "crush", label: "Crush" },
+    { value: "magic", label: "Magic" },
+    { value: "ranged-light", label: "Ranged light" },
+    { value: "ranged-standard", label: "Ranged standard" },
+    { value: "ranged-heavy", label: "Ranged heavy" },
+];
+
+const meleeCombatStyleOptions: Array<{
+    value: CombatStylePreset;
+    label: string;
+}> = [
+    { value: "melee-accurate", label: "Accurate" },
+    { value: "melee-aggressive", label: "Aggressive" },
+    { value: "melee-controlled", label: "Controlled" },
+    { value: "melee-defensive", label: "Defensive" },
+];
+
+const rangedCombatStyleOptions: Array<{
+    value: CombatStylePreset;
+    label: string;
+}> = [
+    { value: "ranged-accurate", label: "Accurate" },
+    { value: "ranged-rapid", label: "Rapid" },
+    { value: "ranged-longrange", label: "Longrange" },
+];
+
+const magicCombatStyleOptions: Array<{
+    value: CombatStylePreset;
+    label: string;
+}> = [
+    { value: "magic-standard", label: "Standard" },
+    { value: "magic-defensive", label: "Defensive casting" },
+];
+
+const isMeleeSetup = computed(() =>
+    isMeleeAttackType(calculatorState.playerAttackSetup.attackType),
+);
+const isRangedSetup = computed(() =>
+    isRangedAttackType(calculatorState.playerAttackSetup.attackType),
+);
+const isMagicSetup = computed(
+    () => calculatorState.playerAttackSetup.attackType === "magic",
+);
+const selectedMeleeAttackBonusLabel = computed(() => {
+    switch (calculatorState.playerAttackSetup.attackType) {
+        case "stab":
+            return "Stab attack bonus";
+        case "slash":
+            return "Slash attack bonus";
+        case "crush":
+            return "Crush attack bonus";
+        default:
+            return "Attack bonus";
+    }
+});
+const combatStyleOptions = computed(() => {
+    if (isRangedSetup.value) {
+        return rangedCombatStyleOptions;
+    }
+
+    if (isMagicSetup.value) {
+        return magicCombatStyleOptions;
+    }
+
+    return meleeCombatStyleOptions;
+});
 
 const resultRow = computed<DpsResultRow | null>(() => {
     if (engineModule.value === null) {
@@ -32,6 +107,14 @@ const engineStatusLabel = computed(() => {
             return "Loading engine wasm";
     }
 });
+
+function onAttackTypeChange(event: Event): void {
+    const select = event.target as HTMLSelectElement;
+    setPlayerAttackType(
+        calculatorState.playerAttackSetup,
+        select.value as CalculatorAttackType,
+    );
+}
 
 onMounted(async () => {
     try {
@@ -67,7 +150,23 @@ onMounted(async () => {
           >
         </div>
 
-        <label>
+        <label class="wide-field">
+          <span>Attack type</span>
+          <select
+            :value="calculatorState.playerAttackSetup.attackType"
+            @change="onAttackTypeChange"
+          >
+            <option
+              v-for="option in attackTypeOptions"
+              :key="option.value"
+              :value="option.value"
+            >
+              {{ option.label }}
+            </option>
+          </select>
+        </label>
+
+        <label v-if="isMeleeSetup">
           <span>Attack</span>
           <input
             v-model.number="calculatorState.playerAttackSetup.attack"
@@ -77,7 +176,7 @@ onMounted(async () => {
           >
         </label>
 
-        <label>
+        <label v-if="isMeleeSetup">
           <span>Strength</span>
           <input
             v-model.number="calculatorState.playerAttackSetup.strength"
@@ -87,8 +186,37 @@ onMounted(async () => {
           >
         </label>
 
-        <label>
-          <span>Slash attack bonus</span>
+        <label v-if="isRangedSetup">
+          <span>Ranged</span>
+          <input
+            v-model.number="calculatorState.playerAttackSetup.ranged"
+            min="1"
+            step="1"
+            type="number"
+          >
+        </label>
+
+        <label v-if="isMagicSetup">
+          <span>Magic</span>
+          <input
+            v-model.number="calculatorState.playerAttackSetup.magic"
+            min="1"
+            step="1"
+            type="number"
+          >
+        </label>
+
+        <label v-if="calculatorState.playerAttackSetup.attackType === 'stab'">
+          <span>{{ selectedMeleeAttackBonusLabel }}</span>
+          <input
+            v-model.number="calculatorState.playerAttackSetup.stabAttack"
+            step="1"
+            type="number"
+          >
+        </label>
+
+        <label v-if="calculatorState.playerAttackSetup.attackType === 'slash'">
+          <span>{{ selectedMeleeAttackBonusLabel }}</span>
           <input
             v-model.number="calculatorState.playerAttackSetup.slashAttack"
             step="1"
@@ -96,7 +224,34 @@ onMounted(async () => {
           >
         </label>
 
-        <label>
+        <label v-if="calculatorState.playerAttackSetup.attackType === 'crush'">
+          <span>{{ selectedMeleeAttackBonusLabel }}</span>
+          <input
+            v-model.number="calculatorState.playerAttackSetup.crushAttack"
+            step="1"
+            type="number"
+          >
+        </label>
+
+        <label v-if="isRangedSetup">
+          <span>Ranged attack bonus</span>
+          <input
+            v-model.number="calculatorState.playerAttackSetup.rangedAttack"
+            step="1"
+            type="number"
+          >
+        </label>
+
+        <label v-if="isMagicSetup">
+          <span>Magic attack bonus</span>
+          <input
+            v-model.number="calculatorState.playerAttackSetup.magicAttack"
+            step="1"
+            type="number"
+          >
+        </label>
+
+        <label v-if="isMeleeSetup">
           <span>Melee strength</span>
           <input
             v-model.number="calculatorState.playerAttackSetup.meleeStrength"
@@ -105,22 +260,46 @@ onMounted(async () => {
           >
         </label>
 
-        <label>
-          <span>Attack style bonus</span>
+        <label v-if="isRangedSetup">
+          <span>Ranged strength</span>
           <input
-            v-model.number="calculatorState.playerAttackSetup.attackStyleBonus"
+            v-model.number="calculatorState.playerAttackSetup.rangedStrength"
             step="1"
             type="number"
           >
         </label>
 
-        <label>
-          <span>Strength style bonus</span>
+        <label v-if="isMagicSetup">
+          <span>Magic damage percent</span>
           <input
-            v-model.number="calculatorState.playerAttackSetup.strengthStyleBonus"
+            v-model.number="calculatorState.playerAttackSetup.magicDamagePercent"
+            min="0"
+            step="0.1"
+            type="number"
+          >
+        </label>
+
+        <label v-if="isMagicSetup">
+          <span>Magic base maximum hit</span>
+          <input
+            v-model.number="calculatorState.playerAttackSetup.magicBaseMaximumHit"
+            min="0"
             step="1"
             type="number"
           >
+        </label>
+
+        <label class="wide-field">
+          <span>Combat style</span>
+          <select v-model="calculatorState.playerAttackSetup.combatStylePreset">
+            <option
+              v-for="option in combatStyleOptions"
+              :key="option.value"
+              :value="option.value"
+            >
+              {{ option.label }}
+            </option>
+          </select>
         </label>
 
         <label>
@@ -151,9 +330,73 @@ onMounted(async () => {
         </label>
 
         <label>
+          <span>Magic</span>
+          <input
+            v-model.number="calculatorState.npcDefenceSetup.magic"
+            min="1"
+            step="1"
+            type="number"
+          >
+        </label>
+
+        <label>
+          <span>Stab defence bonus</span>
+          <input
+            v-model.number="calculatorState.npcDefenceSetup.stabDefence"
+            step="1"
+            type="number"
+          >
+        </label>
+
+        <label>
           <span>Slash defence bonus</span>
           <input
             v-model.number="calculatorState.npcDefenceSetup.slashDefence"
+            step="1"
+            type="number"
+          >
+        </label>
+
+        <label>
+          <span>Crush defence bonus</span>
+          <input
+            v-model.number="calculatorState.npcDefenceSetup.crushDefence"
+            step="1"
+            type="number"
+          >
+        </label>
+
+        <label>
+          <span>Magic defence bonus</span>
+          <input
+            v-model.number="calculatorState.npcDefenceSetup.magicDefence"
+            step="1"
+            type="number"
+          >
+        </label>
+
+        <label>
+          <span>Ranged light defence bonus</span>
+          <input
+            v-model.number="calculatorState.npcDefenceSetup.rangedDefenceLight"
+            step="1"
+            type="number"
+          >
+        </label>
+
+        <label>
+          <span>Ranged standard defence bonus</span>
+          <input
+            v-model.number="calculatorState.npcDefenceSetup.rangedDefenceStandard"
+            step="1"
+            type="number"
+          >
+        </label>
+
+        <label>
+          <span>Ranged heavy defence bonus</span>
+          <input
+            v-model.number="calculatorState.npcDefenceSetup.rangedDefenceHeavy"
             step="1"
             type="number"
           >
@@ -296,7 +539,8 @@ label {
     gap: 6px;
 }
 
-input {
+input,
+select {
     background: #fbfcfa;
     border: 1px solid #aeb9c2;
     color: #1e252b;
@@ -304,6 +548,10 @@ input {
     min-width: 0;
     padding: 8px 10px;
     width: 100%;
+}
+
+.wide-field {
+    grid-column: 1 / -1;
 }
 
 .dps-table-wrap {
