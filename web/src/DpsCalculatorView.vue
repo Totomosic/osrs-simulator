@@ -166,7 +166,7 @@ onMounted(async () => {
     </header>
 
     <section class="calculator-grid" aria-label="NPC DPS calculator">
-      <form class="setup-panel" aria-label="Player attack setup">
+      <form class="setup-panel player-setup-panel" aria-label="Player attack setup">
         <div class="panel-heading">
           <p class="eyebrow">Player attack setup</p>
           <div class="setup-tabs" role="tablist" aria-label="Player attack setups">
@@ -373,7 +373,7 @@ onMounted(async () => {
         </label>
       </form>
 
-      <form class="setup-panel" aria-label="NPC defence setup">
+      <form class="setup-panel npc-setup-panel" aria-label="NPC defence setup">
         <div class="panel-heading">
           <p class="eyebrow">NPC defence setup</p>
           <h2>NPC</h2>
@@ -462,41 +462,41 @@ onMounted(async () => {
           >
         </label>
       </form>
-    </section>
 
-    <section v-if="resultRows.length > 0" class="dps-table-wrap">
-      <table class="dps-table">
-        <thead>
-          <tr>
-            <th>Setup</th>
-            <th>Attack Roll</th>
-            <th>Defence Roll</th>
-            <th>Hit Chance</th>
-            <th>Maximum Hit</th>
-            <th>Expected Damage</th>
-            <th>Seconds</th>
-            <th>DPS</th>
-            <th>DPS Diff</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr v-for="(row, rowIndex) in resultRows" :key="rowIndex">
-            <td>{{ row.name }}</td>
-            <td>{{ row.attackRoll }}</td>
-            <td>{{ row.defenceRoll }}</td>
-            <td>{{ row.hitChance }}</td>
-            <td>{{ row.maximumHit }}</td>
-            <td>{{ row.expectedDamagePerAttack }}</td>
-            <td>{{ row.secondsPerAttack }}</td>
-            <td>{{ row.dps }}</td>
-            <td>{{ row.dpsDifference }}</td>
-          </tr>
-        </tbody>
-      </table>
-    </section>
+      <section v-if="resultRows.length > 0" class="dps-table-wrap dps-results-panel">
+        <table class="dps-table">
+          <thead>
+            <tr>
+              <th>Setup</th>
+              <th>Attack Roll</th>
+              <th>Defence Roll</th>
+              <th>Hit Chance</th>
+              <th>Maximum Hit</th>
+              <th>Expected Damage</th>
+              <th>Seconds</th>
+              <th>DPS</th>
+              <th>DPS Diff</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="(row, rowIndex) in resultRows" :key="rowIndex">
+              <td>{{ row.name }}</td>
+              <td>{{ row.attackRoll }}</td>
+              <td>{{ row.defenceRoll }}</td>
+              <td>{{ row.hitChance }}</td>
+              <td>{{ row.maximumHit }}</td>
+              <td>{{ row.expectedDamagePerAttack }}</td>
+              <td>{{ row.secondsPerAttack }}</td>
+              <td>{{ row.dps }}</td>
+              <td>{{ row.dpsDifference }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </section>
 
-    <section v-else class="loading-panel">
-      {{ engineStatusLabel }}
+      <section v-else class="loading-panel dps-results-panel">
+        {{ engineStatusLabel }}
+      </section>
     </section>
   </main>
 </template>
@@ -512,10 +512,14 @@ onMounted(async () => {
     padding: 28px;
 }
 
+*,
+*::before,
+*::after {
+    box-sizing: border-box;
+}
+
 .dps-header,
-.calculator-grid,
-.dps-table-wrap,
-.loading-panel {
+.calculator-grid {
     margin: 0 auto;
     max-width: 1180px;
 }
@@ -566,7 +570,10 @@ h2 {
 .calculator-grid {
     display: grid;
     gap: 16px;
-    grid-template-columns: minmax(0, 2fr) minmax(280px, 1fr);
+    grid-template-areas:
+        "player npc"
+        "results results";
+    grid-template-columns: minmax(0, 1.45fr) minmax(320px, 0.95fr);
     margin-bottom: 16px;
 }
 
@@ -580,8 +587,25 @@ h2 {
 .setup-panel {
     display: grid;
     gap: 12px;
-    grid-template-columns: repeat(2, minmax(160px, 1fr));
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     padding: 16px;
+}
+
+.player-setup-panel {
+    grid-area: player;
+}
+
+.npc-setup-panel {
+    grid-area: npc;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.dps-results-panel {
+    grid-area: results;
+    margin: 0;
+    max-width: none;
+    min-width: 0;
+    width: 100%;
 }
 
 .panel-heading {
@@ -603,7 +627,9 @@ h2 {
     font: inherit;
     font-size: 0.82rem;
     font-weight: 800;
+    max-width: 100%;
     min-height: 34px;
+    overflow-wrap: anywhere;
     padding: 6px 10px;
 }
 
@@ -633,6 +659,7 @@ label {
     font-size: 0.82rem;
     font-weight: 800;
     gap: 6px;
+    min-width: 0;
 }
 
 input,
@@ -663,7 +690,7 @@ select {
 th,
 td {
     border-bottom: 1px solid #dce2e6;
-    padding: 12px 14px;
+    padding: 10px 12px;
     text-align: right;
     white-space: nowrap;
 }
@@ -696,7 +723,14 @@ td {
         padding: 18px;
     }
 
-    .calculator-grid,
+    .calculator-grid {
+        grid-template-areas:
+            "player"
+            "npc"
+            "results";
+        grid-template-columns: minmax(0, 1fr);
+    }
+
     .setup-panel {
         grid-template-columns: 1fr;
     }

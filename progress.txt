@@ -1,3 +1,13 @@
+2026-06-18 #68 Responsive DPS Calculator Layout
+- Selected issue: #68, unblocked because #65, #66, and #67 are closed. Parent PRD: #64.
+- Docs read: CONTEXT.md, docs/agents/domain.md, docs/architecture/repo-structure.md, docs/osrs/combat-rolls.md, docs/adr/0006-web-development-viewer.md, PRD #64, feature #68, blockers #65/#66/#67.
+- Plan: TDD scope is behavior preservation via existing calculator model tests; refine DpsCalculatorView layout so player attack setup and NPC defence setup sit side by side on desktop, results span below, and mobile stacks player, NPC, results.
+- Scope guard: only implement #68 responsive layout refinement; do not change calculator formulas, model behavior, or setup-tab behavior.
+- Completed: PRD #64 stories 44-45 and feature #68 layout acceptance for dense desktop side-by-side controls, spanning results table, and mobile player/NPC/results order.
+- Decisions: put results/loading panel inside the calculator grid with named CSS grid areas; use responsive single-column areas below 760px; keep existing model tests as behavior guard because repo has no browser/component test seam.
+- Files changed: web/src/DpsCalculatorView.vue, progress.txt.
+- Validation: node web/test/dps-calculator.test.mjs, yarn --cwd web typecheck, yarn --cwd web test, yarn --cwd web build passed. No blockers.
+
 2026-06-18 #66 Attack Type Fields and Combat Style Presets
 - Selected issue: #66, unblocked because #65 is closed. Parent PRD: #64.
 - Docs read: CONTEXT.md, docs/architecture/repo-structure.md, docs/osrs/combat-rolls.md, docs/adr/0006-web-development-viewer.md, PRD #64, feature #66, blocker #65.
