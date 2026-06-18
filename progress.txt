@@ -1,3 +1,14 @@
+2026-06-19 #70 Use Attack and Defence Compositions in Manual DPS Path
+- Selected issue: #70, unblocked ready-for-agent. Parent PRD: #69.
+- Docs read: CONTEXT.md, docs/agents/domain.md, docs/architecture/repo-structure.md, docs/osrs/combat-rolls.md, docs/adr/0007-engine-owned-equipment-database.md, PRD #69, feature #70, feature #71 checked as alternate unblocked candidate.
+- Plan: TDD engine DpsRequest shape from flat stats/bonuses/attackType/weaponSpeed to attackComposition + defenceComposition + weaponDefinition; preserve manual DPS outputs; bind composition structs through WASM; update TypeScript interfaces and web calculator helper tests to construct composition-backed requests.
+- Scope guard: only implement #70 manual composition-backed DPS path; do not start equipment database (#71), equipment set composition (#72), NPC defence equipment mode, or UI equipment mode.
+- Completed: PRD #69 stories 16-19, 33-35 and feature #70 acceptance for composition-backed manual DPS requests, attack type on attack composition, weapon speed from weapon definition, and unchanged manual calculator rows.
+- Decisions: reuse existing engine `WeaponDefinition` for attack composition; keep combat style, prayers, roll multipliers, damage multiplier, magic base max hit, and defender kind on `DpsRequest`; manual web state keeps editable weaponSpeedTicks but request construction maps it to default weapon id 0/range 1/speed.
+- Files changed: cpp/engine/src/DpsService.h, cpp/engine/src/DpsService.cpp, cpp/engine/src/EngineBindings.cpp, cpp/engine/tests/DpsServiceTest.cpp, web/src/wasm/EngineModule.ts, web/src/dpsCalculator.ts, web/test/dps-calculator.test.mjs, web/test/generated-dps-service.test.mjs, progress.txt.
+- Validation: cmake --build build, ctest --test-dir build --output-on-failure, yarn --cwd web typecheck, node web/test/dps-calculator.test.mjs, source /home/jordan/dev/emsdk/emsdk_env.sh && yarn wasm:build, node web/test/generated-dps-service.test.mjs, yarn --cwd web test, yarn --cwd web build passed.
+- Notes: pre-existing uncommitted CONTEXT.md and docs/adr/0007-engine-owned-equipment-database.md were read as context but left unstaged.
+
 2026-06-18 #68 Responsive DPS Calculator Layout
 - Selected issue: #68, unblocked because #65, #66, and #67 are closed. Parent PRD: #64.
 - Docs read: CONTEXT.md, docs/agents/domain.md, docs/architecture/repo-structure.md, docs/osrs/combat-rolls.md, docs/adr/0006-web-development-viewer.md, PRD #64, feature #68, blockers #65/#66/#67.

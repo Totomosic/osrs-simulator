@@ -64,16 +64,24 @@ export interface StyleBonus {
     magic: number;
 }
 
+export interface AttackComposition {
+    attackType: AttackType;
+    stats: CombatStats;
+    bonuses: EquipmentBonuses;
+    weapon: WeaponDefinition;
+}
+
+export interface DefenceComposition {
+    stats: CombatStats;
+    bonuses: EquipmentBonuses;
+}
+
 export interface DpsRequest {
-    attackerStats: CombatStats;
-    defenderStats: CombatStats;
-    attackerBonuses: EquipmentBonuses;
-    defenderBonuses: EquipmentBonuses;
+    attackComposition: AttackComposition;
+    defenceComposition: DefenceComposition;
     attackerStyle: StyleBonus;
     defenderStyle: StyleBonus;
-    attackType: AttackType;
     defenderKind: DefenderKind;
-    weaponSpeedTicks: number;
     attackPrayerMultiplier: number;
     strengthPrayerMultiplier: number;
     defencePrayerMultiplier: number;

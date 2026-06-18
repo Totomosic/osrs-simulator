@@ -1,5 +1,7 @@
 #pragma once
 
+#include "Types.h"
+
 #include <random>
 
 namespace osrssim
@@ -60,17 +62,27 @@ struct StyleBonus
     int magic = 0;
 };
 
+struct AttackComposition
+{
+    AttackType attackType = AttackType::Slash;
+    CombatStats stats;
+    EquipmentBonuses bonuses;
+    WeaponDefinition weapon;
+};
+
+struct DefenceComposition
+{
+    CombatStats stats;
+    EquipmentBonuses bonuses;
+};
+
 struct DpsRequest
 {
-    CombatStats attackerStats;
-    CombatStats defenderStats;
-    EquipmentBonuses attackerBonuses;
-    EquipmentBonuses defenderBonuses;
+    AttackComposition attackComposition;
+    DefenceComposition defenceComposition;
     StyleBonus attackerStyle;
     StyleBonus defenderStyle;
-    AttackType attackType = AttackType::Slash;
     DefenderKind defenderKind = DefenderKind::Player;
-    int weaponSpeedTicks = 4;
     double attackPrayerMultiplier = 1.0;
     double strengthPrayerMultiplier = 1.0;
     double defencePrayerMultiplier = 1.0;

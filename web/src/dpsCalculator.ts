@@ -9,6 +9,7 @@ import type {
     EngineModule,
     EquipmentBonuses,
     StyleBonus,
+    WeaponDefinition,
 } from "./wasm/EngineModule";
 
 export interface DpsScenario {
@@ -205,28 +206,31 @@ export function buildNpcDpsRequest(
     };
 
     return {
-        attackerStats: {
-            ...createDefaultCombatStats(),
-            attack: sanitizeWholeNumber(playerAttackSetup.attack, 1),
-            strength: sanitizeWholeNumber(playerAttackSetup.strength, 1),
-            ranged: sanitizeWholeNumber(playerAttackSetup.ranged, 1),
-            magic: sanitizeWholeNumber(playerAttackSetup.magic, 1),
+        attackComposition: {
+            attackType: resolveModuleAttackType(module, attackType),
+            stats: {
+                ...createDefaultCombatStats(),
+                attack: sanitizeWholeNumber(playerAttackSetup.attack, 1),
+                strength: sanitizeWholeNumber(playerAttackSetup.strength, 1),
+                ranged: sanitizeWholeNumber(playerAttackSetup.ranged, 1),
+                magic: sanitizeWholeNumber(playerAttackSetup.magic, 1),
+            },
+            bonuses: attackerBonuses,
+            weapon: createWeaponDefinition(
+                sanitizeWholeNumber(playerAttackSetup.weaponSpeedTicks, 1),
+            ),
         },
-        defenderStats: {
-            ...createDefaultCombatStats(),
-            defence: sanitizeWholeNumber(npcDefenceSetup.defence, 1),
-            magic: sanitizeWholeNumber(npcDefenceSetup.magic, 1),
+        defenceComposition: {
+            stats: {
+                ...createDefaultCombatStats(),
+                defence: sanitizeWholeNumber(npcDefenceSetup.defence, 1),
+                magic: sanitizeWholeNumber(npcDefenceSetup.magic, 1),
+            },
+            bonuses: defenderBonuses,
         },
-        attackerBonuses,
-        defenderBonuses,
         attackerStyle: createCombatStyleBonus(playerAttackSetup.combatStylePreset),
         defenderStyle: createDefaultStyleBonus(),
-        attackType: resolveModuleAttackType(module, attackType),
         defenderKind: module.DefenderKind.Npc,
-        weaponSpeedTicks: sanitizeWholeNumber(
-            playerAttackSetup.weaponSpeedTicks,
-            1,
-        ),
         attackPrayerMultiplier: 1.0,
         strengthPrayerMultiplier: 1.0,
         defencePrayerMultiplier: 1.0,
@@ -624,23 +628,29 @@ function createMeleeSlashRequest(
     defenderKind: DefenderKind,
 ): DpsRequest {
     return {
-        attackerStats: {
-            ...createDefaultCombatStats(),
-            attack: 99,
-            strength: 99,
+        attackComposition: {
+            attackType,
+            stats: {
+                ...createDefaultCombatStats(),
+                attack: 99,
+                strength: 99,
+            },
+            bonuses: {
+                ...createDefaultEquipmentBonuses(),
+                slashAttack: 132,
+                meleeStrength: 118,
+            },
+            weapon: createWeaponDefinition(4),
         },
-        defenderStats: {
-            ...createDefaultCombatStats(),
-            defence: 80,
-        },
-        attackerBonuses: {
-            ...createDefaultEquipmentBonuses(),
-            slashAttack: 132,
-            meleeStrength: 118,
-        },
-        defenderBonuses: {
-            ...createDefaultEquipmentBonuses(),
-            slashDefence: 80,
+        defenceComposition: {
+            stats: {
+                ...createDefaultCombatStats(),
+                defence: 80,
+            },
+            bonuses: {
+                ...createDefaultEquipmentBonuses(),
+                slashDefence: 80,
+            },
         },
         attackerStyle: {
             ...createDefaultStyleBonus(),
@@ -648,9 +658,7 @@ function createMeleeSlashRequest(
             strength: 3,
         },
         defenderStyle: createDefaultStyleBonus(),
-        attackType,
         defenderKind,
-        weaponSpeedTicks: 4,
         attackPrayerMultiplier: 1.0,
         strengthPrayerMultiplier: 1.0,
         defencePrayerMultiplier: 1.0,
@@ -669,33 +677,37 @@ function createRangedRequest(
     defenderKind: DefenderKind,
 ): DpsRequest {
     return {
-        attackerStats: {
-            ...createDefaultCombatStats(),
-            ranged: 99,
+        attackComposition: {
+            attackType,
+            stats: {
+                ...createDefaultCombatStats(),
+                ranged: 99,
+            },
+            bonuses: {
+                ...createDefaultEquipmentBonuses(),
+                rangedAttack: 100,
+                rangedStrength: 80,
+            },
+            weapon: createWeaponDefinition(4),
         },
-        defenderStats: {
-            ...createDefaultCombatStats(),
-            defence: 70,
-        },
-        attackerBonuses: {
-            ...createDefaultEquipmentBonuses(),
-            rangedAttack: 100,
-            rangedStrength: 80,
-        },
-        defenderBonuses: {
-            ...createDefaultEquipmentBonuses(),
-            rangedDefenceLight: 20,
-            rangedDefenceStandard: 40,
-            rangedDefenceHeavy: 60,
+        defenceComposition: {
+            stats: {
+                ...createDefaultCombatStats(),
+                defence: 70,
+            },
+            bonuses: {
+                ...createDefaultEquipmentBonuses(),
+                rangedDefenceLight: 20,
+                rangedDefenceStandard: 40,
+                rangedDefenceHeavy: 60,
+            },
         },
         attackerStyle: {
             ...createDefaultStyleBonus(),
             ranged: 3,
         },
         defenderStyle: createDefaultStyleBonus(),
-        attackType,
         defenderKind,
-        weaponSpeedTicks: 4,
         attackPrayerMultiplier: 1.10,
         strengthPrayerMultiplier: 1.05,
         defencePrayerMultiplier: 1.0,
@@ -714,31 +726,35 @@ function createMagicRequest(
     defenderKind: DefenderKind,
 ): DpsRequest {
     return {
-        attackerStats: {
-            ...createDefaultCombatStats(),
-            strength: 99,
-            magic: 90,
+        attackComposition: {
+            attackType,
+            stats: {
+                ...createDefaultCombatStats(),
+                strength: 99,
+                magic: 90,
+            },
+            bonuses: {
+                ...createDefaultEquipmentBonuses(),
+                magicAttack: 70,
+                meleeStrength: 200,
+                magicDamagePercent: 10,
+            },
+            weapon: createWeaponDefinition(5),
         },
-        defenderStats: {
-            ...createDefaultCombatStats(),
-            defence: 65,
-            magic: 66,
-        },
-        attackerBonuses: {
-            ...createDefaultEquipmentBonuses(),
-            magicAttack: 70,
-            meleeStrength: 200,
-            magicDamagePercent: 10,
-        },
-        defenderBonuses: {
-            ...createDefaultEquipmentBonuses(),
-            magicDefence: 40,
+        defenceComposition: {
+            stats: {
+                ...createDefaultCombatStats(),
+                defence: 65,
+                magic: 66,
+            },
+            bonuses: {
+                ...createDefaultEquipmentBonuses(),
+                magicDefence: 40,
+            },
         },
         attackerStyle: createDefaultStyleBonus(),
         defenderStyle: createDefaultStyleBonus(),
-        attackType,
         defenderKind,
-        weaponSpeedTicks: 5,
         attackPrayerMultiplier: 1.05,
         strengthPrayerMultiplier: 1.0,
         defencePrayerMultiplier: 1.0,
@@ -790,5 +806,13 @@ function createDefaultStyleBonus(): StyleBonus {
         defence: 0,
         ranged: 0,
         magic: 0,
+    };
+}
+
+function createWeaponDefinition(speed: number): WeaponDefinition {
+    return {
+        id: 0,
+        range: 1,
+        speed,
     };
 }

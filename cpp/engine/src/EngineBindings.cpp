@@ -304,16 +304,28 @@ EMSCRIPTEN_BINDINGS(osrssim_engine)
         .field("ranged", &osrssim::StyleBonus::ranged)
         .field("magic", &osrssim::StyleBonus::magic);
 
+    emscripten::value_object<osrssim::AttackComposition>(
+        "AttackComposition")
+        .field("attackType", &osrssim::AttackComposition::attackType)
+        .field("stats", &osrssim::AttackComposition::stats)
+        .field("bonuses", &osrssim::AttackComposition::bonuses)
+        .field("weapon", &osrssim::AttackComposition::weapon);
+
+    emscripten::value_object<osrssim::DefenceComposition>(
+        "DefenceComposition")
+        .field("stats", &osrssim::DefenceComposition::stats)
+        .field("bonuses", &osrssim::DefenceComposition::bonuses);
+
     emscripten::value_object<osrssim::DpsRequest>("DpsRequest")
-        .field("attackerStats", &osrssim::DpsRequest::attackerStats)
-        .field("defenderStats", &osrssim::DpsRequest::defenderStats)
-        .field("attackerBonuses", &osrssim::DpsRequest::attackerBonuses)
-        .field("defenderBonuses", &osrssim::DpsRequest::defenderBonuses)
+        .field(
+            "attackComposition",
+            &osrssim::DpsRequest::attackComposition)
+        .field(
+            "defenceComposition",
+            &osrssim::DpsRequest::defenceComposition)
         .field("attackerStyle", &osrssim::DpsRequest::attackerStyle)
         .field("defenderStyle", &osrssim::DpsRequest::defenderStyle)
-        .field("attackType", &osrssim::DpsRequest::attackType)
         .field("defenderKind", &osrssim::DpsRequest::defenderKind)
-        .field("weaponSpeedTicks", &osrssim::DpsRequest::weaponSpeedTicks)
         .field(
             "attackPrayerMultiplier",
             &osrssim::DpsRequest::attackPrayerMultiplier)

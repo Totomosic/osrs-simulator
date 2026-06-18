@@ -84,23 +84,33 @@ const defaultStyle = {
 };
 
 const meleeDpsRequest = {
-    attackerStats: {
-        ...defaultStats,
-        attack: 99,
-        strength: 99,
+    attackComposition: {
+        attackType: module.AttackType.Slash,
+        stats: {
+            ...defaultStats,
+            attack: 99,
+            strength: 99,
+        },
+        bonuses: {
+            ...defaultBonuses,
+            slashAttack: 132,
+            meleeStrength: 118,
+        },
+        weapon: {
+            id: 0,
+            range: 1,
+            speed: 4,
+        },
     },
-    defenderStats: {
-        ...defaultStats,
-        defence: 80,
-    },
-    attackerBonuses: {
-        ...defaultBonuses,
-        slashAttack: 132,
-        meleeStrength: 118,
-    },
-    defenderBonuses: {
-        ...defaultBonuses,
-        slashDefence: 80,
+    defenceComposition: {
+        stats: {
+            ...defaultStats,
+            defence: 80,
+        },
+        bonuses: {
+            ...defaultBonuses,
+            slashDefence: 80,
+        },
     },
     attackerStyle: {
         ...defaultStyle,
@@ -108,9 +118,7 @@ const meleeDpsRequest = {
         strength: 3,
     },
     defenderStyle: defaultStyle,
-    attackType: module.AttackType.Slash,
     defenderKind: module.DefenderKind.Player,
-    weaponSpeedTicks: 4,
     attackPrayerMultiplier: 1.0,
     strengthPrayerMultiplier: 1.0,
     defencePrayerMultiplier: 1.0,
@@ -157,30 +165,35 @@ const aggregateSample = service.SampleAttacksWithSeed(
 
 const rangedDpsRequest = {
     ...meleeDpsRequest,
-    attackerStats: {
-        ...defaultStats,
-        ranged: 99,
+    attackComposition: {
+        ...meleeDpsRequest.attackComposition,
+        attackType: module.AttackType.RangedHeavy,
+        stats: {
+            ...defaultStats,
+            ranged: 99,
+        },
+        bonuses: {
+            ...defaultBonuses,
+            rangedAttack: 100,
+            rangedStrength: 80,
+        },
     },
-    defenderStats: {
-        ...defaultStats,
-        defence: 70,
-    },
-    attackerBonuses: {
-        ...defaultBonuses,
-        rangedAttack: 100,
-        rangedStrength: 80,
-    },
-    defenderBonuses: {
-        ...defaultBonuses,
-        rangedDefenceLight: 20,
-        rangedDefenceStandard: 40,
-        rangedDefenceHeavy: 60,
+    defenceComposition: {
+        stats: {
+            ...defaultStats,
+            defence: 70,
+        },
+        bonuses: {
+            ...defaultBonuses,
+            rangedDefenceLight: 20,
+            rangedDefenceStandard: 40,
+            rangedDefenceHeavy: 60,
+        },
     },
     attackerStyle: {
         ...defaultStyle,
         ranged: 3,
     },
-    attackType: module.AttackType.RangedHeavy,
     attackPrayerMultiplier: 1.10,
     strengthPrayerMultiplier: 1.05,
     attackLevelMultiplier: 1.02,
@@ -191,37 +204,52 @@ const rangedDpsRequest = {
 const rangedResult = service.CalculateExpected(rangedDpsRequest);
 const rangedLightResult = service.CalculateExpected({
     ...rangedDpsRequest,
-    attackType: module.AttackType.RangedLight,
+    attackComposition: {
+        ...rangedDpsRequest.attackComposition,
+        attackType: module.AttackType.RangedLight,
+    },
 });
 const rangedStandardResult = service.CalculateExpected({
     ...rangedDpsRequest,
-    attackType: module.AttackType.RangedStandard,
+    attackComposition: {
+        ...rangedDpsRequest.attackComposition,
+        attackType: module.AttackType.RangedStandard,
+    },
 });
 
 const magicDpsRequest = {
     ...meleeDpsRequest,
-    attackerStats: {
-        ...defaultStats,
-        magic: 90,
-        strength: 99,
+    attackComposition: {
+        ...meleeDpsRequest.attackComposition,
+        attackType: module.AttackType.Magic,
+        stats: {
+            ...defaultStats,
+            magic: 90,
+            strength: 99,
+        },
+        bonuses: {
+            ...defaultBonuses,
+            magicAttack: 70,
+            meleeStrength: 200,
+            magicDamagePercent: 10,
+        },
+        weapon: {
+            id: 0,
+            range: 1,
+            speed: 5,
+        },
     },
-    defenderStats: {
-        ...defaultStats,
-        defence: 65,
-        magic: 66,
+    defenceComposition: {
+        stats: {
+            ...defaultStats,
+            defence: 65,
+            magic: 66,
+        },
+        bonuses: {
+            ...defaultBonuses,
+            magicDefence: 40,
+        },
     },
-    attackerBonuses: {
-        ...defaultBonuses,
-        magicAttack: 70,
-        meleeStrength: 200,
-        magicDamagePercent: 10,
-    },
-    defenderBonuses: {
-        ...defaultBonuses,
-        magicDefence: 40,
-    },
-    attackType: module.AttackType.Magic,
-    weaponSpeedTicks: 5,
     magicBaseMaximumHit: 24,
     attackPrayerMultiplier: 1.05,
     finalDamageMultiplier: 1.20,

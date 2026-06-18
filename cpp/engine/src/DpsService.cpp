@@ -37,18 +37,23 @@ DpsResult DpsService::CalculateExpected(const DpsRequest& request) const
 
     result.attackRoll = CalculateAttackRoll(
         effectiveAttack,
-        SelectAttackBonus(request.attackType, request.attackerBonuses),
+        SelectAttackBonus(
+            request.attackComposition.attackType,
+            request.attackComposition.bonuses),
         request.finalAttackRollMultiplier);
     result.defenceRoll = CalculateDefenceRoll(
         effectiveDefence,
-        SelectDefenceBonus(request.attackType, request.defenderBonuses),
+        SelectDefenceBonus(
+            request.attackComposition.attackType,
+            request.defenceComposition.bonuses),
         request.finalDefenceRollMultiplier);
     result.maximumHit = CalculateMaximumHit(request, effectiveStrength);
     result.hitChance =
         CalculateHitChance(result.attackRoll, result.defenceRoll);
     result.expectedDamagePerAttack =
         result.hitChance * (result.maximumHit / 2.0);
-    result.secondsPerAttack = request.weaponSpeedTicks * SecondsPerTick;
+    result.secondsPerAttack =
+        request.attackComposition.weapon.speed * SecondsPerTick;
 
     if (result.secondsPerAttack > 0.0)
     {
@@ -203,26 +208,26 @@ int DpsService::SelectMeleeDefenceBonus(
 
 int DpsService::SelectAttackLevel(const DpsRequest& request)
 {
-    switch (request.attackType)
+    switch (request.attackComposition.attackType)
     {
         case AttackType::Stab:
         case AttackType::Slash:
         case AttackType::Crush:
-            return request.attackerStats.attack;
+            return request.attackComposition.stats.attack;
         case AttackType::Magic:
-            return request.attackerStats.magic;
+            return request.attackComposition.stats.magic;
         case AttackType::RangedLight:
         case AttackType::RangedStandard:
         case AttackType::RangedHeavy:
-            return request.attackerStats.ranged;
+            return request.attackComposition.stats.ranged;
     }
 
-    return request.attackerStats.attack;
+    return request.attackComposition.stats.attack;
 }
 
 int DpsService::SelectAttackStyleBonus(const DpsRequest& request)
 {
-    switch (request.attackType)
+    switch (request.attackComposition.attackType)
     {
         case AttackType::Stab:
         case AttackType::Slash:
@@ -241,26 +246,26 @@ int DpsService::SelectAttackStyleBonus(const DpsRequest& request)
 
 int DpsService::SelectStrengthLevel(const DpsRequest& request)
 {
-    switch (request.attackType)
+    switch (request.attackComposition.attackType)
     {
         case AttackType::Stab:
         case AttackType::Slash:
         case AttackType::Crush:
-            return request.attackerStats.strength;
+            return request.attackComposition.stats.strength;
         case AttackType::Magic:
             return 1;
         case AttackType::RangedLight:
         case AttackType::RangedStandard:
         case AttackType::RangedHeavy:
-            return request.attackerStats.ranged;
+            return request.attackComposition.stats.ranged;
     }
 
-    return request.attackerStats.strength;
+    return request.attackComposition.stats.strength;
 }
 
 int DpsService::SelectStrengthStyleBonus(const DpsRequest& request)
 {
-    switch (request.attackType)
+    switch (request.attackComposition.attackType)
     {
         case AttackType::Stab:
         case AttackType::Slash:
@@ -346,10 +351,10 @@ int DpsService::CalculateMaximumHit(
     const DpsRequest& request,
     int effectiveStrength)
 {
-    if (request.attackType == AttackType::Magic)
+    if (request.attackComposition.attackType == AttackType::Magic)
     {
         const double magicDamageMultiplier =
-            1.0 + request.attackerBonuses.magicDamagePercent / 100.0;
+            1.0 + request.attackComposition.bonuses.magicDamagePercent / 100.0;
 
         return static_cast<int>(std::floor(
             request.magicBaseMaximumHit *
@@ -359,7 +364,9 @@ int DpsService::CalculateMaximumHit(
 
     return CalculateStandardMaximumHit(
         effectiveStrength,
-        SelectStrengthBonus(request.attackType, request.attackerBonuses),
+        SelectStrengthBonus(
+            request.attackComposition.attackType,
+            request.attackComposition.bonuses),
         request.finalDamageMultiplier);
 }
 
@@ -367,20 +374,20 @@ int DpsService::CalculateEffectiveDefenceLevel(const DpsRequest& request)
 {
     if (request.defenderKind == DefenderKind::Npc)
     {
-        if (request.attackType == AttackType::Magic)
+        if (request.attackComposition.attackType == AttackType::Magic)
         {
-            return request.defenderStats.magic + 9;
+            return request.defenceComposition.stats.magic + 9;
         }
 
-        return request.defenderStats.defence + 9;
+        return request.defenceComposition.stats.defence + 9;
     }
 
-    if (request.attackType == AttackType::Magic)
+    if (request.attackComposition.attackType == AttackType::Magic)
     {
-        return (request.defenderStats.magic *
+        return (request.defenceComposition.stats.magic *
                 PlayerMagicDefenceMagicPercent / 100) +
             static_cast<int>(std::floor(
-                request.defenderStats.defence *
+                request.defenceComposition.stats.defence *
                 request.defencePrayerMultiplier *
                 request.defenceLevelMultiplier *
                 PlayerMagicDefenceDefencePercent / 100.0)) +
@@ -388,7 +395,7 @@ int DpsService::CalculateEffectiveDefenceLevel(const DpsRequest& request)
     }
 
     return CalculateEffectiveLevel(
-        request.defenderStats.defence,
+        request.defenceComposition.stats.defence,
         request.defencePrayerMultiplier,
         request.defenceLevelMultiplier,
         request.defenderStyle.defence);
