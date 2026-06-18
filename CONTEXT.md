@@ -144,6 +144,10 @@ _Avoid_: Hit, damage roll
 The offensive category used to choose matching attack and defence bonuses for a combat roll, such as stab, slash, crush, magic, or a ranged defence subtype.
 _Avoid_: Damage style, weapon type
 
+**Combat Style**:
+The selected attack mode that contributes small effective-level bonuses to combat rolls, such as accurate, aggressive, controlled, defensive, rapid, longrange, or defensive casting.
+_Avoid_: Style bonus, attack type
+
 **Maximum Hit**:
 The highest damage value a successful damage roll can produce before post-roll reductions. Maximum hit is distinct from expected damage.
 _Avoid_: Damage, expected damage
@@ -180,9 +184,21 @@ _Avoid_: Character collision
 An actor controlled as the user's character in the simulation.
 _Avoid_: Character
 
+**Player Attack Setup**:
+A player-side combat configuration used to compare expected attack outcomes against the same defender. A player attack setup includes the player's relevant combat stats, equipment bonuses, combat style bonuses, attack type, weapon speed, and combat modifiers.
+_Avoid_: Offensive stats, player stat block
+
+**Baseline Player Attack Setup**:
+The first player attack setup in a comparison, used as the reference for percentage difference in calculated combat outcomes.
+_Avoid_: Control setup, default setup
+
 **NPC**:
 An actor controlled by the simulation rather than by the user.
 _Avoid_: Non-player character
+
+**NPC Defence Setup**:
+An NPC-side combat configuration used as the shared defender for one or more player attack setups. An NPC defence setup includes the NPC's relevant defence and magic levels plus attack-type-specific defence bonuses.
+_Avoid_: Defensive stats, NPC stat block
 
 **Pathing**:
 The rules used to decide whether movement through a scene is possible. Pathing interprets movement blocking and actor occupancy rather than owning scene data.
