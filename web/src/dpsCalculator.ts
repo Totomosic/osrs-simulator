@@ -26,6 +26,132 @@ export interface DpsScenarioResult {
     aggregateResult: DpsSampleAggregateResult;
 }
 
+export interface PlayerAttackSetup {
+    name: string;
+    attack: number;
+    strength: number;
+    slashAttack: number;
+    meleeStrength: number;
+    attackStyleBonus: number;
+    strengthStyleBonus: number;
+    weaponSpeedTicks: number;
+}
+
+export interface NpcDefenceSetup {
+    defence: number;
+    slashDefence: number;
+}
+
+export interface DpsCalculatorState {
+    playerAttackSetup: PlayerAttackSetup;
+    npcDefenceSetup: NpcDefenceSetup;
+}
+
+export interface DpsResultRow {
+    name: string;
+    attackRoll: string;
+    defenceRoll: string;
+    hitChance: string;
+    maximumHit: string;
+    expectedDamagePerAttack: string;
+    secondsPerAttack: string;
+    dps: string;
+}
+
+export function createDefaultCalculatorState(): DpsCalculatorState {
+    return {
+        playerAttackSetup: {
+            name: "Baseline",
+            attack: 99,
+            strength: 99,
+            slashAttack: 132,
+            meleeStrength: 118,
+            attackStyleBonus: 3,
+            strengthStyleBonus: 3,
+            weaponSpeedTicks: 4,
+        },
+        npcDefenceSetup: {
+            defence: 80,
+            slashDefence: 80,
+        },
+    };
+}
+
+export function buildNpcDpsRequest(
+    module: EngineModule,
+    state: DpsCalculatorState,
+): DpsRequest {
+    const { playerAttackSetup, npcDefenceSetup } = state;
+
+    return {
+        attackerStats: {
+            ...createDefaultCombatStats(),
+            attack: playerAttackSetup.attack,
+            strength: playerAttackSetup.strength,
+        },
+        defenderStats: {
+            ...createDefaultCombatStats(),
+            defence: npcDefenceSetup.defence,
+        },
+        attackerBonuses: {
+            ...createDefaultEquipmentBonuses(),
+            slashAttack: playerAttackSetup.slashAttack,
+            meleeStrength: playerAttackSetup.meleeStrength,
+        },
+        defenderBonuses: {
+            ...createDefaultEquipmentBonuses(),
+            slashDefence: npcDefenceSetup.slashDefence,
+        },
+        attackerStyle: {
+            ...createDefaultStyleBonus(),
+            attack: playerAttackSetup.attackStyleBonus,
+            strength: playerAttackSetup.strengthStyleBonus,
+        },
+        defenderStyle: createDefaultStyleBonus(),
+        attackType: module.AttackType.Slash,
+        defenderKind: module.DefenderKind.Npc,
+        weaponSpeedTicks: playerAttackSetup.weaponSpeedTicks,
+        attackPrayerMultiplier: 1.0,
+        strengthPrayerMultiplier: 1.0,
+        defencePrayerMultiplier: 1.0,
+        attackLevelMultiplier: 1.0,
+        strengthLevelMultiplier: 1.0,
+        defenceLevelMultiplier: 1.0,
+        finalAttackRollMultiplier: 1.0,
+        finalDefenceRollMultiplier: 1.0,
+        finalDamageMultiplier: 1.0,
+        magicBaseMaximumHit: 0,
+    };
+}
+
+export function buildSingleSetupResultRow(
+    module: EngineModule,
+    state: DpsCalculatorState,
+): DpsResultRow {
+    const service = new module.DpsService();
+    const result = service.CalculateExpected(buildNpcDpsRequest(module, state));
+
+    return createDpsResultRow(state.playerAttackSetup.name, result);
+}
+
+export function createDpsResultRow(
+    name: string,
+    result: DpsResult,
+): DpsResultRow {
+    return {
+        name,
+        attackRoll: result.attackRoll.toString(),
+        defenceRoll: result.defenceRoll.toString(),
+        hitChance: formatDpsPercent(result.hitChance),
+        maximumHit: result.maximumHit.toString(),
+        expectedDamagePerAttack: formatDpsNumber(
+            result.expectedDamagePerAttack,
+        ),
+        secondsPerAttack: formatDpsNumber(result.secondsPerAttack, 1),
+        dps: formatDpsNumber(result.dps),
+    };
+}
+
 export function createFixedMeleeDpsScenarios(
     module: EngineModule,
 ): DpsScenario[] {
@@ -132,6 +258,10 @@ export function calculateDpsScenarioResults(
 
 export function formatDpsNumber(value: number, fractionDigits = 3): string {
     return value.toFixed(fractionDigits);
+}
+
+export function formatDpsPercent(value: number): string {
+    return `${formatDpsNumber(value * 100, 2)}%`;
 }
 
 function createMeleeSlashRequest(

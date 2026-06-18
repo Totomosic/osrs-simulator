@@ -1,3 +1,13 @@
+2026-06-18 #65 Single Baseline NPC DPS Calculator
+- Selected issue: #65, unblocked ready-for-agent. Parent PRD: #64.
+- Docs read: CONTEXT.md, docs/osrs/combat-rolls.md, docs/adr/0006-web-development-viewer.md, PRD #64, feature #65.
+- Plan: TDD web calculator model helpers for default editable state, NPC-only request construction, expected-value result row, and number formatting; replace fixed tracer table with live single-setup Vue calculator; keep generated DPS service tests as WASM authority.
+- Scope guard: only implement #65 single baseline calculator; do not start attack-type selector, setup tabs, baseline percent comparisons, or responsive refinement issues.
+- Completed: PRD #64 stories 1-4, 27-34, 42, 46-48 for single baseline NPC-only melee slash calculator.
+- Decisions: new editable model helpers coexist with fixed scenario helpers because generated WASM regression tests still use fixed scenarios as engine coverage; #65 UI exposes only slash baseline fields and expected-value outputs.
+- Files changed: web/src/dpsCalculator.ts, web/src/DpsCalculatorView.vue, web/test/dps-calculator.test.mjs, progress.txt.
+- Validation: node web/test/dps-calculator.test.mjs, yarn --cwd web typecheck, yarn --cwd web test, yarn --cwd web build passed. No blockers.
+
 2026-06-17 #62 Player and NPC Defender Formula Branches
 - Selected issue: #62, unblocked because #61 is closed. Parent PRD: #56.
 - Docs read: CONTEXT.md, docs/agents/domain.md, docs/architecture/repo-structure.md, docs/adr/0002-deterministic-engine.md, docs/adr/0006-web-development-viewer.md, docs/osrs/combat-rolls.md, PRD #56, feature #62, blocker #61.

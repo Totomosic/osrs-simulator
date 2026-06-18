@@ -1,14 +1,26 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from "vue";
+import { computed, onMounted, reactive, ref } from "vue";
 import {
-    calculateDpsScenarioResults,
-    formatDpsNumber,
-    type DpsScenarioResult,
+    buildSingleSetupResultRow,
+    createDefaultCalculatorState,
+    type DpsResultRow,
 } from "./dpsCalculator";
-import { loadEngineModule } from "./wasm/EngineModule";
+import {
+    loadEngineModule,
+    type EngineModule,
+} from "./wasm/EngineModule";
 
 const engineModuleStatus = ref<"loading" | "loaded" | "failed">("loading");
-const scenarioResults = ref<DpsScenarioResult[]>([]);
+const engineModule = ref<EngineModule | null>(null);
+const calculatorState = reactive(createDefaultCalculatorState());
+
+const resultRow = computed<DpsResultRow | null>(() => {
+    if (engineModule.value === null) {
+        return null;
+    }
+
+    return buildSingleSetupResultRow(engineModule.value, calculatorState);
+});
 
 const engineStatusLabel = computed(() => {
     switch (engineModuleStatus.value) {
@@ -23,8 +35,7 @@ const engineStatusLabel = computed(() => {
 
 onMounted(async () => {
     try {
-        const module = await loadEngineModule();
-        scenarioResults.value = calculateDpsScenarioResults(module);
+        engineModule.value = await loadEngineModule();
         engineModuleStatus.value = "loaded";
     } catch (error) {
         console.error("Failed to load engine wasm module", error);
@@ -45,46 +56,135 @@ onMounted(async () => {
       </div>
     </header>
 
-    <section v-if="scenarioResults.length > 0" class="dps-table-wrap">
+    <section class="calculator-grid" aria-label="NPC DPS calculator">
+      <form class="setup-panel" aria-label="Player attack setup">
+        <div class="panel-heading">
+          <p class="eyebrow">Player attack setup</p>
+          <input
+            v-model="calculatorState.playerAttackSetup.name"
+            class="setup-name"
+            aria-label="Setup name"
+          >
+        </div>
+
+        <label>
+          <span>Attack</span>
+          <input
+            v-model.number="calculatorState.playerAttackSetup.attack"
+            min="1"
+            step="1"
+            type="number"
+          >
+        </label>
+
+        <label>
+          <span>Strength</span>
+          <input
+            v-model.number="calculatorState.playerAttackSetup.strength"
+            min="1"
+            step="1"
+            type="number"
+          >
+        </label>
+
+        <label>
+          <span>Slash attack bonus</span>
+          <input
+            v-model.number="calculatorState.playerAttackSetup.slashAttack"
+            step="1"
+            type="number"
+          >
+        </label>
+
+        <label>
+          <span>Melee strength</span>
+          <input
+            v-model.number="calculatorState.playerAttackSetup.meleeStrength"
+            step="1"
+            type="number"
+          >
+        </label>
+
+        <label>
+          <span>Attack style bonus</span>
+          <input
+            v-model.number="calculatorState.playerAttackSetup.attackStyleBonus"
+            step="1"
+            type="number"
+          >
+        </label>
+
+        <label>
+          <span>Strength style bonus</span>
+          <input
+            v-model.number="calculatorState.playerAttackSetup.strengthStyleBonus"
+            step="1"
+            type="number"
+          >
+        </label>
+
+        <label>
+          <span>Weapon speed (ticks)</span>
+          <input
+            v-model.number="calculatorState.playerAttackSetup.weaponSpeedTicks"
+            min="1"
+            step="1"
+            type="number"
+          >
+        </label>
+      </form>
+
+      <form class="setup-panel" aria-label="NPC defence setup">
+        <div class="panel-heading">
+          <p class="eyebrow">NPC defence setup</p>
+          <h2>NPC</h2>
+        </div>
+
+        <label>
+          <span>Defence</span>
+          <input
+            v-model.number="calculatorState.npcDefenceSetup.defence"
+            min="1"
+            step="1"
+            type="number"
+          >
+        </label>
+
+        <label>
+          <span>Slash defence bonus</span>
+          <input
+            v-model.number="calculatorState.npcDefenceSetup.slashDefence"
+            step="1"
+            type="number"
+          >
+        </label>
+      </form>
+    </section>
+
+    <section v-if="resultRow" class="dps-table-wrap">
       <table class="dps-table">
         <thead>
           <tr>
-            <th>Scenario</th>
-            <th>Type</th>
+            <th>Setup</th>
             <th>Attack Roll</th>
             <th>Defence Roll</th>
             <th>Hit Chance</th>
             <th>Maximum Hit</th>
             <th>Expected Damage</th>
-            <th>Sample Seed</th>
-            <th>Sample Count</th>
-            <th>Accuracy</th>
-            <th>Sampled Damage</th>
-            <th>Sampled Average</th>
-            <th>Sampled DPS</th>
             <th>Seconds</th>
             <th>DPS</th>
           </tr>
         </thead>
         <tbody>
-          <tr v-for="entry in scenarioResults" :key="entry.scenario.name">
-            <td>{{ entry.scenario.name }}</td>
-            <td>{{ entry.scenario.attackTypeLabel }}</td>
-            <td>{{ entry.result.attackRoll }}</td>
-            <td>{{ entry.result.defenceRoll }}</td>
-            <td>{{ formatDpsNumber(entry.result.hitChance * 100, 2) }}%</td>
-            <td>{{ entry.result.maximumHit }}</td>
-            <td>{{ formatDpsNumber(entry.result.expectedDamagePerAttack) }}</td>
-            <td>{{ entry.scenario.sampleSeed }}</td>
-            <td>{{ entry.aggregateResult.attackCount }}</td>
-            <td>{{ entry.sampledResult.accuracyPassed ? "Passed" : "Failed" }}</td>
-            <td>{{ entry.sampledResult.sampledDamage }}</td>
-            <td>
-              {{ formatDpsNumber(entry.aggregateResult.averageSampledDamagePerAttack) }}
-            </td>
-            <td>{{ formatDpsNumber(entry.aggregateResult.sampledDps) }}</td>
-            <td>{{ formatDpsNumber(entry.result.secondsPerAttack, 1) }}</td>
-            <td>{{ formatDpsNumber(entry.result.dps) }}</td>
+          <tr>
+            <td>{{ resultRow.name }}</td>
+            <td>{{ resultRow.attackRoll }}</td>
+            <td>{{ resultRow.defenceRoll }}</td>
+            <td>{{ resultRow.hitChance }}</td>
+            <td>{{ resultRow.maximumHit }}</td>
+            <td>{{ resultRow.expectedDamagePerAttack }}</td>
+            <td>{{ resultRow.secondsPerAttack }}</td>
+            <td>{{ resultRow.dps }}</td>
           </tr>
         </tbody>
       </table>
@@ -107,9 +207,16 @@ onMounted(async () => {
     padding: 28px;
 }
 
-.dps-header {
-    margin: 0 auto 20px;
+.dps-header,
+.calculator-grid,
+.dps-table-wrap,
+.loading-panel {
+    margin: 0 auto;
     max-width: 1180px;
+}
+
+.dps-header {
+    margin-bottom: 18px;
 }
 
 .eyebrow {
@@ -122,6 +229,7 @@ onMounted(async () => {
 }
 
 h1,
+h2,
 p {
     margin: 0;
 }
@@ -129,6 +237,10 @@ p {
 h1 {
     font-size: 2rem;
     line-height: 1.1;
+}
+
+h2 {
+    font-size: 1.1rem;
 }
 
 .engine-status {
@@ -146,18 +258,61 @@ h1 {
     color: #9b2c2c;
 }
 
+.calculator-grid {
+    display: grid;
+    gap: 16px;
+    grid-template-columns: minmax(0, 2fr) minmax(280px, 1fr);
+    margin-bottom: 16px;
+}
+
+.setup-panel,
 .dps-table-wrap,
 .loading-panel {
     background: #ffffff;
     border: 1px solid #bbc5cf;
-    margin: 0 auto;
-    max-width: 1180px;
+}
+
+.setup-panel {
+    display: grid;
+    gap: 12px;
+    grid-template-columns: repeat(2, minmax(160px, 1fr));
+    padding: 16px;
+}
+
+.panel-heading {
+    grid-column: 1 / -1;
+}
+
+.setup-name {
+    font-size: 1.1rem;
+    font-weight: 800;
+}
+
+label {
+    color: #37424c;
+    display: grid;
+    font-size: 0.82rem;
+    font-weight: 800;
+    gap: 6px;
+}
+
+input {
+    background: #fbfcfa;
+    border: 1px solid #aeb9c2;
+    color: #1e252b;
+    font: inherit;
+    min-width: 0;
+    padding: 8px 10px;
+    width: 100%;
+}
+
+.dps-table-wrap {
     overflow-x: auto;
 }
 
 .dps-table {
     border-collapse: collapse;
-    min-width: 1380px;
+    min-width: 860px;
     width: 100%;
 }
 
@@ -170,9 +325,7 @@ td {
 }
 
 th:first-child,
-td:first-child,
-th:nth-child(2),
-td:nth-child(2) {
+td:first-child {
     text-align: left;
 }
 
@@ -192,5 +345,16 @@ td {
     color: #4d5963;
     font-weight: 800;
     padding: 24px;
+}
+
+@media (max-width: 760px) {
+    .dps-shell {
+        padding: 18px;
+    }
+
+    .calculator-grid,
+    .setup-panel {
+        grid-template-columns: 1fr;
+    }
 }
 </style>
