@@ -128,6 +128,22 @@ _Avoid_: No weapon
 The equipped weapon data carried by an actor, including weapon identity and basic weapon stats.
 _Avoid_: Weapon instance, item definition
 
+**Equipment Piece**:
+A single equippable item with a human-readable name, stable numeric ID, equipment slot, equipment bonuses, and optionally a weapon definition when the item is a weapon.
+_Avoid_: Item, gear item
+
+**Equipment Piece ID**:
+A stable numeric identifier for an equipment piece. Equipment piece ID is distinct from weapon ID, even when the equipment piece is a weapon.
+_Avoid_: Weapon ID, item index
+
+**Equipment Slot**:
+The position in an equipment set where an equipment piece can be equipped, such as head, amulet, body, legs, weapon, shield, ring, or ammo.
+_Avoid_: Gear slot, inventory slot, necklace
+
+**Equipment Set**:
+A collection of equipment pieces occupying equipment slots whose bonuses can be combined into a combat composition.
+_Avoid_: Gear setup, loadout
+
 **Weapon Range**:
 The maximum line-of-sight range at which a weapon can attack another actor. Weapon range uses actor footprints and same-plane line of sight.
 _Avoid_: Distance, radius
@@ -147,6 +163,26 @@ _Avoid_: Damage style, weapon type
 **Combat Style**:
 The selected attack mode that contributes small effective-level bonuses to combat rolls, such as accurate, aggressive, controlled, defensive, rapid, longrange, or defensive casting.
 _Avoid_: Style bonus, attack type
+
+**Combat Stats**:
+An actor's current combat skill values used by combat calculations, separate from equipment.
+_Avoid_: Skill levels, base stats
+
+**Equipment Bonuses**:
+The offensive, defensive, and damage bonuses contributed by equipment.
+_Avoid_: Gear stats, item stats
+
+**Combat Composition**:
+A complete combat loadout that can be separated into attack-side and defence-side composition for combat calculations.
+_Avoid_: Combat setup, stat block
+
+**Attack Composition**:
+The attack-side part of a combat composition, including the selected attack type, combat stats, equipment bonuses, and weapon definition used to calculate offensive rolls and maximum hit.
+_Avoid_: Offensive stats
+
+**Defence Composition**:
+The defence-side part of a combat composition, including combat stats and equipment bonuses used to calculate defensive rolls.
+_Avoid_: Defensive stats
 
 **Maximum Hit**:
 The highest damage value a successful damage roll can produce before post-roll reductions. Maximum hit is distinct from expected damage.
@@ -185,8 +221,8 @@ An actor controlled as the user's character in the simulation.
 _Avoid_: Character
 
 **Player Attack Setup**:
-A player-side combat configuration used to compare expected attack outcomes against the same defender. A player attack setup includes the player's relevant combat stats, equipment bonuses, combat style bonuses, attack type, weapon speed, and combat modifiers.
-_Avoid_: Offensive stats, player stat block
+A user-facing calculator setup used to compare one player attack option against the same defender. A player attack setup produces an attack composition plus calculator-specific comparison metadata.
+_Avoid_: Attack composition, offensive stats, player stat block
 
 **Baseline Player Attack Setup**:
 The first player attack setup in a comparison, used as the reference for percentage difference in calculated combat outcomes.
@@ -197,8 +233,8 @@ An actor controlled by the simulation rather than by the user.
 _Avoid_: Non-player character
 
 **NPC Defence Setup**:
-An NPC-side combat configuration used as the shared defender for one or more player attack setups. An NPC defence setup includes the NPC's relevant defence and magic levels plus attack-type-specific defence bonuses.
-_Avoid_: Defensive stats, NPC stat block
+A user-facing calculator setup used as the shared NPC defender for one or more player attack setups. An NPC defence setup produces a defence composition plus calculator-specific defender metadata.
+_Avoid_: Defence composition, defensive stats, NPC stat block
 
 **Pathing**:
 The rules used to decide whether movement through a scene is possible. Pathing interprets movement blocking and actor occupancy rather than owning scene data.
