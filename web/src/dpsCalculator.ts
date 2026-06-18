@@ -81,7 +81,8 @@ export interface NpcDefenceSetup {
 }
 
 export interface DpsCalculatorState {
-    playerAttackSetup: PlayerAttackSetup;
+    playerAttackSetups: PlayerAttackSetup[];
+    activePlayerAttackSetupIndex: number;
     npcDefenceSetup: NpcDefenceSetup;
 }
 
@@ -94,29 +95,15 @@ export interface DpsResultRow {
     expectedDamagePerAttack: string;
     secondsPerAttack: string;
     dps: string;
+    dpsDifference: string;
 }
+
+export const maxPlayerAttackSetups = 12;
 
 export function createDefaultCalculatorState(): DpsCalculatorState {
     return {
-        playerAttackSetup: {
-            name: "Baseline",
-            attackType: "slash",
-            combatStylePreset: "melee-accurate",
-            attack: 99,
-            strength: 99,
-            ranged: 99,
-            magic: 99,
-            stabAttack: 0,
-            slashAttack: 132,
-            crushAttack: 0,
-            magicAttack: 0,
-            rangedAttack: 0,
-            meleeStrength: 118,
-            rangedStrength: 0,
-            magicDamagePercent: 0,
-            magicBaseMaximumHit: 0,
-            weaponSpeedTicks: 4,
-        },
+        playerAttackSetups: [createDefaultPlayerAttackSetup("Baseline")],
+        activePlayerAttackSetupIndex: 0,
         npcDefenceSetup: {
             defence: 80,
             magic: 1,
@@ -131,6 +118,64 @@ export function createDefaultCalculatorState(): DpsCalculatorState {
     };
 }
 
+export function addPlayerAttackSetup(state: DpsCalculatorState): boolean {
+    if (state.playerAttackSetups.length >= maxPlayerAttackSetups) {
+        return false;
+    }
+
+    const activeSetup = getActivePlayerAttackSetup(state);
+    state.playerAttackSetups.push({
+        ...activeSetup,
+        name: `Setup ${state.playerAttackSetups.length + 1}`,
+    });
+    state.activePlayerAttackSetupIndex = state.playerAttackSetups.length - 1;
+
+    return true;
+}
+
+export function renamePlayerAttackSetup(
+    state: DpsCalculatorState,
+    setupIndex: number,
+    name: string,
+): void {
+    const setup = state.playerAttackSetups[setupIndex];
+    if (setup === undefined) {
+        return;
+    }
+
+    setup.name = name;
+}
+
+export function deletePlayerAttackSetup(
+    state: DpsCalculatorState,
+    setupIndex: number,
+): boolean {
+    if (state.playerAttackSetups.length <= 1) {
+        state.activePlayerAttackSetupIndex = 0;
+        return false;
+    }
+
+    if (setupIndex < 0 || setupIndex >= state.playerAttackSetups.length) {
+        return false;
+    }
+
+    state.playerAttackSetups.splice(setupIndex, 1);
+    state.activePlayerAttackSetupIndex = Math.min(
+        state.activePlayerAttackSetupIndex,
+        state.playerAttackSetups.length - 1,
+    );
+
+    return true;
+}
+
+export function getActivePlayerAttackSetup(
+    state: DpsCalculatorState,
+): PlayerAttackSetup {
+    return state.playerAttackSetups[
+        clampPlayerAttackSetupIndex(state, state.activePlayerAttackSetupIndex)
+    ];
+}
+
 export function setPlayerAttackType(
     setup: PlayerAttackSetup,
     attackType: CalculatorAttackType,
@@ -142,8 +187,13 @@ export function setPlayerAttackType(
 export function buildNpcDpsRequest(
     module: EngineModule,
     state: DpsCalculatorState,
+    setupIndex = state.activePlayerAttackSetupIndex,
 ): DpsRequest {
-    const { playerAttackSetup, npcDefenceSetup } = state;
+    const playerAttackSetup =
+        state.playerAttackSetups[
+            clampPlayerAttackSetupIndex(state, setupIndex)
+        ];
+    const { npcDefenceSetup } = state;
     const attackType = playerAttackSetup.attackType;
     const attackerBonuses = {
         ...createDefaultEquipmentBonuses(),
@@ -197,15 +247,35 @@ export function buildSingleSetupResultRow(
     module: EngineModule,
     state: DpsCalculatorState,
 ): DpsResultRow {
-    const service = new module.DpsService();
-    const result = service.CalculateExpected(buildNpcDpsRequest(module, state));
+    return buildSetupResultRows(module, state)[0];
+}
 
-    return createDpsResultRow(state.playerAttackSetup.name, result);
+export function buildSetupResultRows(
+    module: EngineModule,
+    state: DpsCalculatorState,
+): DpsResultRow[] {
+    const service = new module.DpsService();
+    const results = state.playerAttackSetups.map((setup, setupIndex) => ({
+        setup,
+        result: service.CalculateExpected(
+            buildNpcDpsRequest(module, state, setupIndex),
+        ),
+    }));
+    const baselineDps = results[0]?.result.dps ?? 0;
+
+    return results.map(({ setup, result }, setupIndex) =>
+        createDpsResultRow(
+            setup.name,
+            result,
+            formatDpsDifference(result.dps, baselineDps, setupIndex === 0),
+        ),
+    );
 }
 
 export function createDpsResultRow(
     name: string,
     result: DpsResult,
+    dpsDifference = "Baseline",
 ): DpsResultRow {
     return {
         name,
@@ -218,6 +288,7 @@ export function createDpsResultRow(
         ),
         secondsPerAttack: formatDpsNumber(result.secondsPerAttack, 1),
         dps: formatDpsNumber(result.dps),
+        dpsDifference,
     };
 }
 
@@ -333,6 +404,11 @@ export function formatDpsPercent(value: number): string {
     return `${formatDpsNumber(value * 100, 2)}%`;
 }
 
+export function formatSignedDpsPercent(value: number): string {
+    const sign = value > 0 ? "+" : "";
+    return `${sign}${formatDpsNumber(value, 2)}%`;
+}
+
 export function getDefaultCombatStylePreset(
     attackType: CalculatorAttackType,
 ): CombatStylePreset {
@@ -401,6 +477,54 @@ function createAttackerBonusFields(
                 rangedAttack: sanitizeWholeNumber(setup.rangedAttack),
             };
     }
+}
+
+function createDefaultPlayerAttackSetup(name: string): PlayerAttackSetup {
+    return {
+        name,
+        attackType: "slash",
+        combatStylePreset: "melee-accurate",
+        attack: 99,
+        strength: 99,
+        ranged: 99,
+        magic: 99,
+        stabAttack: 0,
+        slashAttack: 132,
+        crushAttack: 0,
+        magicAttack: 0,
+        rangedAttack: 0,
+        meleeStrength: 118,
+        rangedStrength: 0,
+        magicDamagePercent: 0,
+        magicBaseMaximumHit: 0,
+        weaponSpeedTicks: 4,
+    };
+}
+
+function clampPlayerAttackSetupIndex(
+    state: DpsCalculatorState,
+    setupIndex: number,
+): number {
+    return Math.min(
+        Math.max(0, setupIndex),
+        Math.max(0, state.playerAttackSetups.length - 1),
+    );
+}
+
+function formatDpsDifference(
+    setupDps: number,
+    baselineDps: number,
+    isBaseline: boolean,
+): string {
+    if (isBaseline) {
+        return "Baseline";
+    }
+
+    if (baselineDps === 0) {
+        return "n/a";
+    }
+
+    return formatSignedDpsPercent(((setupDps - baselineDps) / baselineDps) * 100);
 }
 
 function createDefenderBonusFields(

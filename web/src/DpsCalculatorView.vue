@@ -1,10 +1,14 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from "vue";
 import {
-    buildSingleSetupResultRow,
+    addPlayerAttackSetup,
+    buildSetupResultRows,
     createDefaultCalculatorState,
+    deletePlayerAttackSetup,
+    getActivePlayerAttackSetup,
     isMeleeAttackType,
     isRangedAttackType,
+    maxPlayerAttackSetups,
     setPlayerAttackType,
     type CalculatorAttackType,
     type CombatStylePreset,
@@ -18,6 +22,9 @@ import {
 const engineModuleStatus = ref<"loading" | "loaded" | "failed">("loading");
 const engineModule = ref<EngineModule | null>(null);
 const calculatorState = reactive(createDefaultCalculatorState());
+const activePlayerAttackSetup = computed(() =>
+    getActivePlayerAttackSetup(calculatorState),
+);
 
 const attackTypeOptions: Array<{ value: CalculatorAttackType; label: string }> = [
     { value: "stab", label: "Stab" },
@@ -57,16 +64,16 @@ const magicCombatStyleOptions: Array<{
 ];
 
 const isMeleeSetup = computed(() =>
-    isMeleeAttackType(calculatorState.playerAttackSetup.attackType),
+    isMeleeAttackType(activePlayerAttackSetup.value.attackType),
 );
 const isRangedSetup = computed(() =>
-    isRangedAttackType(calculatorState.playerAttackSetup.attackType),
+    isRangedAttackType(activePlayerAttackSetup.value.attackType),
 );
 const isMagicSetup = computed(
-    () => calculatorState.playerAttackSetup.attackType === "magic",
+    () => activePlayerAttackSetup.value.attackType === "magic",
 );
 const selectedMeleeAttackBonusLabel = computed(() => {
-    switch (calculatorState.playerAttackSetup.attackType) {
+    switch (activePlayerAttackSetup.value.attackType) {
         case "stab":
             return "Stab attack bonus";
         case "slash":
@@ -89,13 +96,21 @@ const combatStyleOptions = computed(() => {
     return meleeCombatStyleOptions;
 });
 
-const resultRow = computed<DpsResultRow | null>(() => {
+const resultRows = computed<DpsResultRow[]>(() => {
     if (engineModule.value === null) {
-        return null;
+        return [];
     }
 
-    return buildSingleSetupResultRow(engineModule.value, calculatorState);
+    return buildSetupResultRows(engineModule.value, calculatorState);
 });
+
+const canAddPlayerAttackSetup = computed(
+    () => calculatorState.playerAttackSetups.length < maxPlayerAttackSetups,
+);
+
+const canDeletePlayerAttackSetup = computed(
+    () => calculatorState.playerAttackSetups.length > 1,
+);
 
 const engineStatusLabel = computed(() => {
     switch (engineModuleStatus.value) {
@@ -111,8 +126,19 @@ const engineStatusLabel = computed(() => {
 function onAttackTypeChange(event: Event): void {
     const select = event.target as HTMLSelectElement;
     setPlayerAttackType(
-        calculatorState.playerAttackSetup,
+        activePlayerAttackSetup.value,
         select.value as CalculatorAttackType,
+    );
+}
+
+function onAddPlayerAttackSetup(): void {
+    addPlayerAttackSetup(calculatorState);
+}
+
+function onDeleteActivePlayerAttackSetup(): void {
+    deletePlayerAttackSetup(
+        calculatorState,
+        calculatorState.activePlayerAttackSetupIndex,
     );
 }
 
@@ -143,8 +169,42 @@ onMounted(async () => {
       <form class="setup-panel" aria-label="Player attack setup">
         <div class="panel-heading">
           <p class="eyebrow">Player attack setup</p>
+          <div class="setup-tabs" role="tablist" aria-label="Player attack setups">
+            <button
+              v-for="(setup, setupIndex) in calculatorState.playerAttackSetups"
+              :key="setupIndex"
+              :class="[
+                'setup-tab',
+                setupIndex === calculatorState.activePlayerAttackSetupIndex
+                  ? 'active'
+                  : '',
+              ]"
+              type="button"
+              role="tab"
+              :aria-selected="setupIndex === calculatorState.activePlayerAttackSetupIndex"
+              @click="calculatorState.activePlayerAttackSetupIndex = setupIndex"
+            >
+              {{ setup.name }}
+            </button>
+            <button
+              class="setup-tab action"
+              type="button"
+              :disabled="!canAddPlayerAttackSetup"
+              @click="onAddPlayerAttackSetup"
+            >
+              Add
+            </button>
+            <button
+              class="setup-tab action"
+              type="button"
+              :disabled="!canDeletePlayerAttackSetup"
+              @click="onDeleteActivePlayerAttackSetup"
+            >
+              Delete
+            </button>
+          </div>
           <input
-            v-model="calculatorState.playerAttackSetup.name"
+            v-model="activePlayerAttackSetup.name"
             class="setup-name"
             aria-label="Setup name"
           >
@@ -153,7 +213,7 @@ onMounted(async () => {
         <label class="wide-field">
           <span>Attack type</span>
           <select
-            :value="calculatorState.playerAttackSetup.attackType"
+            :value="activePlayerAttackSetup.attackType"
             @change="onAttackTypeChange"
           >
             <option
@@ -169,7 +229,7 @@ onMounted(async () => {
         <label v-if="isMeleeSetup">
           <span>Attack</span>
           <input
-            v-model.number="calculatorState.playerAttackSetup.attack"
+            v-model.number="activePlayerAttackSetup.attack"
             min="1"
             step="1"
             type="number"
@@ -179,7 +239,7 @@ onMounted(async () => {
         <label v-if="isMeleeSetup">
           <span>Strength</span>
           <input
-            v-model.number="calculatorState.playerAttackSetup.strength"
+            v-model.number="activePlayerAttackSetup.strength"
             min="1"
             step="1"
             type="number"
@@ -189,7 +249,7 @@ onMounted(async () => {
         <label v-if="isRangedSetup">
           <span>Ranged</span>
           <input
-            v-model.number="calculatorState.playerAttackSetup.ranged"
+            v-model.number="activePlayerAttackSetup.ranged"
             min="1"
             step="1"
             type="number"
@@ -199,35 +259,35 @@ onMounted(async () => {
         <label v-if="isMagicSetup">
           <span>Magic</span>
           <input
-            v-model.number="calculatorState.playerAttackSetup.magic"
+            v-model.number="activePlayerAttackSetup.magic"
             min="1"
             step="1"
             type="number"
           >
         </label>
 
-        <label v-if="calculatorState.playerAttackSetup.attackType === 'stab'">
+        <label v-if="activePlayerAttackSetup.attackType === 'stab'">
           <span>{{ selectedMeleeAttackBonusLabel }}</span>
           <input
-            v-model.number="calculatorState.playerAttackSetup.stabAttack"
+            v-model.number="activePlayerAttackSetup.stabAttack"
             step="1"
             type="number"
           >
         </label>
 
-        <label v-if="calculatorState.playerAttackSetup.attackType === 'slash'">
+        <label v-if="activePlayerAttackSetup.attackType === 'slash'">
           <span>{{ selectedMeleeAttackBonusLabel }}</span>
           <input
-            v-model.number="calculatorState.playerAttackSetup.slashAttack"
+            v-model.number="activePlayerAttackSetup.slashAttack"
             step="1"
             type="number"
           >
         </label>
 
-        <label v-if="calculatorState.playerAttackSetup.attackType === 'crush'">
+        <label v-if="activePlayerAttackSetup.attackType === 'crush'">
           <span>{{ selectedMeleeAttackBonusLabel }}</span>
           <input
-            v-model.number="calculatorState.playerAttackSetup.crushAttack"
+            v-model.number="activePlayerAttackSetup.crushAttack"
             step="1"
             type="number"
           >
@@ -236,7 +296,7 @@ onMounted(async () => {
         <label v-if="isRangedSetup">
           <span>Ranged attack bonus</span>
           <input
-            v-model.number="calculatorState.playerAttackSetup.rangedAttack"
+            v-model.number="activePlayerAttackSetup.rangedAttack"
             step="1"
             type="number"
           >
@@ -245,7 +305,7 @@ onMounted(async () => {
         <label v-if="isMagicSetup">
           <span>Magic attack bonus</span>
           <input
-            v-model.number="calculatorState.playerAttackSetup.magicAttack"
+            v-model.number="activePlayerAttackSetup.magicAttack"
             step="1"
             type="number"
           >
@@ -254,7 +314,7 @@ onMounted(async () => {
         <label v-if="isMeleeSetup">
           <span>Melee strength</span>
           <input
-            v-model.number="calculatorState.playerAttackSetup.meleeStrength"
+            v-model.number="activePlayerAttackSetup.meleeStrength"
             step="1"
             type="number"
           >
@@ -263,7 +323,7 @@ onMounted(async () => {
         <label v-if="isRangedSetup">
           <span>Ranged strength</span>
           <input
-            v-model.number="calculatorState.playerAttackSetup.rangedStrength"
+            v-model.number="activePlayerAttackSetup.rangedStrength"
             step="1"
             type="number"
           >
@@ -272,7 +332,7 @@ onMounted(async () => {
         <label v-if="isMagicSetup">
           <span>Magic damage percent</span>
           <input
-            v-model.number="calculatorState.playerAttackSetup.magicDamagePercent"
+            v-model.number="activePlayerAttackSetup.magicDamagePercent"
             min="0"
             step="0.1"
             type="number"
@@ -282,7 +342,7 @@ onMounted(async () => {
         <label v-if="isMagicSetup">
           <span>Magic base maximum hit</span>
           <input
-            v-model.number="calculatorState.playerAttackSetup.magicBaseMaximumHit"
+            v-model.number="activePlayerAttackSetup.magicBaseMaximumHit"
             min="0"
             step="1"
             type="number"
@@ -291,7 +351,7 @@ onMounted(async () => {
 
         <label class="wide-field">
           <span>Combat style</span>
-          <select v-model="calculatorState.playerAttackSetup.combatStylePreset">
+          <select v-model="activePlayerAttackSetup.combatStylePreset">
             <option
               v-for="option in combatStyleOptions"
               :key="option.value"
@@ -305,7 +365,7 @@ onMounted(async () => {
         <label>
           <span>Weapon speed (ticks)</span>
           <input
-            v-model.number="calculatorState.playerAttackSetup.weaponSpeedTicks"
+            v-model.number="activePlayerAttackSetup.weaponSpeedTicks"
             min="1"
             step="1"
             type="number"
@@ -404,7 +464,7 @@ onMounted(async () => {
       </form>
     </section>
 
-    <section v-if="resultRow" class="dps-table-wrap">
+    <section v-if="resultRows.length > 0" class="dps-table-wrap">
       <table class="dps-table">
         <thead>
           <tr>
@@ -416,18 +476,20 @@ onMounted(async () => {
             <th>Expected Damage</th>
             <th>Seconds</th>
             <th>DPS</th>
+            <th>DPS Diff</th>
           </tr>
         </thead>
         <tbody>
-          <tr>
-            <td>{{ resultRow.name }}</td>
-            <td>{{ resultRow.attackRoll }}</td>
-            <td>{{ resultRow.defenceRoll }}</td>
-            <td>{{ resultRow.hitChance }}</td>
-            <td>{{ resultRow.maximumHit }}</td>
-            <td>{{ resultRow.expectedDamagePerAttack }}</td>
-            <td>{{ resultRow.secondsPerAttack }}</td>
-            <td>{{ resultRow.dps }}</td>
+          <tr v-for="(row, rowIndex) in resultRows" :key="rowIndex">
+            <td>{{ row.name }}</td>
+            <td>{{ row.attackRoll }}</td>
+            <td>{{ row.defenceRoll }}</td>
+            <td>{{ row.hitChance }}</td>
+            <td>{{ row.maximumHit }}</td>
+            <td>{{ row.expectedDamagePerAttack }}</td>
+            <td>{{ row.secondsPerAttack }}</td>
+            <td>{{ row.dps }}</td>
+            <td>{{ row.dpsDifference }}</td>
           </tr>
         </tbody>
       </table>
@@ -524,6 +586,40 @@ h2 {
 
 .panel-heading {
     grid-column: 1 / -1;
+}
+
+.setup-tabs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-bottom: 12px;
+}
+
+.setup-tab {
+    background: #eef1ec;
+    border: 1px solid #aeb9c2;
+    color: #26313a;
+    cursor: pointer;
+    font: inherit;
+    font-size: 0.82rem;
+    font-weight: 800;
+    min-height: 34px;
+    padding: 6px 10px;
+}
+
+.setup-tab.active {
+    background: #1f4d3d;
+    border-color: #1f4d3d;
+    color: #ffffff;
+}
+
+.setup-tab.action {
+    background: #fbfcfa;
+}
+
+.setup-tab:disabled {
+    color: #8b969f;
+    cursor: not-allowed;
 }
 
 .setup-name {

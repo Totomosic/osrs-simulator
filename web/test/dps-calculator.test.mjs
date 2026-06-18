@@ -21,9 +21,12 @@ await build({
 });
 
 const {
+    addPlayerAttackSetup,
     buildNpcDpsRequest,
-    buildSingleSetupResultRow,
+    buildSetupResultRows,
     createDefaultCalculatorState,
+    deletePlayerAttackSetup,
+    renamePlayerAttackSetup,
     setPlayerAttackType,
     formatDpsNumber,
     formatDpsPercent,
@@ -31,6 +34,7 @@ const {
 
 class FakeDpsService {
     CalculateExpected(request) {
+        const dps = FakeDpsService.nextDpsValues.shift() ?? 4.560162645324535;
         FakeDpsService.lastRequest = request;
 
         return {
@@ -40,10 +44,12 @@ class FakeDpsService {
             hitChance: 0.7060896999211539,
             expectedDamagePerAttack: 10.944390348778885,
             secondsPerAttack: 2.4,
-            dps: 4.560162645324535,
+            dps,
         };
     }
 }
+
+FakeDpsService.nextDpsValues = [];
 
 const module = {
     AttackType: {
@@ -63,23 +69,25 @@ const module = {
 };
 
 const state = createDefaultCalculatorState();
-assert.equal(state.playerAttackSetup.name, "Baseline");
-assert.equal(state.playerAttackSetup.attackType, "slash");
-assert.equal(state.playerAttackSetup.combatStylePreset, "melee-accurate");
-assert.equal(state.playerAttackSetup.attack, 99);
-assert.equal(state.playerAttackSetup.strength, 99);
-assert.equal(state.playerAttackSetup.ranged, 99);
-assert.equal(state.playerAttackSetup.magic, 99);
-assert.equal(state.playerAttackSetup.stabAttack, 0);
-assert.equal(state.playerAttackSetup.slashAttack, 132);
-assert.equal(state.playerAttackSetup.crushAttack, 0);
-assert.equal(state.playerAttackSetup.magicAttack, 0);
-assert.equal(state.playerAttackSetup.rangedAttack, 0);
-assert.equal(state.playerAttackSetup.meleeStrength, 118);
-assert.equal(state.playerAttackSetup.rangedStrength, 0);
-assert.equal(state.playerAttackSetup.magicDamagePercent, 0);
-assert.equal(state.playerAttackSetup.magicBaseMaximumHit, 0);
-assert.equal(state.playerAttackSetup.weaponSpeedTicks, 4);
+assert.equal(state.activePlayerAttackSetupIndex, 0);
+assert.equal(state.playerAttackSetups.length, 1);
+assert.equal(state.playerAttackSetups[0].name, "Baseline");
+assert.equal(state.playerAttackSetups[0].attackType, "slash");
+assert.equal(state.playerAttackSetups[0].combatStylePreset, "melee-accurate");
+assert.equal(state.playerAttackSetups[0].attack, 99);
+assert.equal(state.playerAttackSetups[0].strength, 99);
+assert.equal(state.playerAttackSetups[0].ranged, 99);
+assert.equal(state.playerAttackSetups[0].magic, 99);
+assert.equal(state.playerAttackSetups[0].stabAttack, 0);
+assert.equal(state.playerAttackSetups[0].slashAttack, 132);
+assert.equal(state.playerAttackSetups[0].crushAttack, 0);
+assert.equal(state.playerAttackSetups[0].magicAttack, 0);
+assert.equal(state.playerAttackSetups[0].rangedAttack, 0);
+assert.equal(state.playerAttackSetups[0].meleeStrength, 118);
+assert.equal(state.playerAttackSetups[0].rangedStrength, 0);
+assert.equal(state.playerAttackSetups[0].magicDamagePercent, 0);
+assert.equal(state.playerAttackSetups[0].magicBaseMaximumHit, 0);
+assert.equal(state.playerAttackSetups[0].weaponSpeedTicks, 4);
 assert.equal(state.npcDefenceSetup.defence, 80);
 assert.equal(state.npcDefenceSetup.magic, 1);
 assert.equal(state.npcDefenceSetup.stabDefence, 0);
@@ -108,9 +116,9 @@ assert.equal(request.finalDamageMultiplier, 1);
 assert.equal(request.magicBaseMaximumHit, 0);
 
 const editedState = createDefaultCalculatorState();
-editedState.playerAttackSetup.attack = 118.9;
-editedState.playerAttackSetup.slashAttack = 150;
-editedState.playerAttackSetup.weaponSpeedTicks = 5.8;
+editedState.playerAttackSetups[0].attack = 118.9;
+editedState.playerAttackSetups[0].slashAttack = 150;
+editedState.playerAttackSetups[0].weaponSpeedTicks = 5.8;
 editedState.npcDefenceSetup.defence = 90;
 editedState.npcDefenceSetup.slashDefence = 110;
 const editedRequest = buildNpcDpsRequest(module, editedState);
@@ -121,9 +129,9 @@ assert.equal(editedRequest.defenderStats.defence, 90);
 assert.equal(editedRequest.defenderBonuses.slashDefence, 110);
 
 const stabState = createDefaultCalculatorState();
-stabState.playerAttackSetup.attackType = "stab";
-stabState.playerAttackSetup.stabAttack = -12;
-stabState.playerAttackSetup.combatStylePreset = "melee-aggressive";
+stabState.playerAttackSetups[0].attackType = "stab";
+stabState.playerAttackSetups[0].stabAttack = -12;
+stabState.playerAttackSetups[0].combatStylePreset = "melee-aggressive";
 stabState.npcDefenceSetup.stabDefence = -5;
 const stabRequest = buildNpcDpsRequest(module, stabState);
 assert.equal(stabRequest.attackType, module.AttackType.Stab);
@@ -134,9 +142,9 @@ assert.equal(stabRequest.attackerStyle.strength, 3);
 assert.equal(stabRequest.defenderBonuses.stabDefence, -5);
 
 const crushState = createDefaultCalculatorState();
-crushState.playerAttackSetup.attackType = "crush";
-crushState.playerAttackSetup.combatStylePreset = "melee-controlled";
-crushState.playerAttackSetup.crushAttack = 84;
+crushState.playerAttackSetups[0].attackType = "crush";
+crushState.playerAttackSetups[0].combatStylePreset = "melee-controlled";
+crushState.playerAttackSetups[0].crushAttack = 84;
 crushState.npcDefenceSetup.crushDefence = 37;
 const crushRequest = buildNpcDpsRequest(module, crushState);
 assert.equal(crushRequest.attackType, module.AttackType.Crush);
@@ -147,14 +155,14 @@ assert.equal(crushRequest.attackerStyle.defence, 1);
 assert.equal(crushRequest.defenderBonuses.crushDefence, 37);
 
 const rangedState = createDefaultCalculatorState();
-setPlayerAttackType(rangedState.playerAttackSetup, "ranged-heavy");
-rangedState.playerAttackSetup.ranged = 112;
-rangedState.playerAttackSetup.rangedAttack = 167;
-rangedState.playerAttackSetup.rangedStrength = 89;
-rangedState.playerAttackSetup.combatStylePreset = "ranged-longrange";
+setPlayerAttackType(rangedState.playerAttackSetups[0], "ranged-heavy");
+rangedState.playerAttackSetups[0].ranged = 112;
+rangedState.playerAttackSetups[0].rangedAttack = 167;
+rangedState.playerAttackSetups[0].rangedStrength = 89;
+rangedState.playerAttackSetups[0].combatStylePreset = "ranged-longrange";
 rangedState.npcDefenceSetup.rangedDefenceHeavy = 64;
 const rangedRequest = buildNpcDpsRequest(module, rangedState);
-assert.equal(rangedState.playerAttackSetup.combatStylePreset, "ranged-longrange");
+assert.equal(rangedState.playerAttackSetups[0].combatStylePreset, "ranged-longrange");
 assert.equal(rangedRequest.attackType, module.AttackType.RangedHeavy);
 assert.equal(rangedRequest.attackerStats.ranged, 112);
 assert.equal(rangedRequest.attackerBonuses.rangedAttack, 167);
@@ -164,15 +172,15 @@ assert.equal(rangedRequest.attackerStyle.defence, 3);
 assert.equal(rangedRequest.defenderBonuses.rangedDefenceHeavy, 64);
 
 const rangedLightState = createDefaultCalculatorState();
-rangedLightState.playerAttackSetup.attackType = "ranged-light";
+rangedLightState.playerAttackSetups[0].attackType = "ranged-light";
 assert.equal(
     buildNpcDpsRequest(module, rangedLightState).attackType,
     module.AttackType.RangedLight,
 );
 
 const rangedStandardState = createDefaultCalculatorState();
-rangedStandardState.playerAttackSetup.attackType = "ranged-standard";
-rangedStandardState.playerAttackSetup.combatStylePreset = "ranged-rapid";
+rangedStandardState.playerAttackSetups[0].attackType = "ranged-standard";
+rangedStandardState.playerAttackSetups[0].combatStylePreset = "ranged-rapid";
 assert.equal(
     buildNpcDpsRequest(module, rangedStandardState).attackType,
     module.AttackType.RangedStandard,
@@ -183,16 +191,16 @@ assert.equal(
 );
 
 const magicState = createDefaultCalculatorState();
-setPlayerAttackType(magicState.playerAttackSetup, "magic");
-magicState.playerAttackSetup.magic = 94;
-magicState.playerAttackSetup.magicAttack = 42.7;
-magicState.playerAttackSetup.magicDamagePercent = 12.5;
-magicState.playerAttackSetup.magicBaseMaximumHit = 24.9;
-magicState.playerAttackSetup.combatStylePreset = "magic-defensive";
+setPlayerAttackType(magicState.playerAttackSetups[0], "magic");
+magicState.playerAttackSetups[0].magic = 94;
+magicState.playerAttackSetups[0].magicAttack = 42.7;
+magicState.playerAttackSetups[0].magicDamagePercent = 12.5;
+magicState.playerAttackSetups[0].magicBaseMaximumHit = 24.9;
+magicState.playerAttackSetups[0].combatStylePreset = "magic-defensive";
 magicState.npcDefenceSetup.magic = 82.6;
 magicState.npcDefenceSetup.magicDefence = -7;
 const magicRequest = buildNpcDpsRequest(module, magicState);
-assert.equal(magicState.playerAttackSetup.combatStylePreset, "magic-defensive");
+assert.equal(magicState.playerAttackSetups[0].combatStylePreset, "magic-defensive");
 assert.equal(magicRequest.attackType, module.AttackType.Magic);
 assert.equal(magicRequest.attackerStats.magic, 94);
 assert.equal(magicRequest.attackerBonuses.magicAttack, 42);
@@ -204,11 +212,11 @@ assert.equal(magicRequest.defenderBonuses.magicDefence, -7);
 assert.equal(magicRequest.magicBaseMaximumHit, 24);
 
 const clampedState = createDefaultCalculatorState();
-clampedState.playerAttackSetup.attack = 0;
-clampedState.playerAttackSetup.strength = -2;
-clampedState.playerAttackSetup.weaponSpeedTicks = 0;
-clampedState.playerAttackSetup.magicDamagePercent = -0.25;
-clampedState.playerAttackSetup.magicBaseMaximumHit = -1;
+clampedState.playerAttackSetups[0].attack = 0;
+clampedState.playerAttackSetups[0].strength = -2;
+clampedState.playerAttackSetups[0].weaponSpeedTicks = 0;
+clampedState.playerAttackSetups[0].magicDamagePercent = -0.25;
+clampedState.playerAttackSetups[0].magicBaseMaximumHit = -1;
 clampedState.npcDefenceSetup.defence = "";
 const clampedRequest = buildNpcDpsRequest(module, clampedState);
 assert.equal(clampedRequest.attackerStats.attack, 1);
@@ -219,17 +227,18 @@ assert.equal(clampedRequest.magicBaseMaximumHit, 0);
 assert.equal(clampedRequest.defenderStats.defence, 1);
 
 const resetState = createDefaultCalculatorState();
-resetState.playerAttackSetup.combatStylePreset = "melee-defensive";
-setPlayerAttackType(resetState.playerAttackSetup, "ranged-standard");
-assert.equal(resetState.playerAttackSetup.combatStylePreset, "ranged-accurate");
-setPlayerAttackType(resetState.playerAttackSetup, "magic");
-assert.equal(resetState.playerAttackSetup.combatStylePreset, "magic-standard");
-setPlayerAttackType(resetState.playerAttackSetup, "slash");
-assert.equal(resetState.playerAttackSetup.combatStylePreset, "melee-accurate");
+resetState.playerAttackSetups[0].combatStylePreset = "melee-defensive";
+setPlayerAttackType(resetState.playerAttackSetups[0], "ranged-standard");
+assert.equal(resetState.playerAttackSetups[0].combatStylePreset, "ranged-accurate");
+setPlayerAttackType(resetState.playerAttackSetups[0], "magic");
+assert.equal(resetState.playerAttackSetups[0].combatStylePreset, "magic-standard");
+setPlayerAttackType(resetState.playerAttackSetups[0], "slash");
+assert.equal(resetState.playerAttackSetups[0].combatStylePreset, "melee-accurate");
 
-const resultRow = buildSingleSetupResultRow(module, editedState);
+const resultRow = buildSetupResultRows(module, editedState)[0];
 assert.deepEqual(FakeDpsService.lastRequest, editedRequest);
 assert.equal(resultRow.name, "Baseline");
+assert.equal(resultRow.dpsDifference, "Baseline");
 assert.equal(resultRow.attackRoll, "21560");
 assert.equal(resultRow.defenceRoll, "12672");
 assert.equal(resultRow.hitChance, "70.61%");
@@ -241,3 +250,45 @@ assert.equal(resultRow.dps, "4.560");
 assert.equal(formatDpsNumber(4.560162645324535), "4.560");
 assert.equal(formatDpsNumber(2.4, 1), "2.4");
 assert.equal(formatDpsPercent(0.7060896999211539), "70.61%");
+
+const multiSetupState = createDefaultCalculatorState();
+multiSetupState.playerAttackSetups[0].name = "Slash baseline";
+multiSetupState.playerAttackSetups[0].slashAttack = 132;
+addPlayerAttackSetup(multiSetupState);
+assert.equal(multiSetupState.activePlayerAttackSetupIndex, 1);
+assert.equal(multiSetupState.playerAttackSetups.length, 2);
+assert.equal(multiSetupState.playerAttackSetups[1].name, "Setup 2");
+assert.equal(multiSetupState.playerAttackSetups[1].slashAttack, 132);
+multiSetupState.playerAttackSetups[1].slashAttack = 160;
+assert.equal(multiSetupState.playerAttackSetups[0].slashAttack, 132);
+
+renamePlayerAttackSetup(multiSetupState, 1, "Strength swap");
+assert.equal(multiSetupState.playerAttackSetups[1].name, "Strength swap");
+
+deletePlayerAttackSetup(multiSetupState, 0);
+assert.equal(multiSetupState.playerAttackSetups.length, 1);
+assert.equal(multiSetupState.playerAttackSetups[0].name, "Strength swap");
+deletePlayerAttackSetup(multiSetupState, 0);
+assert.equal(multiSetupState.playerAttackSetups.length, 1);
+
+for (let index = multiSetupState.playerAttackSetups.length; index < 12; index += 1) {
+    addPlayerAttackSetup(multiSetupState);
+}
+assert.equal(multiSetupState.playerAttackSetups.length, 12);
+assert.equal(addPlayerAttackSetup(multiSetupState), false);
+assert.equal(multiSetupState.playerAttackSetups.length, 12);
+
+const comparisonState = createDefaultCalculatorState();
+addPlayerAttackSetup(comparisonState);
+addPlayerAttackSetup(comparisonState);
+FakeDpsService.nextDpsValues = [4, 5, 3];
+const comparisonRows = buildSetupResultRows(module, comparisonState);
+assert.equal(comparisonRows.length, 3);
+assert.equal(comparisonRows[0].dpsDifference, "Baseline");
+assert.equal(comparisonRows[1].dpsDifference, "+25.00%");
+assert.equal(comparisonRows[2].dpsDifference, "-25.00%");
+
+FakeDpsService.nextDpsValues = [0, 5];
+const zeroBaselineRows = buildSetupResultRows(module, comparisonState).slice(0, 2);
+assert.equal(zeroBaselineRows[0].dpsDifference, "Baseline");
+assert.equal(zeroBaselineRows[1].dpsDifference, "n/a");

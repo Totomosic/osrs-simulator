@@ -8,6 +8,15 @@
 - Files changed: web/src/dpsCalculator.ts, web/src/DpsCalculatorView.vue, web/test/dps-calculator.test.mjs, progress.txt.
 - Validation: node web/test/dps-calculator.test.mjs, yarn --cwd web typecheck, yarn --cwd web test, yarn --cwd web build passed. No blockers.
 
+2026-06-18 #67 Player Attack Setup Comparison Tabs
+- Selected issue: #67, unblocked because #65 and #66 are closed. Parent PRD: #64.
+- Docs read: CONTEXT.md, docs/agents/domain.md, docs/adr/0006-web-development-viewer.md, docs/architecture/repo-structure.md, docs/osrs/combat-rolls.md, PRD #64, feature #67, blockers #65/#66.
+- Plan: TDD model helpers for multiple player attack setups, add-by-copy, rename, delete, setup limit, result rows, and baseline percentage formatting; then expose setup tabs in DpsCalculatorView.
+- Completed: PRD #64 stories 5-12, 35-37, 49 for multiple player attack setup comparison tabs and baseline DPS difference rows.
+- Decisions: state stores ordered playerAttackSetups plus active index; add copies active setup and names the copy by slot; current first setup is always baseline; cap exported to UI as 12; zero baseline formats comparison as n/a.
+- Files changed: web/src/dpsCalculator.ts, web/src/DpsCalculatorView.vue, web/test/dps-calculator.test.mjs, progress.txt.
+- Validation: node web/test/dps-calculator.test.mjs, yarn --cwd web typecheck, yarn --cwd web test, yarn --cwd web build passed. No blockers.
+
 2026-06-18 #65 Single Baseline NPC DPS Calculator
 - Selected issue: #65, unblocked ready-for-agent. Parent PRD: #64.
 - Docs read: CONTEXT.md, docs/osrs/combat-rolls.md, docs/adr/0006-web-development-viewer.md, PRD #64, feature #65.
