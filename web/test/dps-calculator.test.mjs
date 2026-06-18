@@ -23,6 +23,7 @@ await build({
 const {
     addPlayerAttackSetup,
     buildNpcDpsRequest,
+    buildManualNpcDefenceComposition,
     buildSetupResultRows,
     createDefaultCalculatorState,
     deletePlayerAttackSetup,
@@ -97,6 +98,19 @@ assert.equal(state.npcDefenceSetup.magicDefence, 0);
 assert.equal(state.npcDefenceSetup.rangedDefenceLight, 0);
 assert.equal(state.npcDefenceSetup.rangedDefenceStandard, 0);
 assert.equal(state.npcDefenceSetup.rangedDefenceHeavy, 0);
+
+const defaultDefenceComposition = buildManualNpcDefenceComposition(
+    state.npcDefenceSetup,
+);
+assert.equal(defaultDefenceComposition.stats.defence, 80);
+assert.equal(defaultDefenceComposition.stats.magic, 1);
+assert.equal(defaultDefenceComposition.bonuses.stabDefence, 0);
+assert.equal(defaultDefenceComposition.bonuses.slashDefence, 80);
+assert.equal(defaultDefenceComposition.bonuses.crushDefence, 0);
+assert.equal(defaultDefenceComposition.bonuses.magicDefence, 0);
+assert.equal(defaultDefenceComposition.bonuses.rangedDefenceLight, 0);
+assert.equal(defaultDefenceComposition.bonuses.rangedDefenceStandard, 0);
+assert.equal(defaultDefenceComposition.bonuses.rangedDefenceHeavy, 0);
 
 const request = buildNpcDpsRequest(module, state);
 assert.equal(request.attackComposition.attackType, module.AttackType.Slash);

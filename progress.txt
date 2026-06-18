@@ -1,3 +1,12 @@
+2026-06-19 #73 Manual NPC Defence Composition
+- Selected issue: #73, unblocked because #70 is closed. Parent PRD: #69.
+- Docs read: CONTEXT.md, docs/agents/domain.md, docs/adr/0007-engine-owned-equipment-database.md, PRD #69, feature #73, blockers #70/#71 checked, open feature candidates #72/#73/#74/#75 considered.
+- Plan: TDD web helper seam for manual NPC defence composition; keep NPC defence setup manual in DpsCalculatorView; add view contract coverage that NPC setup is manual and results rows still render; do not start equipment set composition (#72), weapon equipment mode (#74), or full equipment controls (#75).
+- Completed: PRD #69 story 11 and feature #73 acceptance for manual NPC defence setup producing `defenceComposition`, preserving NPC defence fields/result rows, and adding no NPC equipment controls.
+- Decisions: expose `buildManualNpcDefenceComposition` as the stable web helper seam and route `buildNpcDpsRequest` through it; use a view contract test because this repo has no browser/component mount harness.
+- Files changed: web/src/dpsCalculator.ts, web/test/dps-calculator.test.mjs, web/test/dps-calculator-view.test.mjs, web/package.json, progress.txt.
+- Validation: node web/test/dps-calculator.test.mjs, node web/test/dps-calculator-view.test.mjs, yarn --cwd web test, yarn --cwd web typecheck, yarn --cwd web build passed. No blockers.
+
 2026-06-19 #70 Use Attack and Defence Compositions in Manual DPS Path
 - Selected issue: #70, unblocked ready-for-agent. Parent PRD: #69.
 - Docs read: CONTEXT.md, docs/agents/domain.md, docs/architecture/repo-structure.md, docs/osrs/combat-rolls.md, docs/adr/0007-engine-owned-equipment-database.md, PRD #69, feature #70, feature #71 checked as alternate unblocked candidate.

@@ -1,6 +1,7 @@
 import type {
     AttackType,
     CombatStats,
+    DefenceComposition,
     DefenderKind,
     DpsRequest,
     DpsResult,
@@ -200,10 +201,6 @@ export function buildNpcDpsRequest(
         ...createDefaultEquipmentBonuses(),
         ...createAttackerBonusFields(playerAttackSetup),
     };
-    const defenderBonuses = {
-        ...createDefaultEquipmentBonuses(),
-        ...createDefenderBonusFields(npcDefenceSetup),
-    };
 
     return {
         attackComposition: {
@@ -220,14 +217,7 @@ export function buildNpcDpsRequest(
                 sanitizeWholeNumber(playerAttackSetup.weaponSpeedTicks, 1),
             ),
         },
-        defenceComposition: {
-            stats: {
-                ...createDefaultCombatStats(),
-                defence: sanitizeWholeNumber(npcDefenceSetup.defence, 1),
-                magic: sanitizeWholeNumber(npcDefenceSetup.magic, 1),
-            },
-            bonuses: defenderBonuses,
-        },
+        defenceComposition: buildManualNpcDefenceComposition(npcDefenceSetup),
         attackerStyle: createCombatStyleBonus(playerAttackSetup.combatStylePreset),
         defenderStyle: createDefaultStyleBonus(),
         defenderKind: module.DefenderKind.Npc,
@@ -244,6 +234,22 @@ export function buildNpcDpsRequest(
             playerAttackSetup.magicBaseMaximumHit,
             0,
         ),
+    };
+}
+
+export function buildManualNpcDefenceComposition(
+    npcDefenceSetup: NpcDefenceSetup,
+): DefenceComposition {
+    return {
+        stats: {
+            ...createDefaultCombatStats(),
+            defence: sanitizeWholeNumber(npcDefenceSetup.defence, 1),
+            magic: sanitizeWholeNumber(npcDefenceSetup.magic, 1),
+        },
+        bonuses: {
+            ...createDefaultEquipmentBonuses(),
+            ...createDefenderBonusFields(npcDefenceSetup),
+        },
     };
 }
 
