@@ -27,7 +27,9 @@ const {
     buildSetupResultRows,
     createDefaultCalculatorState,
     deletePlayerAttackSetup,
+    equipmentSlotControls,
     getEquipmentModeWeaponOptions,
+    getEquipmentModeSlotOptions,
     renamePlayerAttackSetup,
     setPlayerAttackType,
     formatDpsNumber,
@@ -157,8 +159,17 @@ const module = {
         Npc: 1,
     },
     EquipmentSlot: {
-        Weapon: 3,
+        Head: 0,
+        Cape: 1,
         Amulet: 2,
+        Weapon: 3,
+        Body: 4,
+        Shield: 5,
+        Legs: 6,
+        Hands: 7,
+        Feet: 8,
+        Ring: 9,
+        Ammo: 10,
     },
     DpsService: FakeDpsService,
     EquipmentDatabase: FakeEquipmentDatabase,
@@ -197,6 +208,27 @@ const fakeEquipmentPieces = [
         hasWeapon: false,
         weapon: { id: 0, range: 1, speed: 4 },
     },
+    {
+        id: 1004,
+        name: "Berserker ring",
+        slot: module.EquipmentSlot.Ring,
+        bonuses: createFakeEquipmentBonuses({
+            meleeStrength: 4,
+        }),
+        hasWeapon: false,
+        weapon: { id: 0, range: 1, speed: 4 },
+    },
+    {
+        id: 1005,
+        name: "Barrows gloves",
+        slot: module.EquipmentSlot.Hands,
+        bonuses: createFakeEquipmentBonuses({
+            slashAttack: 12,
+            meleeStrength: 12,
+        }),
+        hasWeapon: false,
+        weapon: { id: 0, range: 1, speed: 4 },
+    },
 ];
 
 const state = createDefaultCalculatorState();
@@ -204,7 +236,21 @@ assert.equal(state.activePlayerAttackSetupIndex, 0);
 assert.equal(state.playerAttackSetups.length, 1);
 assert.equal(state.playerAttackSetups[0].name, "Baseline");
 assert.equal(state.playerAttackSetups[0].mode, "manual");
-assert.equal(state.playerAttackSetups[0].equipmentWeaponPieceId, "");
+assert.deepEqual(Object.keys(state.playerAttackSetups[0].equipmentPieceIds), [
+    "head",
+    "cape",
+    "amulet",
+    "weapon",
+    "body",
+    "shield",
+    "legs",
+    "hands",
+    "feet",
+    "ring",
+    "ammo",
+]);
+assert.equal(state.playerAttackSetups[0].equipmentPieceIds.weapon, "");
+assert.equal(state.playerAttackSetups[0].equipmentPieceIds.amulet, "");
 assert.equal(state.playerAttackSetups[0].attackType, "slash");
 assert.equal(state.playerAttackSetups[0].combatStylePreset, "melee-accurate");
 assert.equal(state.playerAttackSetups[0].attack, 99);
@@ -272,9 +318,43 @@ assert.deepEqual(
     ],
 );
 
+const slotOptions = getEquipmentModeSlotOptions(module);
+assert.deepEqual(
+    slotOptions.map((slot) => slot.key),
+    equipmentSlotControls.map((slot) => slot.key),
+);
+assert.deepEqual(
+    slotOptions.find((slot) => slot.key === "weapon").options.map((option) => [
+        option.id,
+        option.name,
+    ]),
+    [
+        [1001, "Bronze scimitar"],
+        [1002, "Maple shortbow"],
+    ],
+);
+assert.deepEqual(
+    slotOptions.find((slot) => slot.key === "amulet").options.map((option) => [
+        option.id,
+        option.name,
+    ]),
+    [[1003, "Amulet of strength"]],
+);
+assert.deepEqual(
+    slotOptions.find((slot) => slot.key === "ring").options.map((option) => [
+        option.id,
+        option.name,
+    ]),
+    [[1004, "Berserker ring"]],
+);
+assert.deepEqual(
+    slotOptions.find((slot) => slot.key === "head").options,
+    [],
+);
+
 const equipmentState = createDefaultCalculatorState();
 equipmentState.playerAttackSetups[0].mode = "equipment";
-equipmentState.playerAttackSetups[0].equipmentWeaponPieceId = 1002;
+equipmentState.playerAttackSetups[0].equipmentPieceIds.weapon = 1002;
 setPlayerAttackType(equipmentState.playerAttackSetups[0], "ranged-heavy");
 equipmentState.playerAttackSetups[0].ranged = 112;
 equipmentState.playerAttackSetups[0].rangedAttack = 999;
@@ -292,12 +372,32 @@ assert.equal(equipmentRequest.attackComposition.weapon.id, 2);
 assert.equal(equipmentRequest.attackComposition.weapon.range, 7);
 assert.equal(equipmentRequest.attackComposition.weapon.speed, 4);
 
+const fullEquipmentState = createDefaultCalculatorState();
+fullEquipmentState.playerAttackSetups[0].mode = "equipment";
+fullEquipmentState.playerAttackSetups[0].equipmentPieceIds.weapon = 1001;
+fullEquipmentState.playerAttackSetups[0].equipmentPieceIds.amulet = 1003;
+fullEquipmentState.playerAttackSetups[0].equipmentPieceIds.ring = 1004;
+fullEquipmentState.playerAttackSetups[0].equipmentPieceIds.hands = 1005;
+fullEquipmentState.playerAttackSetups[0].attack = 107;
+fullEquipmentState.playerAttackSetups[0].strength = 118;
+fullEquipmentState.playerAttackSetups[0].slashAttack = 999;
+fullEquipmentState.playerAttackSetups[0].meleeStrength = 999;
+fullEquipmentState.playerAttackSetups[0].weaponSpeedTicks = 7;
+const fullEquipmentRequest = buildNpcDpsRequest(module, fullEquipmentState);
+assert.equal(fullEquipmentRequest.attackComposition.stats.attack, 107);
+assert.equal(fullEquipmentRequest.attackComposition.stats.strength, 118);
+assert.equal(fullEquipmentRequest.attackComposition.attackType, module.AttackType.Slash);
+assert.equal(fullEquipmentRequest.attackComposition.bonuses.slashAttack, 19);
+assert.equal(fullEquipmentRequest.attackComposition.bonuses.meleeStrength, 32);
+assert.equal(fullEquipmentRequest.attackComposition.weapon.id, 1);
+assert.equal(fullEquipmentRequest.attackComposition.weapon.speed, 4);
+
 const mixedModeState = createDefaultCalculatorState();
 mixedModeState.playerAttackSetups[0].name = "Manual slash";
 addPlayerAttackSetup(mixedModeState);
 mixedModeState.playerAttackSetups[1].name = "Bow";
 mixedModeState.playerAttackSetups[1].mode = "equipment";
-mixedModeState.playerAttackSetups[1].equipmentWeaponPieceId = 1002;
+mixedModeState.playerAttackSetups[1].equipmentPieceIds.weapon = 1002;
 setPlayerAttackType(mixedModeState.playerAttackSetups[1], "ranged-heavy");
 assert.equal(mixedModeState.playerAttackSetups[0].mode, "manual");
 FakeDpsService.nextDpsValues = [4, 5];
@@ -451,6 +551,8 @@ assert.equal(multiSetupState.activePlayerAttackSetupIndex, 1);
 assert.equal(multiSetupState.playerAttackSetups.length, 2);
 assert.equal(multiSetupState.playerAttackSetups[1].name, "Setup 2");
 assert.equal(multiSetupState.playerAttackSetups[1].slashAttack, 132);
+multiSetupState.playerAttackSetups[1].equipmentPieceIds.weapon = 1001;
+assert.equal(multiSetupState.playerAttackSetups[0].equipmentPieceIds.weapon, "");
 multiSetupState.playerAttackSetups[1].slashAttack = 160;
 assert.equal(multiSetupState.playerAttackSetups[0].slashAttack, 132);
 

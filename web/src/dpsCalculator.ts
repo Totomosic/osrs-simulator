@@ -10,6 +10,7 @@ import type {
     EngineModule,
     EquipmentBonuses,
     EquipmentPiece,
+    EquipmentSlot,
     StyleBonus,
     WeaponDefinition,
 } from "./wasm/EngineModule";
@@ -51,12 +52,47 @@ export type CombatStylePreset =
 
 export type PlayerAttackSetupMode = "manual" | "equipment";
 
+export type EquipmentSlotKey =
+    | "head"
+    | "cape"
+    | "amulet"
+    | "weapon"
+    | "body"
+    | "shield"
+    | "legs"
+    | "hands"
+    | "feet"
+    | "ring"
+    | "ammo";
+
+export type EquipmentPieceSelections = Record<EquipmentSlotKey, CalculatorNumber>;
+
+export interface EquipmentSlotControl {
+    key: EquipmentSlotKey;
+    label: string;
+    moduleSlot: keyof EngineModule["EquipmentSlot"];
+}
+
+export const equipmentSlotControls: EquipmentSlotControl[] = [
+    { key: "head", label: "Head", moduleSlot: "Head" },
+    { key: "cape", label: "Cape", moduleSlot: "Cape" },
+    { key: "amulet", label: "Amulet", moduleSlot: "Amulet" },
+    { key: "weapon", label: "Weapon", moduleSlot: "Weapon" },
+    { key: "body", label: "Body", moduleSlot: "Body" },
+    { key: "shield", label: "Shield", moduleSlot: "Shield" },
+    { key: "legs", label: "Legs", moduleSlot: "Legs" },
+    { key: "hands", label: "Hands", moduleSlot: "Hands" },
+    { key: "feet", label: "Feet", moduleSlot: "Feet" },
+    { key: "ring", label: "Ring", moduleSlot: "Ring" },
+    { key: "ammo", label: "Ammo", moduleSlot: "Ammo" },
+];
+
 type CalculatorNumber = number | string;
 
 export interface PlayerAttackSetup {
     name: string;
     mode: PlayerAttackSetupMode;
-    equipmentWeaponPieceId: CalculatorNumber;
+    equipmentPieceIds: EquipmentPieceSelections;
     attackType: CalculatorAttackType;
     combatStylePreset: CombatStylePreset;
     attack: CalculatorNumber;
@@ -110,6 +146,12 @@ export interface EquipmentOption {
     name: string;
 }
 
+export interface EquipmentSlotOptions {
+    key: EquipmentSlotKey;
+    label: string;
+    options: EquipmentOption[];
+}
+
 export const maxPlayerAttackSetups = 12;
 
 export function createDefaultCalculatorState(): DpsCalculatorState {
@@ -138,6 +180,7 @@ export function addPlayerAttackSetup(state: DpsCalculatorState): boolean {
     const activeSetup = getActivePlayerAttackSetup(state);
     state.playerAttackSetups.push({
         ...activeSetup,
+        equipmentPieceIds: { ...activeSetup.equipmentPieceIds },
         name: `Setup ${state.playerAttackSetups.length + 1}`,
     });
     state.activePlayerAttackSetupIndex = state.playerAttackSetups.length - 1;
@@ -237,12 +280,25 @@ export function buildNpcDpsRequest(
 export function getEquipmentModeWeaponOptions(
     module: EngineModule,
 ): EquipmentOption[] {
-    return getEquipmentPiecesBySlot(module, module.EquipmentSlot.Weapon).map(
-        (piece) => ({
+    return getEquipmentModeSlotOptions(module).find(
+        (slot) => slot.key === "weapon",
+    )?.options ?? [];
+}
+
+export function getEquipmentModeSlotOptions(
+    module: EngineModule,
+): EquipmentSlotOptions[] {
+    return equipmentSlotControls.map((slot) => ({
+        key: slot.key,
+        label: slot.label,
+        options: getEquipmentPiecesBySlot(
+            module,
+            module.EquipmentSlot[slot.moduleSlot],
+        ).map((piece) => ({
             id: piece.id,
             name: piece.name,
-        }),
-    );
+        })),
+    }));
 }
 
 export function buildManualNpcDefenceComposition(
@@ -501,7 +557,7 @@ function createDefaultPlayerAttackSetup(name: string): PlayerAttackSetup {
     return {
         name,
         mode: "manual",
-        equipmentWeaponPieceId: "",
+        equipmentPieceIds: createDefaultEquipmentPieceSelections(),
         attackType: "slash",
         combatStylePreset: "melee-accurate",
         attack: 99,
@@ -551,14 +607,24 @@ function buildEquipmentModeAttackComposition(
     attackType: CalculatorAttackType,
 ) {
     const equipmentSet = new module.EquipmentSet();
-    const selectedWeaponPieceId = sanitizeOptionalWholeNumber(
-        setup.equipmentWeaponPieceId,
-    );
+    const database = module.EquipmentDatabase.LoadDefault();
 
-    if (selectedWeaponPieceId !== null) {
-        const database = module.EquipmentDatabase.LoadDefault();
+    for (const slot of equipmentSlotControls) {
+        const selectedPieceId = sanitizeOptionalWholeNumber(
+            setup.equipmentPieceIds[slot.key],
+        );
+
+        if (selectedPieceId === null) {
+            continue;
+        }
+
+        const piece = database.GetEquipmentPiece(selectedPieceId);
+        if (piece.slot !== module.EquipmentSlot[slot.moduleSlot]) {
+            continue;
+        }
+
         equipmentSet.SetEquipmentPiece(
-            database.GetEquipmentPiece(selectedWeaponPieceId),
+            piece,
         );
     }
 
@@ -570,7 +636,7 @@ function buildEquipmentModeAttackComposition(
 
 function getEquipmentPiecesBySlot(
     module: EngineModule,
-    slot: EngineModule["EquipmentSlot"][keyof EngineModule["EquipmentSlot"]],
+    slot: EquipmentSlot,
 ): EquipmentPiece[] {
     const database = module.EquipmentDatabase.LoadDefault();
     const pieces = database.GetEquipmentPiecesBySlot(slot);
@@ -588,6 +654,22 @@ function getEquipmentPiecesBySlot(
     }
 
     return result;
+}
+
+function createDefaultEquipmentPieceSelections(): EquipmentPieceSelections {
+    return {
+        head: "",
+        cape: "",
+        amulet: "",
+        weapon: "",
+        body: "",
+        shield: "",
+        legs: "",
+        hands: "",
+        feet: "",
+        ring: "",
+        ammo: "",
+    };
 }
 
 function buildPlayerCombatStats(setup: PlayerAttackSetup) {

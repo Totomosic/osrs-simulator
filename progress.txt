@@ -1,3 +1,13 @@
+2026-06-19 #75 Full Equipment Set Controls
+- Selected issue: #75, unblocked because #74 is closed. Parent PRD: #69.
+- Docs read: CONTEXT.md, docs/agents/domain.md, docs/adr/0007-engine-owned-equipment-database.md, PRD #69, feature #75, blocker #74.
+- Plan: TDD web helper from weapon-only equipment mode to full per-slot equipment selections; expose slot-filtered options for head/cape/amulet/weapon/body/shield/legs/hands/feet/ring/ammo; compose selected pieces through EquipmentSet; preserve combat stats, attack type, manual mode, and mixed comparison rows; update route/view source contract for all controls.
+- Scope guard: only full player attack equipment controls for #75. Do not add NPC equipment mode, saved setups, two-handed restrictions, or full OSRS import.
+- Completed: PRD #69 stories 1, 3-5, 8-10, 12, 23-24 and feature #75 acceptance for full player equipment set controls, slot-filtered options, one selected ID per slot, summed EquipmentSet attack composition, separate combat stats/attack type, and mixed manual/equipment comparison rows.
+- Decisions: replace weapon-only state with `equipmentPieceIds` keyed by OSRS slot; centralize slot labels/module enum keys in `equipmentSlotControls`; deep-copy equipment selections when duplicating a setup; skip mismatched programmatic slot selections before composing.
+- Files changed: web/src/dpsCalculator.ts, web/src/DpsCalculatorView.vue, web/test/dps-calculator.test.mjs, web/test/dps-calculator-view.test.mjs, progress.txt.
+- Validation: node web/test/dps-calculator.test.mjs, node web/test/dps-calculator-view.test.mjs, yarn --cwd web typecheck, yarn --cwd web test, yarn --cwd web build passed. No blockers.
+
 2026-06-19 #74 Weapon-Slot Equipment Mode
 - Selected issue: #74, unblocked because #70/#71/#72 are closed. Parent PRD: #69. #75 skipped because blocked by #74.
 - Docs read: CONTEXT.md, docs/agents/domain.md, docs/adr/0007-engine-owned-equipment-database.md, PRD #69, feature #74, blockers #70/#71/#72.

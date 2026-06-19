@@ -8,6 +8,10 @@ const viewSource = await readFile(
     resolve(root, "src/DpsCalculatorView.vue"),
     "utf8",
 );
+const calculatorSource = await readFile(
+    resolve(root, "src/dpsCalculator.ts"),
+    "utf8",
+);
 
 const npcFormStart = viewSource.indexOf('aria-label="NPC defence setup"');
 const resultsTableStart = viewSource.indexOf('class="dps-table"');
@@ -25,9 +29,27 @@ assert.match(playerFormSource, /value="manual"/);
 assert.match(playerFormSource, /value="equipment"/);
 assert.match(
     playerFormSource,
-    /v-model\.number="activePlayerAttackSetup\.equipmentWeaponPieceId"/,
+    /v-model\.number="activePlayerAttackSetup\.equipmentPieceIds\[slot\.key\]"/,
 );
-assert.match(playerFormSource, /equipmentModeWeaponOptions/);
+assert.match(playerFormSource, /equipmentModeSlotOptions/);
+assert.match(viewSource, /getEquipmentModeSlotOptions/);
+assert.match(viewSource, /equipmentSlotControls/);
+assert.match(playerFormSource, /v-for="slot in equipmentModeSlotOptions"/);
+for (const label of [
+    "Head",
+    "Cape",
+    "Amulet",
+    "Weapon",
+    "Body",
+    "Shield",
+    "Legs",
+    "Hands",
+    "Feet",
+    "Ring",
+    "Ammo",
+]) {
+    assert.match(calculatorSource, new RegExp(`label: "${label}"`));
+}
 assert.match(playerFormSource, /v-if="activePlayerAttackSetup\.mode === 'manual'"/);
 assert.match(
     playerFormSource,

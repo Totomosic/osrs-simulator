@@ -5,8 +5,9 @@ import {
     buildSetupResultRows,
     createDefaultCalculatorState,
     deletePlayerAttackSetup,
+    equipmentSlotControls,
     getActivePlayerAttackSetup,
-    getEquipmentModeWeaponOptions,
+    getEquipmentModeSlotOptions,
     isMeleeAttackType,
     isRangedAttackType,
     maxPlayerAttackSetups,
@@ -14,6 +15,7 @@ import {
     type CalculatorAttackType,
     type CombatStylePreset,
     type DpsResultRow,
+    type EquipmentSlotOptions,
 } from "./dpsCalculator";
 import {
     loadEngineModule,
@@ -97,12 +99,16 @@ const combatStyleOptions = computed(() => {
     return meleeCombatStyleOptions;
 });
 
-const equipmentModeWeaponOptions = computed(() => {
+const equipmentModeSlotOptions = computed<EquipmentSlotOptions[]>(() => {
     if (engineModule.value === null) {
-        return [];
+        return equipmentSlotControls.map((slot) => ({
+            key: slot.key,
+            label: slot.label,
+            options: [],
+        }));
     }
 
-    return getEquipmentModeWeaponOptions(engineModule.value);
+    return getEquipmentModeSlotOptions(engineModule.value);
 });
 
 const resultRows = computed<DpsResultRow[]>(() => {
@@ -239,22 +245,27 @@ onMounted(async () => {
           </label>
         </fieldset>
 
-        <label
+        <div
           v-if="activePlayerAttackSetup.mode === 'equipment'"
-          class="wide-field"
+          class="equipment-slot-grid wide-field"
         >
-          <span>Weapon</span>
-          <select v-model.number="activePlayerAttackSetup.equipmentWeaponPieceId">
-            <option value="">Unarmed</option>
-            <option
-              v-for="option in equipmentModeWeaponOptions"
-              :key="option.id"
-              :value="option.id"
-            >
-              {{ option.name }}
-            </option>
-          </select>
-        </label>
+          <label
+            v-for="slot in equipmentModeSlotOptions"
+            :key="slot.key"
+          >
+            <span>{{ slot.label }}</span>
+            <select v-model.number="activePlayerAttackSetup.equipmentPieceIds[slot.key]">
+              <option value="">None</option>
+              <option
+                v-for="option in slot.options"
+                :key="option.id"
+                :value="option.id"
+              >
+                {{ option.name }}
+              </option>
+            </select>
+          </label>
+        </div>
 
         <label class="wide-field">
           <span>Attack type</span>
@@ -755,6 +766,12 @@ fieldset {
     width: auto;
 }
 
+.equipment-slot-grid {
+    display: grid;
+    gap: 12px;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
 input,
 select {
     background: #fbfcfa;
@@ -825,6 +842,10 @@ td {
     }
 
     .setup-panel {
+        grid-template-columns: 1fr;
+    }
+
+    .equipment-slot-grid {
         grid-template-columns: 1fr;
     }
 }
