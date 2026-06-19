@@ -11,11 +11,28 @@ const viewSource = await readFile(
 
 const npcFormStart = viewSource.indexOf('aria-label="NPC defence setup"');
 const resultsTableStart = viewSource.indexOf('class="dps-table"');
+const playerFormStart = viewSource.indexOf('aria-label="Player attack setup"');
 
 assert.notEqual(npcFormStart, -1);
 assert.notEqual(resultsTableStart, -1);
+assert.notEqual(playerFormStart, -1);
 
+const playerFormSource = viewSource.slice(playerFormStart, npcFormStart);
 const npcFormSource = viewSource.slice(npcFormStart, resultsTableStart);
+
+assert.match(playerFormSource, /v-model="activePlayerAttackSetup\.mode"/);
+assert.match(playerFormSource, /value="manual"/);
+assert.match(playerFormSource, /value="equipment"/);
+assert.match(
+    playerFormSource,
+    /v-model\.number="activePlayerAttackSetup\.equipmentWeaponPieceId"/,
+);
+assert.match(playerFormSource, /equipmentModeWeaponOptions/);
+assert.match(playerFormSource, /v-if="activePlayerAttackSetup\.mode === 'manual'"/);
+assert.match(
+    playerFormSource,
+    /v-if="activePlayerAttackSetup\.mode === 'equipment'"/,
+);
 
 assert.match(
     npcFormSource,

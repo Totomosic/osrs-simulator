@@ -1,3 +1,13 @@
+2026-06-19 #74 Weapon-Slot Equipment Mode
+- Selected issue: #74, unblocked because #70/#71/#72 are closed. Parent PRD: #69. #75 skipped because blocked by #74.
+- Docs read: CONTEXT.md, docs/agents/domain.md, docs/adr/0007-engine-owned-equipment-database.md, PRD #69, feature #74, blockers #70/#71/#72.
+- Plan: TDD web helper equipment mode for each player attack setup, load weapon-slot pieces from engine database, build attack composition via EquipmentSet + combat stats + selected attack type, preserve manual mode/comparison rows; then add route/view source contract for mode switch, weapon selector, result rows.
+- Scope guard: only weapon-slot equipment mode. Do not start full equipment set UI controls (#75).
+- Completed: PRD #69 stories 1-6, 12-14, 23-24, 34 and feature #74 acceptance for independent manual/equipment player attack setup mode, weapon-slot equipment selection, equipment-set attack composition, weapon speed from selected weapon, user-selected attack type, and mixed manual/equipment result rows.
+- Decisions: keep manual setup fields intact; add `mode` and `equipmentWeaponPieceId` to player attack setup state; use `EquipmentDatabase.LoadDefault()` and `GetEquipmentPiecesBySlot(Weapon)` for UI options; use `EquipmentSet.BuildAttackComposition` for equipment mode so combat stats and attack type stay separate from equipment bonuses.
+- Files changed: web/src/dpsCalculator.ts, web/src/DpsCalculatorView.vue, web/test/dps-calculator.test.mjs, web/test/dps-calculator-view.test.mjs, progress.txt.
+- Validation: node web/test/dps-calculator.test.mjs, node web/test/dps-calculator-view.test.mjs, yarn --cwd web typecheck, yarn --cwd web test, yarn --cwd web build passed. No blockers.
+
 2026-06-19 #72 Equipment Set Composition
 - Selected issue: #72, unblocked because #70 and #71 are closed. Parent PRD: #69.
 - Docs read: CONTEXT.md, docs/agents/domain.md, docs/osrs/combat-rolls.md, docs/adr/0007-engine-owned-equipment-database.md, PRD #69, feature #72, blockers #70/#71.

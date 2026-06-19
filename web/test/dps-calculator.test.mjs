@@ -27,6 +27,7 @@ const {
     buildSetupResultRows,
     createDefaultCalculatorState,
     deletePlayerAttackSetup,
+    getEquipmentModeWeaponOptions,
     renamePlayerAttackSetup,
     setPlayerAttackType,
     formatDpsNumber,
@@ -52,6 +53,95 @@ class FakeDpsService {
 
 FakeDpsService.nextDpsValues = [];
 
+class FakeEquipmentPieceVector {
+    constructor(pieces) {
+        this.pieces = pieces;
+    }
+
+    size() {
+        return this.pieces.length;
+    }
+
+    get(index) {
+        return this.pieces[index];
+    }
+
+    delete() {}
+}
+
+class FakeEquipmentDatabase {
+    static LoadDefault() {
+        return new FakeEquipmentDatabase();
+    }
+
+    GetEquipmentPiece(id) {
+        const piece = fakeEquipmentPieces.find((candidate) => candidate.id === id);
+        if (piece === undefined) {
+            throw new Error(`missing equipment piece ${id}`);
+        }
+
+        return piece;
+    }
+
+    GetEquipmentPiecesBySlot(slot) {
+        return new FakeEquipmentPieceVector(
+            fakeEquipmentPieces.filter((piece) => piece.slot === slot),
+        );
+    }
+}
+
+class FakeEquipmentSet {
+    constructor() {
+        this.pieces = [];
+    }
+
+    SetEquipmentPiece(piece) {
+        this.pieces = this.pieces.filter((candidate) => candidate.slot !== piece.slot);
+        this.pieces.push(piece);
+    }
+
+    BuildAttackComposition(stats, attackType) {
+        const bonuses = createFakeEquipmentBonuses();
+        for (const piece of this.pieces) {
+            for (const [key, value] of Object.entries(piece.bonuses)) {
+                bonuses[key] += value;
+            }
+        }
+
+        const weapon =
+            this.pieces.find((piece) => piece.slot === module.EquipmentSlot.Weapon)
+                ?.weapon ?? { id: 0, range: 1, speed: 4 };
+
+        return {
+            attackType,
+            stats,
+            bonuses,
+            weapon,
+        };
+    }
+}
+
+function createFakeEquipmentBonuses(overrides = {}) {
+    return {
+        stabAttack: 0,
+        slashAttack: 0,
+        crushAttack: 0,
+        magicAttack: 0,
+        rangedAttack: 0,
+        stabDefence: 0,
+        slashDefence: 0,
+        crushDefence: 0,
+        magicDefence: 0,
+        rangedDefenceLight: 0,
+        rangedDefenceStandard: 0,
+        rangedDefenceHeavy: 0,
+        meleeStrength: 0,
+        rangedStrength: 0,
+        magicDamagePercent: 0,
+        ...overrides,
+    };
+}
+
 const module = {
     AttackType: {
         Stab: 0,
@@ -66,13 +156,55 @@ const module = {
         Player: 0,
         Npc: 1,
     },
+    EquipmentSlot: {
+        Weapon: 3,
+        Amulet: 2,
+    },
     DpsService: FakeDpsService,
+    EquipmentDatabase: FakeEquipmentDatabase,
+    EquipmentSet: FakeEquipmentSet,
 };
+
+const fakeEquipmentPieces = [
+    {
+        id: 1001,
+        name: "Bronze scimitar",
+        slot: module.EquipmentSlot.Weapon,
+        bonuses: createFakeEquipmentBonuses({
+            slashAttack: 7,
+            meleeStrength: 6,
+        }),
+        hasWeapon: true,
+        weapon: { id: 1, range: 1, speed: 4 },
+    },
+    {
+        id: 1002,
+        name: "Maple shortbow",
+        slot: module.EquipmentSlot.Weapon,
+        bonuses: createFakeEquipmentBonuses({
+            rangedAttack: 29,
+        }),
+        hasWeapon: true,
+        weapon: { id: 2, range: 7, speed: 4 },
+    },
+    {
+        id: 1003,
+        name: "Amulet of strength",
+        slot: module.EquipmentSlot.Amulet,
+        bonuses: createFakeEquipmentBonuses({
+            meleeStrength: 10,
+        }),
+        hasWeapon: false,
+        weapon: { id: 0, range: 1, speed: 4 },
+    },
+];
 
 const state = createDefaultCalculatorState();
 assert.equal(state.activePlayerAttackSetupIndex, 0);
 assert.equal(state.playerAttackSetups.length, 1);
 assert.equal(state.playerAttackSetups[0].name, "Baseline");
+assert.equal(state.playerAttackSetups[0].mode, "manual");
+assert.equal(state.playerAttackSetups[0].equipmentWeaponPieceId, "");
 assert.equal(state.playerAttackSetups[0].attackType, "slash");
 assert.equal(state.playerAttackSetups[0].combatStylePreset, "melee-accurate");
 assert.equal(state.playerAttackSetups[0].attack, 99);
@@ -130,6 +262,50 @@ assert.equal(request.attackComposition.weapon.speed, 4);
 assert.equal(request.attackPrayerMultiplier, 1);
 assert.equal(request.finalDamageMultiplier, 1);
 assert.equal(request.magicBaseMaximumHit, 0);
+
+const weaponOptions = getEquipmentModeWeaponOptions(module);
+assert.deepEqual(
+    weaponOptions.map((option) => [option.id, option.name]),
+    [
+        [1001, "Bronze scimitar"],
+        [1002, "Maple shortbow"],
+    ],
+);
+
+const equipmentState = createDefaultCalculatorState();
+equipmentState.playerAttackSetups[0].mode = "equipment";
+equipmentState.playerAttackSetups[0].equipmentWeaponPieceId = 1002;
+setPlayerAttackType(equipmentState.playerAttackSetups[0], "ranged-heavy");
+equipmentState.playerAttackSetups[0].ranged = 112;
+equipmentState.playerAttackSetups[0].rangedAttack = 999;
+equipmentState.playerAttackSetups[0].rangedStrength = 88;
+equipmentState.playerAttackSetups[0].weaponSpeedTicks = 6;
+const equipmentRequest = buildNpcDpsRequest(module, equipmentState);
+assert.equal(
+    equipmentRequest.attackComposition.attackType,
+    module.AttackType.RangedHeavy,
+);
+assert.equal(equipmentRequest.attackComposition.stats.ranged, 112);
+assert.equal(equipmentRequest.attackComposition.bonuses.rangedAttack, 29);
+assert.equal(equipmentRequest.attackComposition.bonuses.rangedStrength, 0);
+assert.equal(equipmentRequest.attackComposition.weapon.id, 2);
+assert.equal(equipmentRequest.attackComposition.weapon.range, 7);
+assert.equal(equipmentRequest.attackComposition.weapon.speed, 4);
+
+const mixedModeState = createDefaultCalculatorState();
+mixedModeState.playerAttackSetups[0].name = "Manual slash";
+addPlayerAttackSetup(mixedModeState);
+mixedModeState.playerAttackSetups[1].name = "Bow";
+mixedModeState.playerAttackSetups[1].mode = "equipment";
+mixedModeState.playerAttackSetups[1].equipmentWeaponPieceId = 1002;
+setPlayerAttackType(mixedModeState.playerAttackSetups[1], "ranged-heavy");
+assert.equal(mixedModeState.playerAttackSetups[0].mode, "manual");
+FakeDpsService.nextDpsValues = [4, 5];
+const mixedModeRows = buildSetupResultRows(module, mixedModeState);
+assert.equal(mixedModeRows.length, 2);
+assert.equal(mixedModeRows[0].name, "Manual slash");
+assert.equal(mixedModeRows[1].name, "Bow");
+assert.equal(mixedModeRows[1].dpsDifference, "+25.00%");
 
 const editedState = createDefaultCalculatorState();
 editedState.playerAttackSetups[0].attack = 118.9;

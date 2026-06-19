@@ -9,6 +9,7 @@ import type {
     DpsSampleResult,
     EngineModule,
     EquipmentBonuses,
+    EquipmentPiece,
     StyleBonus,
     WeaponDefinition,
 } from "./wasm/EngineModule";
@@ -48,10 +49,14 @@ export type CombatStylePreset =
     | "magic-standard"
     | "magic-defensive";
 
+export type PlayerAttackSetupMode = "manual" | "equipment";
+
 type CalculatorNumber = number | string;
 
 export interface PlayerAttackSetup {
     name: string;
+    mode: PlayerAttackSetupMode;
+    equipmentWeaponPieceId: CalculatorNumber;
     attackType: CalculatorAttackType;
     combatStylePreset: CombatStylePreset;
     attack: CalculatorNumber;
@@ -98,6 +103,11 @@ export interface DpsResultRow {
     secondsPerAttack: string;
     dps: string;
     dpsDifference: string;
+}
+
+export interface EquipmentOption {
+    id: number;
+    name: string;
 }
 
 export const maxPlayerAttackSetups = 12;
@@ -197,26 +207,13 @@ export function buildNpcDpsRequest(
         ];
     const { npcDefenceSetup } = state;
     const attackType = playerAttackSetup.attackType;
-    const attackerBonuses = {
-        ...createDefaultEquipmentBonuses(),
-        ...createAttackerBonusFields(playerAttackSetup),
-    };
 
     return {
-        attackComposition: {
-            attackType: resolveModuleAttackType(module, attackType),
-            stats: {
-                ...createDefaultCombatStats(),
-                attack: sanitizeWholeNumber(playerAttackSetup.attack, 1),
-                strength: sanitizeWholeNumber(playerAttackSetup.strength, 1),
-                ranged: sanitizeWholeNumber(playerAttackSetup.ranged, 1),
-                magic: sanitizeWholeNumber(playerAttackSetup.magic, 1),
-            },
-            bonuses: attackerBonuses,
-            weapon: createWeaponDefinition(
-                sanitizeWholeNumber(playerAttackSetup.weaponSpeedTicks, 1),
-            ),
-        },
+        attackComposition: buildPlayerAttackComposition(
+            module,
+            playerAttackSetup,
+            attackType,
+        ),
         defenceComposition: buildManualNpcDefenceComposition(npcDefenceSetup),
         attackerStyle: createCombatStyleBonus(playerAttackSetup.combatStylePreset),
         defenderStyle: createDefaultStyleBonus(),
@@ -235,6 +232,17 @@ export function buildNpcDpsRequest(
             0,
         ),
     };
+}
+
+export function getEquipmentModeWeaponOptions(
+    module: EngineModule,
+): EquipmentOption[] {
+    return getEquipmentPiecesBySlot(module, module.EquipmentSlot.Weapon).map(
+        (piece) => ({
+            id: piece.id,
+            name: piece.name,
+        }),
+    );
 }
 
 export function buildManualNpcDefenceComposition(
@@ -492,6 +500,8 @@ function createAttackerBonusFields(
 function createDefaultPlayerAttackSetup(name: string): PlayerAttackSetup {
     return {
         name,
+        mode: "manual",
+        equipmentWeaponPieceId: "",
         attackType: "slash",
         combatStylePreset: "melee-accurate",
         attack: 99,
@@ -508,6 +518,85 @@ function createDefaultPlayerAttackSetup(name: string): PlayerAttackSetup {
         magicDamagePercent: 0,
         magicBaseMaximumHit: 0,
         weaponSpeedTicks: 4,
+    };
+}
+
+function buildPlayerAttackComposition(
+    module: EngineModule,
+    setup: PlayerAttackSetup,
+    attackType: CalculatorAttackType,
+) {
+    if (setup.mode === "equipment") {
+        return buildEquipmentModeAttackComposition(module, setup, attackType);
+    }
+
+    const attackerBonuses = {
+        ...createDefaultEquipmentBonuses(),
+        ...createAttackerBonusFields(setup),
+    };
+
+    return {
+        attackType: resolveModuleAttackType(module, attackType),
+        stats: buildPlayerCombatStats(setup),
+        bonuses: attackerBonuses,
+        weapon: createWeaponDefinition(
+            sanitizeWholeNumber(setup.weaponSpeedTicks, 1),
+        ),
+    };
+}
+
+function buildEquipmentModeAttackComposition(
+    module: EngineModule,
+    setup: PlayerAttackSetup,
+    attackType: CalculatorAttackType,
+) {
+    const equipmentSet = new module.EquipmentSet();
+    const selectedWeaponPieceId = sanitizeOptionalWholeNumber(
+        setup.equipmentWeaponPieceId,
+    );
+
+    if (selectedWeaponPieceId !== null) {
+        const database = module.EquipmentDatabase.LoadDefault();
+        equipmentSet.SetEquipmentPiece(
+            database.GetEquipmentPiece(selectedWeaponPieceId),
+        );
+    }
+
+    return equipmentSet.BuildAttackComposition(
+        buildPlayerCombatStats(setup),
+        resolveModuleAttackType(module, attackType),
+    );
+}
+
+function getEquipmentPiecesBySlot(
+    module: EngineModule,
+    slot: EngineModule["EquipmentSlot"][keyof EngineModule["EquipmentSlot"]],
+): EquipmentPiece[] {
+    const database = module.EquipmentDatabase.LoadDefault();
+    const pieces = database.GetEquipmentPiecesBySlot(slot);
+    const result: EquipmentPiece[] = [];
+
+    try {
+        for (let index = 0; index < pieces.size(); index += 1) {
+            const piece = pieces.get(index);
+            if (piece !== undefined) {
+                result.push(piece);
+            }
+        }
+    } finally {
+        pieces.delete();
+    }
+
+    return result;
+}
+
+function buildPlayerCombatStats(setup: PlayerAttackSetup) {
+    return {
+        ...createDefaultCombatStats(),
+        attack: sanitizeWholeNumber(setup.attack, 1),
+        strength: sanitizeWholeNumber(setup.strength, 1),
+        ranged: sanitizeWholeNumber(setup.ranged, 1),
+        magic: sanitizeWholeNumber(setup.magic, 1),
     };
 }
 
@@ -614,6 +703,19 @@ function sanitizeWholeNumber(value: CalculatorNumber, minimum?: number): number 
     }
 
     return Math.max(minimum, wholeValue);
+}
+
+function sanitizeOptionalWholeNumber(value: CalculatorNumber): number | null {
+    if (value === "") {
+        return null;
+    }
+
+    const numericValue = Number(value);
+    if (!Number.isFinite(numericValue)) {
+        return null;
+    }
+
+    return Math.trunc(numericValue);
 }
 
 function sanitizeDecimalNumber(value: CalculatorNumber, minimum?: number): number {

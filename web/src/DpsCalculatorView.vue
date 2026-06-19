@@ -6,6 +6,7 @@ import {
     createDefaultCalculatorState,
     deletePlayerAttackSetup,
     getActivePlayerAttackSetup,
+    getEquipmentModeWeaponOptions,
     isMeleeAttackType,
     isRangedAttackType,
     maxPlayerAttackSetups,
@@ -94,6 +95,14 @@ const combatStyleOptions = computed(() => {
     }
 
     return meleeCombatStyleOptions;
+});
+
+const equipmentModeWeaponOptions = computed(() => {
+    if (engineModule.value === null) {
+        return [];
+    }
+
+    return getEquipmentModeWeaponOptions(engineModule.value);
 });
 
 const resultRows = computed<DpsResultRow[]>(() => {
@@ -210,6 +219,43 @@ onMounted(async () => {
           >
         </div>
 
+        <fieldset class="mode-switch wide-field">
+          <legend>Setup mode</legend>
+          <label>
+            <input
+              v-model="activePlayerAttackSetup.mode"
+              type="radio"
+              value="manual"
+            >
+            <span>Manual</span>
+          </label>
+          <label>
+            <input
+              v-model="activePlayerAttackSetup.mode"
+              type="radio"
+              value="equipment"
+            >
+            <span>Equipment</span>
+          </label>
+        </fieldset>
+
+        <label
+          v-if="activePlayerAttackSetup.mode === 'equipment'"
+          class="wide-field"
+        >
+          <span>Weapon</span>
+          <select v-model.number="activePlayerAttackSetup.equipmentWeaponPieceId">
+            <option value="">Unarmed</option>
+            <option
+              v-for="option in equipmentModeWeaponOptions"
+              :key="option.id"
+              :value="option.id"
+            >
+              {{ option.name }}
+            </option>
+          </select>
+        </label>
+
         <label class="wide-field">
           <span>Attack type</span>
           <select
@@ -266,7 +312,12 @@ onMounted(async () => {
           >
         </label>
 
-        <label v-if="activePlayerAttackSetup.attackType === 'stab'">
+        <label
+          v-if="
+            activePlayerAttackSetup.mode === 'manual' &&
+            activePlayerAttackSetup.attackType === 'stab'
+          "
+        >
           <span>{{ selectedMeleeAttackBonusLabel }}</span>
           <input
             v-model.number="activePlayerAttackSetup.stabAttack"
@@ -275,7 +326,12 @@ onMounted(async () => {
           >
         </label>
 
-        <label v-if="activePlayerAttackSetup.attackType === 'slash'">
+        <label
+          v-if="
+            activePlayerAttackSetup.mode === 'manual' &&
+            activePlayerAttackSetup.attackType === 'slash'
+          "
+        >
           <span>{{ selectedMeleeAttackBonusLabel }}</span>
           <input
             v-model.number="activePlayerAttackSetup.slashAttack"
@@ -284,7 +340,12 @@ onMounted(async () => {
           >
         </label>
 
-        <label v-if="activePlayerAttackSetup.attackType === 'crush'">
+        <label
+          v-if="
+            activePlayerAttackSetup.mode === 'manual' &&
+            activePlayerAttackSetup.attackType === 'crush'
+          "
+        >
           <span>{{ selectedMeleeAttackBonusLabel }}</span>
           <input
             v-model.number="activePlayerAttackSetup.crushAttack"
@@ -293,7 +354,7 @@ onMounted(async () => {
           >
         </label>
 
-        <label v-if="isRangedSetup">
+        <label v-if="activePlayerAttackSetup.mode === 'manual' && isRangedSetup">
           <span>Ranged attack bonus</span>
           <input
             v-model.number="activePlayerAttackSetup.rangedAttack"
@@ -302,7 +363,7 @@ onMounted(async () => {
           >
         </label>
 
-        <label v-if="isMagicSetup">
+        <label v-if="activePlayerAttackSetup.mode === 'manual' && isMagicSetup">
           <span>Magic attack bonus</span>
           <input
             v-model.number="activePlayerAttackSetup.magicAttack"
@@ -311,7 +372,7 @@ onMounted(async () => {
           >
         </label>
 
-        <label v-if="isMeleeSetup">
+        <label v-if="activePlayerAttackSetup.mode === 'manual' && isMeleeSetup">
           <span>Melee strength</span>
           <input
             v-model.number="activePlayerAttackSetup.meleeStrength"
@@ -320,7 +381,7 @@ onMounted(async () => {
           >
         </label>
 
-        <label v-if="isRangedSetup">
+        <label v-if="activePlayerAttackSetup.mode === 'manual' && isRangedSetup">
           <span>Ranged strength</span>
           <input
             v-model.number="activePlayerAttackSetup.rangedStrength"
@@ -329,7 +390,7 @@ onMounted(async () => {
           >
         </label>
 
-        <label v-if="isMagicSetup">
+        <label v-if="activePlayerAttackSetup.mode === 'manual' && isMagicSetup">
           <span>Magic damage percent</span>
           <input
             v-model.number="activePlayerAttackSetup.magicDamagePercent"
@@ -362,7 +423,7 @@ onMounted(async () => {
           </select>
         </label>
 
-        <label>
+        <label v-if="activePlayerAttackSetup.mode === 'manual'">
           <span>Weapon speed (ticks)</span>
           <input
             v-model.number="activePlayerAttackSetup.weaponSpeedTicks"
@@ -660,6 +721,38 @@ label {
     font-weight: 800;
     gap: 6px;
     min-width: 0;
+}
+
+fieldset {
+    border: 0;
+    margin: 0;
+    padding: 0;
+}
+
+.mode-switch {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.mode-switch legend {
+    color: #37424c;
+    flex-basis: 100%;
+    font-size: 0.82rem;
+    font-weight: 800;
+}
+
+.mode-switch label {
+    align-items: center;
+    background: #eef1ec;
+    border: 1px solid #aeb9c2;
+    display: flex;
+    min-height: 36px;
+    padding: 6px 10px;
+}
+
+.mode-switch input {
+    width: auto;
 }
 
 input,
