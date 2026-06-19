@@ -1,6 +1,7 @@
 #include "Engine.h"
 #include "DpsService.h"
 #include "EquipmentDatabase.h"
+#include "EquipmentSet.h"
 #include "LineOfSight.h"
 #include "Scene.h"
 #include "Tile.h"
@@ -486,6 +487,30 @@ EMSCRIPTEN_BINDINGS(osrssim_engine)
         .function(
             "GetEquipmentPiecesBySlot",
             &osrssim::EquipmentDatabase::GetEquipmentPiecesBySlot);
+
+    emscripten::class_<osrssim::EquipmentSet>("EquipmentSet")
+        .constructor<>()
+        .function(
+            "SetEquipmentPiece",
+            &osrssim::EquipmentSet::SetEquipmentPiece)
+        .function(
+            "HasEquipmentPiece",
+            &osrssim::EquipmentSet::HasEquipmentPiece)
+        .function(
+            "GetEquipmentPiece",
+            &osrssim::EquipmentSet::GetEquipmentPiece)
+        .function(
+            "GetEquipmentPieces",
+            &osrssim::EquipmentSet::GetEquipmentPieces)
+        .function(
+            "GetEquipmentBonuses",
+            &osrssim::EquipmentSet::GetEquipmentBonuses)
+        .function(
+            "BuildAttackComposition",
+            &osrssim::EquipmentSet::BuildAttackComposition)
+        .function(
+            "BuildDefenceComposition",
+            &osrssim::EquipmentSet::BuildDefenceComposition);
 
     emscripten::class_<osrssim::Scene>("Scene")
         .function("PlaceGameObject", &PlaceSceneGameObject)

@@ -190,6 +190,23 @@ export interface EquipmentDatabaseConstructor {
     GetDefaultJson(): string;
 }
 
+export interface EquipmentSet {
+    SetEquipmentPiece(piece: EquipmentPiece): void;
+    HasEquipmentPiece(slot: EquipmentSlot): boolean;
+    GetEquipmentPiece(slot: EquipmentSlot): EquipmentPiece;
+    GetEquipmentPieces(): EquipmentPieceVector;
+    GetEquipmentBonuses(): EquipmentBonuses;
+    BuildAttackComposition(
+        stats: CombatStats,
+        attackType: AttackType,
+    ): AttackComposition;
+    BuildDefenceComposition(stats: CombatStats): DefenceComposition;
+}
+
+export interface EquipmentSetConstructor {
+    new (): EquipmentSet;
+}
+
 export interface ActionFeedback {
     state: "none" | "blocked-movement" | "placement-failure" | "removal-failure";
 }
@@ -273,6 +290,7 @@ export interface EngineModule {
     Engine: new () => Engine;
     DpsService: DpsServiceConstructor;
     EquipmentDatabase: EquipmentDatabaseConstructor;
+    EquipmentSet: EquipmentSetConstructor;
     CardinalDirection: {
         North: CardinalDirection;
         East?: CardinalDirection;

@@ -84,6 +84,52 @@ assert.equal(weaponPieces.size(), 1);
 assert.equal(weaponPieces.get(0).id, 500);
 weaponPieces.delete();
 
+const equipmentSet = new module.EquipmentSet();
+equipmentSet.SetEquipmentPiece(equipmentDatabase.GetEquipmentPiece(500));
+equipmentSet.SetEquipmentPiece(equipmentDatabase.GetEquipmentPiece(501));
+
+const equipmentSetPieces = equipmentSet.GetEquipmentPieces();
+assert.equal(equipmentSetPieces.size(), 2);
+equipmentSetPieces.delete();
+
+const equipmentSetBonuses = equipmentSet.GetEquipmentBonuses();
+assert.equal(equipmentSetBonuses.slashAttack, 45);
+assert.equal(equipmentSetBonuses.meleeStrength, 44);
+assert.equal(equipmentSetBonuses.stabDefence, 1);
+
+const equipmentCombatStats = {
+    attack: 99,
+    strength: 99,
+    defence: 80,
+    ranged: 1,
+    magic: 1,
+    hitpoints: 99,
+};
+const equipmentAttackComposition = equipmentSet.BuildAttackComposition(
+    equipmentCombatStats,
+    module.AttackType.Slash,
+);
+assert.equal(equipmentAttackComposition.attackType, module.AttackType.Slash);
+assert.equal(equipmentAttackComposition.stats.attack, 99);
+assert.equal(equipmentAttackComposition.bonuses.slashAttack, 45);
+assert.equal(equipmentAttackComposition.bonuses.meleeStrength, 44);
+assert.equal(equipmentAttackComposition.weapon.id, 900n);
+assert.equal(equipmentAttackComposition.weapon.speed, 4);
+
+const equipmentDefenceComposition =
+    equipmentSet.BuildDefenceComposition(equipmentCombatStats);
+assert.equal(equipmentDefenceComposition.stats.defence, 80);
+assert.equal(equipmentDefenceComposition.bonuses.stabDefence, 1);
+
+const unarmedSet = new module.EquipmentSet();
+const unarmedAttackComposition = unarmedSet.BuildAttackComposition(
+    equipmentCombatStats,
+    module.AttackType.Crush,
+);
+assert.equal(unarmedAttackComposition.weapon.id, 0n);
+assert.equal(unarmedAttackComposition.weapon.range, 1);
+assert.equal(unarmedAttackComposition.weapon.speed, 4);
+
 assert.equal(
     module.DpsService.CalculateEffectiveLevel(99, 1.15, 1.10, 3),
     136,

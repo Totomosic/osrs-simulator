@@ -1,3 +1,12 @@
+2026-06-19 #72 Equipment Set Composition
+- Selected issue: #72, unblocked because #70 and #71 are closed. Parent PRD: #69.
+- Docs read: CONTEXT.md, docs/agents/domain.md, docs/osrs/combat-rolls.md, docs/adr/0007-engine-owned-equipment-database.md, PRD #69, feature #72, blockers #70/#71.
+- Plan: TDD C++ EquipmentSet public API for one-piece-per-slot, replacement, pure bonus summing, attack/defence composition construction, and unarmed fallback; expose same behavior through WASM/TypeScript; add generated WASM tests. Scope guard: only engine/WASM composition behavior, no web equipment-mode UI (#74/#75).
+- Completed: PRD #69 stories 7-9, 21, 34 and feature #72 acceptance for one-piece-per-slot equipment sets, pure bonus summing, attack/defence composition construction, selected weapon definition, unarmed fallback, and WASM/TypeScript exposure.
+- Decisions: store equipment piece values directly in `EquipmentSet` keyed by `EquipmentSlot`; replacing a slot overwrites the prior piece; composition sums all selected bonuses with no set effects or compatibility rules; default `WeaponDefinition` provides unarmed fallback.
+- Files changed: cpp/engine/CMakeLists.txt, cpp/engine/src/EquipmentSet.h, cpp/engine/src/EquipmentSet.cpp, cpp/engine/src/EngineBindings.cpp, cpp/engine/tests/EquipmentSetTest.cpp, web/src/wasm/EngineModule.ts, web/test/generated-dps-service.test.mjs, progress.txt.
+- Validation: cmake --build build, ctest --test-dir build --output-on-failure, source /home/jordan/dev/emsdk/emsdk_env.sh && yarn wasm:build && node web/test/generated-dps-service.test.mjs, yarn --cwd web typecheck, yarn --cwd web test, yarn --cwd web build passed. No blockers.
+
 2026-06-19 #73 Manual NPC Defence Composition
 - Selected issue: #73, unblocked because #70 is closed. Parent PRD: #69.
 - Docs read: CONTEXT.md, docs/agents/domain.md, docs/adr/0007-engine-owned-equipment-database.md, PRD #69, feature #73, blockers #70/#71 checked, open feature candidates #72/#73/#74/#75 considered.
