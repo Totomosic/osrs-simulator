@@ -81,7 +81,7 @@ The object-local movement and line-of-sight blocking shape applied when a scene 
 _Avoid_: Tile flag
 
 **Actor**:
-A moving participant in the simulation, such as a player or NPC. Actors can occupy tiles and move between loaded scenes, but they are not scene entities.
+A moving participant in the simulation, such as a player or NPC. Actors can occupy tiles, move between loaded scenes, and have a combat composition, but they are not scene entities.
 _Avoid_: Scene entity
 
 **Actor ID**:
@@ -109,7 +109,7 @@ The maximum number of per-tile movement steps an actor may take in one tick. A m
 _Avoid_: Run energy, movement mode
 
 **Weapon**:
-An actor's equipped attack profile, whether or not it represents a physical item. Each actor has exactly one weapon equipped.
+A combat composition's equipped attack profile, whether or not it represents a physical item. Each combat composition has exactly one weapon.
 _Avoid_: Attack style, attack profile
 
 **Weapon ID**:
@@ -117,7 +117,7 @@ A stable simulator-local numeric identifier for a weapon, used to distinguish ge
 _Avoid_: Callback key, attack type
 
 **Weapon Name**:
-The display name associated with a weapon definition.
+The display name associated with a weapon record.
 _Avoid_: Weapon ID
 
 **Unarmed**:
@@ -125,11 +125,15 @@ The built-in default weapon. Unarmed has weapon ID 0, weapon range 1, and weapon
 _Avoid_: No weapon
 
 **Weapon Definition**:
-The equipped weapon data carried by an actor, including weapon identity and basic weapon stats.
+The equipped weapon data carried by a combat composition, including weapon identity and basic weapon stats.
 _Avoid_: Weapon instance, item definition
 
+**Weapon Record**:
+A reusable weapon catalogue entry that pairs a weapon definition with simulator-specific weapon behavior and metadata.
+_Avoid_: Weapon definition, equipment piece
+
 **Equipment Piece**:
-A single equippable item with a human-readable name, stable numeric ID, equipment slot, equipment bonuses, and optionally a weapon definition when the item is a weapon.
+A single equippable item with a human-readable name, stable numeric ID, equipment slot, equipment bonuses, and optionally a weapon ID when the item equips a weapon.
 _Avoid_: Item, gear item
 
 **Equipment Piece ID**:
@@ -173,8 +177,16 @@ The offensive, defensive, and damage bonuses contributed by equipment.
 _Avoid_: Gear stats, item stats
 
 **Combat Composition**:
-A complete combat loadout that can be separated into attack-side and defence-side composition for combat calculations.
+A complete combat loadout, including combat stats, equipment bonuses, selected attack type, magic base maximum hit, and a weapon definition, that always contains enough data to produce both attack-side and defence-side composition for combat calculations.
 _Avoid_: Combat setup, stat block
+
+**Combat Composition ID**:
+A stable simulator-local identifier for a combat composition, shared by built-in actor compositions and user-saved compositions.
+_Avoid_: NPC setup ID, preset ID
+
+**Saved Combat Composition**:
+A combat composition saved by the user for reuse after it has been created or edited in the calculator.
+_Avoid_: Preset, saved setup
 
 **Attack Composition**:
 The attack-side part of a combat composition, including the selected attack type, combat stats, equipment bonuses, and weapon definition used to calculate offensive rolls and maximum hit.
@@ -187,6 +199,10 @@ _Avoid_: Defensive stats
 **Maximum Hit**:
 The highest damage value a successful damage roll can produce before post-roll reductions. Maximum hit is distinct from expected damage.
 _Avoid_: Damage, expected damage
+
+**Magic Base Maximum Hit**:
+The base maximum hit used by a magic combat composition before contextual damage modifiers are applied.
+_Avoid_: Spell damage, magic damage bonus
 
 **Expected Damage**:
 The average damage implied by combat rolls without sampling a specific hit. Expected damage accounts for hit chance and maximum hit.
@@ -231,6 +247,18 @@ _Avoid_: Control setup, default setup
 **NPC**:
 An actor controlled by the simulation rather than by the user.
 _Avoid_: Non-player character
+
+**NPC Name**:
+The display name associated with an NPC definition.
+_Avoid_: Combat composition name
+
+**NPC ID**:
+A stable simulator-local numeric identifier for an NPC definition. NPC ID is distinct from actor ID because an NPC definition is catalogue data, not a live actor.
+_Avoid_: Actor ID
+
+**NPC Definition**:
+A reusable definition of an NPC's non-combat actor traits and associated combat composition identity.
+_Avoid_: NPC instance, NPC combat setup
 
 **NPC Defence Setup**:
 A user-facing calculator setup used as the shared NPC defender for one or more player attack setups. An NPC defence setup produces a defence composition plus calculator-specific defender metadata.
