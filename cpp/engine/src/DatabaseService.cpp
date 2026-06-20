@@ -133,6 +133,21 @@ void ValidateWeaponCallbacks(
     }
 }
 
+void ValidateEquipmentWeapons(
+    const EquipmentDatabase& equipmentDatabase,
+    const WeaponDatabase& weaponDatabase)
+{
+    for (const EquipmentPiece& piece : equipmentDatabase.GetAllEquipmentPieces())
+    {
+        if (piece.hasWeapon &&
+            !weaponDatabase.HasWeaponRecord(piece.weaponId))
+        {
+            throw std::invalid_argument(
+                "equipment piece references an unknown weapon ID");
+        }
+    }
+}
+
 }  // namespace
 
 DatabaseService DatabaseService::LoadFromDocuments(
@@ -169,6 +184,9 @@ DatabaseService DatabaseService::LoadFromDocuments(
     service.m_WeaponDatabase =
         WeaponDatabase::LoadFromJson(weaponsDocument->second);
     ValidateWeaponCallbacks(service.m_WeaponDatabase, combatService);
+    ValidateEquipmentWeapons(
+        service.m_EquipmentDatabase,
+        service.m_WeaponDatabase);
 
     return service;
 }

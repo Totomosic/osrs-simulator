@@ -16,7 +16,7 @@ import {
     type CalculatorAttackType,
     type CombatStylePreset,
     type DpsResultRow,
-    type EquipmentDatabase,
+    type EquipmentDataset,
     type EquipmentSlotOptions,
 } from "./dpsCalculator";
 import {
@@ -26,7 +26,7 @@ import {
 
 const engineModuleStatus = ref<"loading" | "loaded" | "failed">("loading");
 const engineModule = ref<EngineModule | null>(null);
-const equipmentDatabase = ref<EquipmentDatabase | null>(null);
+const equipmentDataset = ref<EquipmentDataset | null>(null);
 const calculatorState = reactive(createDefaultCalculatorState());
 const activePlayerAttackSetup = computed(() =>
     getActivePlayerAttackSetup(calculatorState),
@@ -103,7 +103,7 @@ const combatStyleOptions = computed(() => {
 });
 
 const equipmentModeSlotOptions = computed<EquipmentSlotOptions[]>(() => {
-    if (engineModule.value === null || equipmentDatabase.value === null) {
+    if (engineModule.value === null || equipmentDataset.value === null) {
         return equipmentSlotControls.map((slot) => ({
             key: slot.key,
             label: slot.label,
@@ -111,18 +111,18 @@ const equipmentModeSlotOptions = computed<EquipmentSlotOptions[]>(() => {
         }));
     }
 
-    return getEquipmentModeSlotOptions(engineModule.value, equipmentDatabase.value);
+    return getEquipmentModeSlotOptions(engineModule.value, equipmentDataset.value);
 });
 
 const resultRows = computed<DpsResultRow[]>(() => {
-    if (engineModule.value === null || equipmentDatabase.value === null) {
+    if (engineModule.value === null || equipmentDataset.value === null) {
         return [];
     }
 
     return buildSetupResultRows(
         engineModule.value,
         calculatorState,
-        equipmentDatabase.value,
+        equipmentDataset.value,
     );
 });
 
@@ -168,7 +168,7 @@ onMounted(async () => {
     try {
         const loadedEngineModule = await loadEngineModule();
         engineModule.value = loadedEngineModule;
-        equipmentDatabase.value = await loadBuiltInEquipmentDatabase(
+        equipmentDataset.value = await loadBuiltInEquipmentDataset(
             loadedEngineModule,
         );
         engineModuleStatus.value = "loaded";
@@ -178,7 +178,7 @@ onMounted(async () => {
     }
 });
 
-async function loadBuiltInEquipmentDatabase(module: EngineModule) {
+async function loadBuiltInEquipmentDataset(module: EngineModule) {
     const manifestJson = await fetchTextAsset("manifest.json");
     const manifest = JSON.parse(manifestJson) as {
         documents?: { equipment?: string; weapons?: string };

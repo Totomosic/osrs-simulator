@@ -52,7 +52,15 @@ assert.equal(
     "Maple shortbow",
 );
 
-const equipmentDatabase = module.EquipmentDatabase.LoadFromJson(`{
+const customDatabaseService = module.DatabaseService.LoadFromJsonDocuments(
+    `{
+        "version": 1,
+        "documents": {
+            "equipment": "equipment.json",
+            "weapons": "weapons.json"
+        }
+    }`,
+    `{
     "version": 1,
     "equipmentPieces": [
         {
@@ -63,11 +71,7 @@ const equipmentDatabase = module.EquipmentDatabase.LoadFromJson(`{
                 "slashAttack": 45,
                 "meleeStrength": 44
             },
-            "weapon": {
-                "id": 900,
-                "range": 1,
-                "speed": 4
-            }
+            "weaponId": 900
         },
         {
             "id": 501,
@@ -78,7 +82,29 @@ const equipmentDatabase = module.EquipmentDatabase.LoadFromJson(`{
             }
         }
     ]
-}`);
+}`,
+    `{
+    "version": 1,
+    "weapons": [
+        {
+            "id": 0,
+            "name": "Unarmed",
+            "range": 1,
+            "speed": 4,
+            "attackCallbackName": "standard_attack"
+        },
+        {
+            "id": 900,
+            "name": "Rune scimitar",
+            "range": 1,
+            "speed": 4,
+            "attackCallbackName": "standard_attack"
+        }
+    ]
+}`,
+);
+const equipmentDatabase = customDatabaseService.GetEquipmentDatabase();
+const weaponDatabase = customDatabaseService.GetWeaponDatabase();
 
 assert.equal(equipmentDatabase.HasEquipmentPiece(500), true);
 assert.equal(equipmentDatabase.HasEquipmentPiece(999), false);
@@ -89,7 +115,8 @@ assert.equal(runeScimitar.slot, module.EquipmentSlot.Weapon);
 assert.equal(runeScimitar.bonuses.slashAttack, 45);
 assert.equal(runeScimitar.bonuses.stabAttack, 0);
 assert.equal(runeScimitar.hasWeapon, true);
-assert.equal(runeScimitar.weapon.id, 900n);
+assert.equal(runeScimitar.weaponId, 900n);
+assert.equal(weaponDatabase.GetWeaponRecord(900n).weapon.speed, 4);
 
 const allEquipmentPieces = equipmentDatabase.GetAllEquipmentPieces();
 assert.equal(allEquipmentPieces.size(), 2);
@@ -126,6 +153,7 @@ const equipmentCombatStats = {
 const equipmentAttackComposition = equipmentSet.BuildAttackComposition(
     equipmentCombatStats,
     module.AttackType.Slash,
+    weaponDatabase,
 );
 assert.equal(equipmentAttackComposition.attackType, module.AttackType.Slash);
 assert.equal(equipmentAttackComposition.stats.attack, 99);
@@ -133,6 +161,15 @@ assert.equal(equipmentAttackComposition.bonuses.slashAttack, 45);
 assert.equal(equipmentAttackComposition.bonuses.meleeStrength, 44);
 assert.equal(equipmentAttackComposition.weapon.id, 900n);
 assert.equal(equipmentAttackComposition.weapon.speed, 4);
+
+const equipmentCombatComposition = equipmentSet.BuildCombatComposition(
+    equipmentCombatStats,
+    module.AttackType.Slash,
+    12,
+    weaponDatabase,
+);
+assert.equal(equipmentCombatComposition.magicBaseMaximumHit, 12);
+assert.equal(equipmentCombatComposition.weapon.id, 900n);
 
 const equipmentDefenceComposition =
     equipmentSet.BuildDefenceComposition(equipmentCombatStats);
@@ -143,6 +180,7 @@ const unarmedSet = new module.EquipmentSet();
 const unarmedAttackComposition = unarmedSet.BuildAttackComposition(
     equipmentCombatStats,
     module.AttackType.Crush,
+    weaponDatabase,
 );
 assert.equal(unarmedAttackComposition.weapon.id, 0n);
 assert.equal(unarmedAttackComposition.weapon.range, 1);

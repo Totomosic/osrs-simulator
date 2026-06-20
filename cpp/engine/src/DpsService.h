@@ -70,6 +70,15 @@ struct AttackComposition
     WeaponDefinition weapon;
 };
 
+struct CombatComposition
+{
+    CombatStats stats;
+    EquipmentBonuses bonuses;
+    AttackType attackType = AttackType::Slash;
+    int magicBaseMaximumHit = 0;
+    WeaponDefinition weapon;
+};
+
 struct DefenceComposition
 {
     CombatStats stats;

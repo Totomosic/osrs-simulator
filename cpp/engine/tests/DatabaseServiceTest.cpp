@@ -28,13 +28,14 @@ const std::string EquipmentJson = R"({
                 "slashAttack": 7,
                 "meleeStrength": 6
             },
-            "weapon": {
-                "id": 300,
-                "range": 1,
-                "speed": 4
-            }
+            "weaponId": 300
         }
     ]
+})";
+
+const std::string EmptyEquipmentJson = R"({
+    "version": 1,
+    "equipmentPieces": []
 })";
 
 const std::string WeaponsJson = R"({
@@ -192,11 +193,7 @@ int main()
                             "name": "Broken bow",
                             "slot": "weapon",
                             "bonuses": {},
-                            "weapon": {
-                                "id": 301,
-                                "range": 0,
-                                "speed": 4
-                            }
+                            "weaponId": 999
                         }
                     ]
                 })"},
@@ -208,7 +205,7 @@ int main()
         {
             osrssim::DatabaseService::LoadFromDocuments(
                 ManifestJson,
-                {{"equipment", EquipmentJson},
+                {{"equipment", EmptyEquipmentJson},
                  {"weapons", R"({
                     "version": 1,
                     "weapons": [
@@ -235,7 +232,7 @@ int main()
         {
             osrssim::DatabaseService::LoadFromDocuments(
                 ManifestJson,
-                {{"equipment", EquipmentJson},
+                {{"equipment", EmptyEquipmentJson},
                  {"weapons", R"({
                     "version": 1,
                     "weapons": [
@@ -255,7 +252,7 @@ int main()
         {
             osrssim::DatabaseService::LoadFromDocuments(
                 ManifestJson,
-                {{"equipment", EquipmentJson},
+                {{"equipment", EmptyEquipmentJson},
                  {"weapons", R"({
                     "version": 1,
                     "weapons": [
@@ -286,7 +283,7 @@ int main()
         const osrssim::DatabaseService serviceWithCustomCallback =
             osrssim::DatabaseService::LoadFromDocuments(
                 ManifestJson,
-                {{"equipment", EquipmentJson},
+                {{"equipment", EmptyEquipmentJson},
                  {"weapons", R"({
                     "version": 1,
                     "weapons": [
@@ -343,7 +340,7 @@ int main()
         const osrssim::DatabaseService serviceWithCustomCallback =
             osrssim::DatabaseService::LoadFromDocuments(
                 ManifestJson,
-                {{"equipment", EquipmentJson},
+                {{"equipment", EmptyEquipmentJson},
                  {"weapons", R"({
                     "version": 1,
                     "weapons": [
@@ -383,7 +380,7 @@ int main()
         {
             osrssim::DatabaseService::LoadFromDocuments(
                 ManifestJson,
-                {{"equipment", EquipmentJson},
+                {{"equipment", EmptyEquipmentJson},
                  {"weapons", R"({
                     "version": 1,
                     "weapons": [

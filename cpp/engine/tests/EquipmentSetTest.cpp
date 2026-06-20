@@ -1,6 +1,8 @@
 #include "EquipmentSet.h"
+#include "WeaponDatabase.h"
 
 #include <cassert>
+#include <stdexcept>
 #include <vector>
 
 namespace
@@ -24,13 +26,13 @@ osrssim::EquipmentPiece MakePiece(
 osrssim::EquipmentPiece MakeWeapon(
     int id,
     const osrssim::EquipmentBonuses& bonuses,
-    osrssim::WeaponDefinition weapon)
+    osrssim::WeaponId weaponId)
 {
     osrssim::EquipmentPiece piece =
         MakePiece(id, osrssim::EquipmentSlot::Weapon, bonuses);
 
     piece.hasWeapon = true;
-    piece.weapon = weapon;
+    piece.weaponId = weaponId;
 
     return piece;
 }
@@ -39,6 +41,27 @@ osrssim::EquipmentPiece MakeWeapon(
 
 int main()
 {
+    const osrssim::WeaponDatabase weaponDatabase =
+        osrssim::WeaponDatabase::LoadFromJson(R"({
+            "version": 1,
+            "weapons": [
+                {
+                    "id": 0,
+                    "name": "Unarmed",
+                    "range": 1,
+                    "speed": 4,
+                    "attackCallbackName": "standard_attack"
+                },
+                {
+                    "id": 300,
+                    "name": "Test sword",
+                    "range": 2,
+                    "speed": 5,
+                    "attackCallbackName": "standard_attack"
+                }
+            ]
+        })");
+
     osrssim::EquipmentBonuses amuletBonuses;
     amuletBonuses.stabAttack = 3;
     amuletBonuses.slashAttack = 4;
@@ -72,7 +95,7 @@ int main()
         MakeWeapon(
             103,
             weaponBonuses,
-            osrssim::WeaponDefinition{300, 1, 5}));
+            300));
 
     const std::vector<osrssim::EquipmentPiece> pieces =
         equipmentSet.GetEquipmentPieces();
@@ -94,17 +117,27 @@ int main()
     combatStats.strength = 99;
     combatStats.defence = 75;
 
+    const osrssim::CombatComposition combatComposition =
+        equipmentSet.BuildCombatComposition(
+            combatStats,
+            osrssim::AttackType::Slash,
+            17,
+            weaponDatabase);
+    assert(combatComposition.attackType == osrssim::AttackType::Slash);
+    assert(combatComposition.stats.attack == 99);
+    assert(combatComposition.bonuses.slashAttack == 74);
+    assert(combatComposition.bonuses.meleeStrength == 78);
+    assert(combatComposition.magicBaseMaximumHit == 17);
+    assert(combatComposition.weapon.id == 300);
+    assert(combatComposition.weapon.range == 2);
+    assert(combatComposition.weapon.speed == 5);
+
     const osrssim::AttackComposition attackComposition =
         equipmentSet.BuildAttackComposition(
             combatStats,
-            osrssim::AttackType::Slash);
-    assert(attackComposition.attackType == osrssim::AttackType::Slash);
-    assert(attackComposition.stats.attack == 99);
-    assert(attackComposition.bonuses.slashAttack == 74);
-    assert(attackComposition.bonuses.meleeStrength == 78);
+            osrssim::AttackType::Slash,
+            weaponDatabase);
     assert(attackComposition.weapon.id == 300);
-    assert(attackComposition.weapon.range == 1);
-    assert(attackComposition.weapon.speed == 5);
 
     const osrssim::DefenceComposition defenceComposition =
         equipmentSet.BuildDefenceComposition(combatStats);
@@ -116,10 +149,28 @@ int main()
     const osrssim::AttackComposition unarmedAttackComposition =
         unarmedSet.BuildAttackComposition(
             combatStats,
-            osrssim::AttackType::Crush);
+            osrssim::AttackType::Crush,
+            weaponDatabase);
     assert(unarmedAttackComposition.weapon.id == 0);
     assert(unarmedAttackComposition.weapon.range == 1);
     assert(unarmedAttackComposition.weapon.speed == 4);
+
+    bool missingWeaponFailed = false;
+    try
+    {
+        osrssim::EquipmentSet brokenSet;
+        brokenSet.SetEquipmentPiece(MakeWeapon(104, weaponBonuses, 999));
+        brokenSet.BuildCombatComposition(
+            combatStats,
+            osrssim::AttackType::Slash,
+            0,
+            weaponDatabase);
+    }
+    catch (const std::out_of_range&)
+    {
+        missingWeaponFailed = true;
+    }
+    assert(missingWeaponFailed);
 
     return 0;
 }

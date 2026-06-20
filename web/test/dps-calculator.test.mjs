@@ -85,6 +85,9 @@ class FakeEquipmentDatabase {
             GetEquipmentDatabase() {
                 return new FakeEquipmentDatabase();
             },
+            GetWeaponDatabase() {
+                return new FakeWeaponDatabase();
+            },
         };
     }
 
@@ -104,6 +107,19 @@ class FakeEquipmentDatabase {
     }
 }
 
+class FakeWeaponDatabase {
+    GetWeaponRecord(id) {
+        const record = fakeWeaponRecords.find(
+            (candidate) => candidate.weapon.id === id,
+        );
+        if (record === undefined) {
+            throw new Error(`missing weapon ${id}`);
+        }
+
+        return record;
+    }
+}
+
 class FakeEquipmentSet {
     constructor() {
         this.pieces = [];
@@ -114,7 +130,7 @@ class FakeEquipmentSet {
         this.pieces.push(piece);
     }
 
-    BuildAttackComposition(stats, attackType) {
+    BuildCombatComposition(stats, attackType, magicBaseMaximumHit, weaponDatabase) {
         const bonuses = createFakeEquipmentBonuses();
         for (const piece of this.pieces) {
             for (const [key, value] of Object.entries(piece.bonuses)) {
@@ -123,13 +139,16 @@ class FakeEquipmentSet {
         }
 
         const weapon =
-            this.pieces.find((piece) => piece.slot === module.EquipmentSlot.Weapon)
-                ?.weapon ?? { id: 0, range: 1, speed: 4 };
+            weaponDatabase.GetWeaponRecord(
+                this.pieces.find((piece) => piece.slot === module.EquipmentSlot.Weapon)
+                    ?.weaponId ?? 0,
+            ).weapon;
 
         return {
             attackType,
             stats,
             bonuses,
+            magicBaseMaximumHit,
             weapon,
         };
     }
@@ -189,6 +208,24 @@ const module = {
     EquipmentSet: FakeEquipmentSet,
 };
 
+const fakeWeaponRecords = [
+    {
+        weapon: { id: 0, range: 1, speed: 4 },
+        name: "Unarmed",
+        attackCallbackName: "standard_attack",
+    },
+    {
+        weapon: { id: 1, range: 1, speed: 4 },
+        name: "Bronze scimitar",
+        attackCallbackName: "standard_attack",
+    },
+    {
+        weapon: { id: 2, range: 7, speed: 4 },
+        name: "Maple shortbow",
+        attackCallbackName: "standard_attack",
+    },
+];
+
 const fakeEquipmentPieces = [
     {
         id: 1001,
@@ -199,7 +236,7 @@ const fakeEquipmentPieces = [
             meleeStrength: 6,
         }),
         hasWeapon: true,
-        weapon: { id: 1, range: 1, speed: 4 },
+        weaponId: 1,
     },
     {
         id: 1002,
@@ -209,7 +246,7 @@ const fakeEquipmentPieces = [
             rangedAttack: 29,
         }),
         hasWeapon: true,
-        weapon: { id: 2, range: 7, speed: 4 },
+        weaponId: 2,
     },
     {
         id: 1003,
@@ -219,7 +256,7 @@ const fakeEquipmentPieces = [
             meleeStrength: 10,
         }),
         hasWeapon: false,
-        weapon: { id: 0, range: 1, speed: 4 },
+        weaponId: 0,
     },
     {
         id: 1004,
@@ -229,7 +266,7 @@ const fakeEquipmentPieces = [
             meleeStrength: 4,
         }),
         hasWeapon: false,
-        weapon: { id: 0, range: 1, speed: 4 },
+        weaponId: 0,
     },
     {
         id: 1005,
@@ -240,11 +277,11 @@ const fakeEquipmentPieces = [
             meleeStrength: 12,
         }),
         hasWeapon: false,
-        weapon: { id: 0, range: 1, speed: 4 },
+        weaponId: 0,
     },
 ];
 
-const equipmentDatabase = loadEquipmentDataset(
+const equipmentDataset = loadEquipmentDataset(
     module,
     '{"version":1,"documents":{"equipment":"equipment.json","weapons":"weapons.json"}}',
     '{"version":1,"equipmentPieces":[]}',
@@ -338,7 +375,7 @@ assert.equal(request.attackPrayerMultiplier, 1);
 assert.equal(request.finalDamageMultiplier, 1);
 assert.equal(request.magicBaseMaximumHit, 0);
 
-const weaponOptions = getEquipmentModeWeaponOptions(module, equipmentDatabase);
+const weaponOptions = getEquipmentModeWeaponOptions(module, equipmentDataset);
 assert.deepEqual(
     weaponOptions.map((option) => [option.id, option.name]),
     [
@@ -347,7 +384,7 @@ assert.deepEqual(
     ],
 );
 
-const slotOptions = getEquipmentModeSlotOptions(module, equipmentDatabase);
+const slotOptions = getEquipmentModeSlotOptions(module, equipmentDataset);
 assert.deepEqual(
     slotOptions.map((slot) => slot.key),
     equipmentSlotControls.map((slot) => slot.key),
@@ -393,7 +430,7 @@ const equipmentRequest = buildNpcDpsRequest(
     module,
     equipmentState,
     equipmentState.activePlayerAttackSetupIndex,
-    equipmentDatabase,
+    equipmentDataset,
 );
 assert.equal(
     equipmentRequest.attackComposition.attackType,
@@ -421,7 +458,7 @@ const fullEquipmentRequest = buildNpcDpsRequest(
     module,
     fullEquipmentState,
     fullEquipmentState.activePlayerAttackSetupIndex,
-    equipmentDatabase,
+    equipmentDataset,
 );
 assert.equal(fullEquipmentRequest.attackComposition.stats.attack, 107);
 assert.equal(fullEquipmentRequest.attackComposition.stats.strength, 118);
@@ -443,7 +480,7 @@ FakeDpsService.nextDpsValues = [4, 5];
 const mixedModeRows = buildSetupResultRows(
     module,
     mixedModeState,
-    equipmentDatabase,
+    equipmentDataset,
 );
 assert.equal(mixedModeRows.length, 2);
 assert.equal(mixedModeRows[0].name, "Manual slash");

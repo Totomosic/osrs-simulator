@@ -18,11 +18,7 @@ int main()
                     "slashAttack": 7,
                     "meleeStrength": 6
                 },
-                "weapon": {
-                    "id": 300,
-                    "range": 1,
-                    "speed": 4
-                }
+                "weaponId": 300
             },
             {
                 "id": 101,
@@ -48,9 +44,7 @@ int main()
     assert(scimitar->bonuses.stabAttack == 0);
     assert(scimitar->bonuses.meleeStrength == 6);
     assert(scimitar->hasWeapon);
-    assert(scimitar->weapon.id == 300);
-    assert(scimitar->weapon.range == 1);
-    assert(scimitar->weapon.speed == 4);
+    assert(scimitar->weaponId == 300);
 
     const osrssim::EquipmentPiece* amulet =
         database.TryGetEquipmentPiece(101);
@@ -96,7 +90,7 @@ int main()
     }
     assert(duplicateFailed);
 
-    bool weaponWithoutDefinitionFailed = false;
+    bool weaponWithoutIdFailed = false;
     try
     {
         osrssim::EquipmentDatabase::LoadFromJson(R"({
@@ -113,9 +107,31 @@ int main()
     }
     catch (const std::invalid_argument&)
     {
-        weaponWithoutDefinitionFailed = true;
+        weaponWithoutIdFailed = true;
     }
-    assert(weaponWithoutDefinitionFailed);
+    assert(weaponWithoutIdFailed);
+
+    bool weaponWithUnarmedIdFailed = false;
+    try
+    {
+        osrssim::EquipmentDatabase::LoadFromJson(R"({
+            "version": 1,
+            "equipmentPieces": [
+                {
+                    "id": 102,
+                    "name": "Broken sword",
+                    "slot": "weapon",
+                    "bonuses": {},
+                    "weaponId": 0
+                }
+            ]
+        })");
+    }
+    catch (const std::invalid_argument&)
+    {
+        weaponWithUnarmedIdFailed = true;
+    }
+    assert(weaponWithUnarmedIdFailed);
 
     bool nonWeaponWithDefinitionFailed = false;
     try
@@ -128,11 +144,7 @@ int main()
                     "name": "Armed amulet",
                     "slot": "amulet",
                     "bonuses": {},
-                    "weapon": {
-                        "id": 103,
-                        "range": 1,
-                        "speed": 4
-                    }
+                    "weaponId": 103
                 }
             ]
         })");

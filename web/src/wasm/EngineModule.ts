@@ -71,6 +71,14 @@ export interface AttackComposition {
     weapon: WeaponDefinition;
 }
 
+export interface CombatComposition {
+    stats: CombatStats;
+    bonuses: EquipmentBonuses;
+    attackType: AttackType;
+    magicBaseMaximumHit: number;
+    weapon: WeaponDefinition;
+}
+
 export interface DefenceComposition {
     stats: CombatStats;
     bonuses: EquipmentBonuses;
@@ -82,7 +90,7 @@ export interface EquipmentPiece {
     slot: EquipmentSlot;
     bonuses: EquipmentBonuses;
     hasWeapon: boolean;
-    weapon: WeaponDefinition;
+    weaponId: number | bigint;
 }
 
 export interface EquipmentPieceVector {
@@ -190,8 +198,20 @@ export interface EquipmentDatabaseConstructor {
     GetDefaultJson(): string;
 }
 
+export interface WeaponRecord {
+    weapon: WeaponDefinition;
+    name: string;
+    attackCallbackName: string;
+}
+
+export interface WeaponDatabase {
+    HasWeaponRecord(id: number | bigint): boolean;
+    GetWeaponRecord(id: number | bigint): WeaponRecord;
+}
+
 export interface DatabaseService {
     GetEquipmentDatabase(): EquipmentDatabase;
+    GetWeaponDatabase(): WeaponDatabase;
 }
 
 export interface DatabaseServiceConstructor {
@@ -209,9 +229,16 @@ export interface EquipmentSet {
     GetEquipmentPiece(slot: EquipmentSlot): EquipmentPiece;
     GetEquipmentPieces(): EquipmentPieceVector;
     GetEquipmentBonuses(): EquipmentBonuses;
+    BuildCombatComposition(
+        stats: CombatStats,
+        attackType: AttackType,
+        magicBaseMaximumHit: number,
+        weaponDatabase: WeaponDatabase,
+    ): CombatComposition;
     BuildAttackComposition(
         stats: CombatStats,
         attackType: AttackType,
+        weaponDatabase: WeaponDatabase,
     ): AttackComposition;
     BuildDefenceComposition(stats: CombatStats): DefenceComposition;
 }

@@ -89,22 +89,47 @@ EquipmentBonuses EquipmentSet::GetEquipmentBonuses() const
     return total;
 }
 
-AttackComposition EquipmentSet::BuildAttackComposition(
+CombatComposition EquipmentSet::BuildCombatComposition(
     const CombatStats& stats,
-    AttackType attackType) const
+    AttackType attackType,
+    int magicBaseMaximumHit,
+    const WeaponDatabase& weaponDatabase) const
 {
-    AttackComposition composition;
+    CombatComposition composition;
 
-    composition.attackType = attackType;
     composition.stats = stats;
     composition.bonuses = GetEquipmentBonuses();
+    composition.attackType = attackType;
+    composition.magicBaseMaximumHit = magicBaseMaximumHit;
 
     const EquipmentPiece* weaponPiece =
         TryGetEquipmentPiece(EquipmentSlot::Weapon);
     if (weaponPiece != nullptr && weaponPiece->hasWeapon)
     {
-        composition.weapon = weaponPiece->weapon;
+        composition.weapon =
+            weaponDatabase.GetWeaponRecord(weaponPiece->weaponId).weapon;
     }
+    else
+    {
+        composition.weapon = weaponDatabase.GetWeaponRecord(0).weapon;
+    }
+
+    return composition;
+}
+
+AttackComposition EquipmentSet::BuildAttackComposition(
+    const CombatStats& stats,
+    AttackType attackType,
+    const WeaponDatabase& weaponDatabase) const
+{
+    const CombatComposition combatComposition =
+        BuildCombatComposition(stats, attackType, 0, weaponDatabase);
+
+    AttackComposition composition;
+    composition.attackType = combatComposition.attackType;
+    composition.stats = combatComposition.stats;
+    composition.bonuses = combatComposition.bonuses;
+    composition.weapon = combatComposition.weapon;
 
     return composition;
 }

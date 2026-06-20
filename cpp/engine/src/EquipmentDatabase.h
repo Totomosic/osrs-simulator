@@ -32,7 +32,7 @@ struct EquipmentPiece
     EquipmentSlot slot = EquipmentSlot::Weapon;
     EquipmentBonuses bonuses;
     bool hasWeapon = false;
-    WeaponDefinition weapon;
+    WeaponId weaponId = 0;
 };
 
 class EquipmentDatabase

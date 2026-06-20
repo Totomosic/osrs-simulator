@@ -222,29 +222,33 @@ EquipmentBonuses ParseEquipmentBonuses(const Json& value)
     return bonuses;
 }
 
-WeaponDefinition ParseWeaponDefinition(const Json& value)
+WeaponId GetRequiredWeaponId(const Json& value, const std::string& key)
 {
-    RequireObject(value, "weapon");
-
-    if (!HasOnlyKeys(value, {"id", "range", "speed"}))
+    if (!value.contains(key) || !value.at(key).is_number_integer())
     {
-        throw std::invalid_argument("weapon contains an unknown field");
+        throw std::invalid_argument(key + " must be an integer");
     }
 
-    WeaponDefinition weapon;
+    const Json& id = value.at(key);
+    if (id.is_number_unsigned())
+    {
+        return id.get<WeaponId>();
+    }
 
-    weapon.id = GetRequiredNonNegativeInt(value, "id");
-    weapon.range = GetRequiredPositiveInt(value, "range");
-    weapon.speed = GetRequiredPositiveInt(value, "speed");
+    const long long signedId = id.get<long long>();
+    if (signedId < 0)
+    {
+        throw std::invalid_argument(key + " must be non-negative");
+    }
 
-    return weapon;
+    return static_cast<WeaponId>(signedId);
 }
 
 EquipmentPiece ParseEquipmentPiece(const Json& value)
 {
     RequireObject(value, "equipment piece");
 
-    if (!HasOnlyKeys(value, {"id", "name", "slot", "bonuses", "weapon"}))
+    if (!HasOnlyKeys(value, {"id", "name", "slot", "bonuses", "weaponId"}))
     {
         throw std::invalid_argument("equipment piece contains an unknown field");
     }
@@ -261,22 +265,28 @@ EquipmentPiece ParseEquipmentPiece(const Json& value)
     piece.slot = ParseEquipmentSlot(GetRequiredString(value, "slot"));
     piece.bonuses = ParseEquipmentBonuses(value.at("bonuses"));
 
-    if (value.contains("weapon"))
+    if (value.contains("weaponId"))
     {
         piece.hasWeapon = true;
-        piece.weapon = ParseWeaponDefinition(value.at("weapon"));
+        piece.weaponId = GetRequiredWeaponId(value, "weaponId");
     }
 
     if (piece.slot == EquipmentSlot::Weapon && !piece.hasWeapon)
     {
         throw std::invalid_argument(
-            "weapon-slot equipment pieces require a weapon definition");
+            "weapon-slot equipment pieces require a weapon ID");
+    }
+
+    if (piece.slot == EquipmentSlot::Weapon && piece.weaponId == 0)
+    {
+        throw std::invalid_argument(
+            "weapon-slot equipment pieces require a non-zero weapon ID");
     }
 
     if (piece.slot != EquipmentSlot::Weapon && piece.hasWeapon)
     {
         throw std::invalid_argument(
-            "non-weapon equipment pieces cannot have a weapon definition");
+            "non-weapon equipment pieces cannot have a weapon ID");
     }
 
     return piece;
@@ -293,11 +303,7 @@ const std::string DefaultEquipmentJson = R"({
                 "slashAttack": 7,
                 "meleeStrength": 6
             },
-            "weapon": {
-                "id": 1,
-                "range": 1,
-                "speed": 4
-            }
+            "weaponId": 1
         },
         {
             "id": 1002,
@@ -306,11 +312,7 @@ const std::string DefaultEquipmentJson = R"({
             "bonuses": {
                 "rangedAttack": 29
             },
-            "weapon": {
-                "id": 2,
-                "range": 7,
-                "speed": 4
-            }
+            "weaponId": 2
         },
         {
             "id": 1003,

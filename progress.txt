@@ -178,3 +178,13 @@
 - Decisions: manifest supports only the equipment logical dataset in this slice; web Vite publicDir points at repo data/ so static assets stay file-backed; legacy EquipmentDatabase default APIs remain compatibility-only for #85.
 - Files changed: data/manifest.json, data/equipment.json, cpp/engine DatabaseService/CMake/bindings/equipment validation/tests, web dps calculator/view/type contract/tests/Vite config, progress.txt.
 - Validation: cmake --build build; ctest --test-dir build --output-on-failure; source /home/jordan/dev/emsdk/emsdk_env.sh && yarn wasm:build; node web/test/generated-dps-service.test.mjs; yarn --cwd web test; yarn --cwd web typecheck; yarn --cwd web build passed. No blockers.
+
+2026-06-20 #79 Equipment builds combat compositions
+- Selected issue: #79, unblocked because #78 is closed. Parent PRD: #76.
+- Docs read: CONTEXT.md, docs/agents/domain.md, docs/adr/0007-engine-owned-equipment-database.md, docs/adr/0008-file-backed-engine-dataset.md, PRD #76, feature #79, blocker #78.
+- Plan: TDD equipment JSON weaponId validation, DatabaseService equipment-to-WeaponDatabase cross-validation, resolved CombatComposition value, EquipmentSet combat composition build via WeaponDatabase/Unarmed fallback, then WASM/web type/tests updates.
+- Scope guard: only #79. Do not start actor storage (#80), built-in combat composition database (#81), NPCs (#82), web NPC data (#83), saved compositions (#84), or legacy API removal (#85).
+- Completed: PRD #76 stories 12-13, 41-42, 49, 52 and feature #79 acceptance for equipment weapon IDs, DatabaseService cross-validation, resolved CombatComposition, EquipmentSet Unarmed fallback, and WASM/web equipment mode resolver path.
+- Decisions: keep hasWeapon as optional marker for embind but replace embedded weapon with weaponId; EquipmentSet requires WeaponDatabase for attack/combat composition builds; web loadEquipmentDataset returns equipment+weapon databases so equipment mode uses engine-resolved weapons.
+- Files changed: cpp/engine equipment/database/composition/bindings/tests; data/equipment.json; web dps calculator/view/type contract/tests; progress.txt.
+- Validation: cmake --build build; ctest --test-dir build --output-on-failure; source /home/jordan/dev/emsdk/emsdk_env.sh && yarn wasm:build; node web/test/generated-dps-service.test.mjs; node web/test/dps-calculator.test.mjs; yarn --cwd web typecheck; yarn --cwd web test; yarn --cwd web build passed. No blockers.

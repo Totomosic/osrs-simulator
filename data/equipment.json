@@ -9,11 +9,7 @@
         "slashAttack": 7,
         "meleeStrength": 6
       },
-      "weapon": {
-        "id": 1,
-        "range": 1,
-        "speed": 4
-      }
+      "weaponId": 1
     },
     {
       "id": 1002,
@@ -22,11 +18,7 @@
       "bonuses": {
         "rangedAttack": 29
       },
-      "weapon": {
-        "id": 2,
-        "range": 7,
-        "speed": 4
-      }
+      "weaponId": 2
     },
     {
       "id": 1003,

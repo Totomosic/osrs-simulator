@@ -1,6 +1,7 @@
 #pragma once
 
 #include "EquipmentDatabase.h"
+#include "WeaponDatabase.h"
 
 #include <unordered_map>
 #include <vector>
@@ -20,9 +21,15 @@ public:
     EquipmentPiece GetEquipmentPiece(EquipmentSlot slot) const;
     std::vector<EquipmentPiece> GetEquipmentPieces() const;
     EquipmentBonuses GetEquipmentBonuses() const;
+    CombatComposition BuildCombatComposition(
+        const CombatStats& stats,
+        AttackType attackType,
+        int magicBaseMaximumHit,
+        const WeaponDatabase& weaponDatabase) const;
     AttackComposition BuildAttackComposition(
         const CombatStats& stats,
-        AttackType attackType) const;
+        AttackType attackType,
+        const WeaponDatabase& weaponDatabase) const;
     DefenceComposition BuildDefenceComposition(
         const CombatStats& stats) const;
 };
