@@ -596,7 +596,27 @@ EMSCRIPTEN_BINDINGS(osrssim_engine)
         .function(
             "GetCombatCompositionRecordsBySource",
             &osrssim::CombatCompositionDatabase::
-                GetCombatCompositionRecordsBySource);
+                GetCombatCompositionRecordsBySource)
+        .function(
+            "LoadSavedCombatCompositionRecordsFromJson",
+            &osrssim::CombatCompositionDatabase::
+                LoadSavedCombatCompositionRecordsFromJson)
+        .function(
+            "ExportSavedCombatCompositionRecordsToJson",
+            &osrssim::CombatCompositionDatabase::
+                ExportSavedCombatCompositionRecordsToJson)
+        .function(
+            "CreateSavedCombatCompositionRecord",
+            &osrssim::CombatCompositionDatabase::
+                CreateSavedCombatCompositionRecord)
+        .function(
+            "UpdateSavedCombatCompositionRecord",
+            &osrssim::CombatCompositionDatabase::
+                UpdateSavedCombatCompositionRecord)
+        .function(
+            "DeleteSavedCombatCompositionRecord",
+            &osrssim::CombatCompositionDatabase::
+                DeleteSavedCombatCompositionRecord);
 
     emscripten::class_<osrssim::NpcDatabase>("NpcDatabase")
         .function("HasNpcDefinition", &osrssim::NpcDatabase::HasNpcDefinition)

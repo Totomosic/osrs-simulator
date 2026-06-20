@@ -4,6 +4,7 @@
 
 #include <algorithm>
 #include <initializer_list>
+#include <limits>
 #include <stdexcept>
 #include <string>
 #include <string_view>
@@ -16,6 +17,7 @@ namespace
 using Json = nlohmann::json;
 
 constexpr int SupportedCombatCompositionJsonVersion = 1;
+constexpr int SupportedSavedCombatCompositionJsonVersion = 1;
 
 bool HasOnlyKeys(
     const Json& value,
@@ -267,9 +269,33 @@ AttackType ParseAttackType(const std::string& attackType)
     throw std::invalid_argument("attackType is not supported");
 }
 
-CombatCompositionRecord ParseBuiltInCombatCompositionRecord(
+std::string AttackTypeToString(AttackType attackType)
+{
+    switch (attackType)
+    {
+        case AttackType::Stab:
+            return "stab";
+        case AttackType::Slash:
+            return "slash";
+        case AttackType::Crush:
+            return "crush";
+        case AttackType::Magic:
+            return "magic";
+        case AttackType::RangedLight:
+            return "ranged_light";
+        case AttackType::RangedStandard:
+            return "ranged_standard";
+        case AttackType::RangedHeavy:
+            return "ranged_heavy";
+    }
+
+    throw std::invalid_argument("attackType is not supported");
+}
+
+CombatCompositionRecord ParseCombatCompositionRecord(
     const Json& value,
-    const WeaponDatabase& weaponDatabase)
+    const WeaponDatabase& weaponDatabase,
+    CombatCompositionSource source)
 {
     RequireObject(value, "combat composition record");
 
@@ -310,7 +336,7 @@ CombatCompositionRecord ParseBuiltInCombatCompositionRecord(
     CombatCompositionRecord record;
     record.id = GetRequiredCombatCompositionId(value, "id");
     record.name = GetRequiredString(value, "name");
-    record.source = CombatCompositionSource::BuiltIn;
+    record.source = source;
     record.composition.stats = ParseCombatStats(value.at("stats"));
     record.composition.bonuses = ParseEquipmentBonuses(value.at("bonuses"));
     record.composition.attackType =
@@ -332,6 +358,52 @@ CombatCompositionRecord ParseBuiltInCombatCompositionRecord(
     }
 
     return record;
+}
+
+Json CombatStatsToJson(const CombatStats& stats)
+{
+    return Json{
+        {"attack", stats.attack},
+        {"strength", stats.strength},
+        {"defence", stats.defence},
+        {"ranged", stats.ranged},
+        {"magic", stats.magic},
+        {"hitpoints", stats.hitpoints},
+    };
+}
+
+Json EquipmentBonusesToJson(const EquipmentBonuses& bonuses)
+{
+    return Json{
+        {"stabAttack", bonuses.stabAttack},
+        {"slashAttack", bonuses.slashAttack},
+        {"crushAttack", bonuses.crushAttack},
+        {"magicAttack", bonuses.magicAttack},
+        {"rangedAttack", bonuses.rangedAttack},
+        {"stabDefence", bonuses.stabDefence},
+        {"slashDefence", bonuses.slashDefence},
+        {"crushDefence", bonuses.crushDefence},
+        {"magicDefence", bonuses.magicDefence},
+        {"rangedDefenceLight", bonuses.rangedDefenceLight},
+        {"rangedDefenceStandard", bonuses.rangedDefenceStandard},
+        {"rangedDefenceHeavy", bonuses.rangedDefenceHeavy},
+        {"meleeStrength", bonuses.meleeStrength},
+        {"rangedStrength", bonuses.rangedStrength},
+        {"magicDamagePercent", bonuses.magicDamagePercent},
+    };
+}
+
+Json CombatCompositionRecordToJson(const CombatCompositionRecord& record)
+{
+    return Json{
+        {"id", record.id},
+        {"name", record.name},
+        {"stats", CombatStatsToJson(record.composition.stats)},
+        {"bonuses", EquipmentBonusesToJson(record.composition.bonuses)},
+        {"attackType", AttackTypeToString(record.composition.attackType)},
+        {"magicBaseMaximumHit", record.composition.magicBaseMaximumHit},
+        {"weaponId", record.composition.weapon.id},
+    };
 }
 
 }  // namespace
@@ -377,24 +449,175 @@ CombatCompositionDatabase CombatCompositionDatabase::LoadFromJson(
     for (const Json& recordJson : document.at("combatCompositions"))
     {
         database.AddBuiltInCombatCompositionRecord(
-            ParseBuiltInCombatCompositionRecord(recordJson, weaponDatabase));
+            ParseCombatCompositionRecord(
+                recordJson,
+                weaponDatabase,
+                CombatCompositionSource::BuiltIn));
     }
 
     return database;
+}
+
+void CombatCompositionDatabase::LoadSavedCombatCompositionRecordsFromJson(
+    const std::string& json,
+    const WeaponDatabase& weaponDatabase)
+{
+    Json document;
+
+    try
+    {
+        document = Json::parse(json);
+    }
+    catch (const Json::parse_error& error)
+    {
+        throw std::invalid_argument(error.what());
+    }
+
+    RequireObject(document, "saved combat composition document");
+
+    if (!HasOnlyKeys(document, {"version", "savedCombatCompositions"}))
+    {
+        throw std::invalid_argument(
+            "saved combat composition document contains an unknown field");
+    }
+
+    if (GetRequiredInt(document, "version") !=
+        SupportedSavedCombatCompositionJsonVersion)
+    {
+        throw std::invalid_argument(
+            "unsupported saved combat composition document version");
+    }
+
+    if (!document.contains("savedCombatCompositions") ||
+        !document.at("savedCombatCompositions").is_array())
+    {
+        throw std::invalid_argument(
+            "savedCombatCompositions must be an array");
+    }
+
+    CombatCompositionDatabase loadedDatabase;
+    for (const CombatCompositionRecord& record : m_BuiltInRecords)
+    {
+        loadedDatabase.AddBuiltInCombatCompositionRecord(record);
+    }
+
+    for (const Json& recordJson : document.at("savedCombatCompositions"))
+    {
+        loadedDatabase.AddSavedCombatCompositionRecord(
+            ParseCombatCompositionRecord(
+                recordJson,
+                weaponDatabase,
+                CombatCompositionSource::Saved));
+    }
+
+    m_SavedRecords = loadedDatabase.m_SavedRecords;
+    m_SavedRecordIndexById = loadedDatabase.m_SavedRecordIndexById;
+}
+
+std::string CombatCompositionDatabase::ExportSavedCombatCompositionRecordsToJson()
+    const
+{
+    Json document;
+    document["version"] = SupportedSavedCombatCompositionJsonVersion;
+    document["savedCombatCompositions"] = Json::array();
+
+    for (const CombatCompositionRecord& record : m_SavedRecords)
+    {
+        document["savedCombatCompositions"].push_back(
+            CombatCompositionRecordToJson(record));
+    }
+
+    return document.dump();
+}
+
+CombatCompositionId CombatCompositionDatabase::CreateSavedCombatCompositionRecord(
+    const std::string& name,
+    const CombatComposition& composition)
+{
+    for (CombatCompositionId id = FirstSavedCombatCompositionId;
+         id < std::numeric_limits<CombatCompositionId>::max();
+         ++id)
+    {
+        if (!m_SavedRecordIndexById.contains(id))
+        {
+            CombatCompositionRecord record;
+            record.id = id;
+            record.name = name;
+            record.source = CombatCompositionSource::Saved;
+            record.composition = composition;
+            AddSavedCombatCompositionRecord(record);
+            return id;
+        }
+    }
+
+    throw std::runtime_error("no saved combat composition IDs are available");
+}
+
+void CombatCompositionDatabase::UpdateSavedCombatCompositionRecord(
+    CombatCompositionId id,
+    const std::string& name,
+    const CombatComposition& composition)
+{
+    if (id < FirstSavedCombatCompositionId)
+    {
+        throw std::invalid_argument(
+            "saved combat composition ID is outside the saved range");
+    }
+
+    const auto iterator = m_SavedRecordIndexById.find(id);
+    if (iterator == m_SavedRecordIndexById.end())
+    {
+        throw std::out_of_range("saved combat composition ID was not found");
+    }
+
+    if (name.empty())
+    {
+        throw std::invalid_argument(
+            "combat composition name must not be empty");
+    }
+
+    CombatCompositionRecord& record = m_SavedRecords[iterator->second];
+    record.name = name;
+    record.composition = composition;
+}
+
+bool CombatCompositionDatabase::DeleteSavedCombatCompositionRecord(
+    CombatCompositionId id)
+{
+    const auto iterator = m_SavedRecordIndexById.find(id);
+    if (iterator == m_SavedRecordIndexById.end())
+    {
+        return false;
+    }
+
+    m_SavedRecords.erase(m_SavedRecords.begin() + iterator->second);
+    m_SavedRecordIndexById.clear();
+    for (std::size_t index = 0; index < m_SavedRecords.size(); ++index)
+    {
+        m_SavedRecordIndexById.emplace(m_SavedRecords[index].id, index);
+    }
+
+    return true;
 }
 
 const CombatCompositionRecord*
 CombatCompositionDatabase::TryGetCombatCompositionRecord(
     CombatCompositionId id) const
 {
-    const auto iterator = m_BuiltInRecordIndexById.find(id);
+    const auto builtInIterator = m_BuiltInRecordIndexById.find(id);
 
-    if (iterator == m_BuiltInRecordIndexById.end())
+    if (builtInIterator != m_BuiltInRecordIndexById.end())
     {
-        return nullptr;
+        return &m_BuiltInRecords[builtInIterator->second];
     }
 
-    return &m_BuiltInRecords[iterator->second];
+    const auto savedIterator = m_SavedRecordIndexById.find(id);
+    if (savedIterator != m_SavedRecordIndexById.end())
+    {
+        return &m_SavedRecords[savedIterator->second];
+    }
+
+    return nullptr;
 }
 
 bool CombatCompositionDatabase::HasCombatCompositionRecord(
@@ -420,7 +643,9 @@ CombatCompositionRecord CombatCompositionDatabase::GetCombatCompositionRecord(
 std::vector<CombatCompositionRecord>
 CombatCompositionDatabase::GetAllCombatCompositionRecords() const
 {
-    return m_BuiltInRecords;
+    std::vector<CombatCompositionRecord> records = m_BuiltInRecords;
+    records.insert(records.end(), m_SavedRecords.begin(), m_SavedRecords.end());
+    return records;
 }
 
 std::vector<CombatCompositionRecord>
@@ -432,7 +657,7 @@ CombatCompositionDatabase::GetCombatCompositionRecordsBySource(
         return m_BuiltInRecords;
     }
 
-    return {};
+    return m_SavedRecords;
 }
 
 void CombatCompositionDatabase::AddBuiltInCombatCompositionRecord(
@@ -451,6 +676,33 @@ void CombatCompositionDatabase::AddBuiltInCombatCompositionRecord(
 
     m_BuiltInRecordIndexById.emplace(record.id, m_BuiltInRecords.size());
     m_BuiltInRecords.push_back(record);
+}
+
+void CombatCompositionDatabase::AddSavedCombatCompositionRecord(
+    const CombatCompositionRecord& record)
+{
+    if (record.id < FirstSavedCombatCompositionId)
+    {
+        throw std::invalid_argument(
+            "saved combat composition ID is outside the saved range");
+    }
+
+    if (m_BuiltInRecordIndexById.contains(record.id) ||
+        m_SavedRecordIndexById.contains(record.id))
+    {
+        throw std::invalid_argument("duplicate combat composition ID");
+    }
+
+    if (record.name.empty())
+    {
+        throw std::invalid_argument(
+            "combat composition name must not be empty");
+    }
+
+    CombatCompositionRecord savedRecord = record;
+    savedRecord.source = CombatCompositionSource::Saved;
+    m_SavedRecordIndexById.emplace(savedRecord.id, m_SavedRecords.size());
+    m_SavedRecords.push_back(savedRecord);
 }
 
 }  // namespace osrssim

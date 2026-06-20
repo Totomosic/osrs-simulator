@@ -27,14 +27,23 @@ const npcFormSource = viewSource.slice(npcFormStart, resultsTableStart);
 assert.match(playerFormSource, /v-model="activePlayerAttackSetup\.mode"/);
 assert.match(playerFormSource, /value="manual"/);
 assert.match(playerFormSource, /value="equipment"/);
+assert.match(playerFormSource, /value="saved"/);
 assert.match(
     playerFormSource,
     /v-model\.number="activePlayerAttackSetup\.equipmentPieceIds\[slot\.key\]"/,
 );
+assert.match(
+    playerFormSource,
+    /v-model="activePlayerAttackSetup\.selectedSavedCombatCompositionId"/,
+);
 assert.match(playerFormSource, /equipmentModeSlotOptions/);
+assert.match(playerFormSource, /savedCombatCompositionOptions/);
 assert.match(viewSource, /getEquipmentModeSlotOptions/);
 assert.match(viewSource, /getNpcDefenceOptions/);
+assert.match(viewSource, /getSavedCombatCompositionOptions/);
 assert.match(viewSource, /loadEquipmentDataset/);
+assert.match(viewSource, /loadSavedCombatCompositionsFromStorage/);
+assert.match(viewSource, /saveActivePlayerAttackSetupAsCombatComposition/);
 assert.match(viewSource, /fetchTextAsset\("manifest\.json"\)/);
 assert.match(viewSource, /manifest\.documents\?\.equipment/);
 assert.match(viewSource, /manifest\.documents\?\.combatCompositions/);
@@ -60,6 +69,10 @@ assert.match(playerFormSource, /v-if="activePlayerAttackSetup\.mode === 'manual'
 assert.match(
     playerFormSource,
     /v-if="activePlayerAttackSetup\.mode === 'equipment'"/,
+);
+assert.match(
+    playerFormSource,
+    /v-if="activePlayerAttackSetup\.mode === 'saved'"/,
 );
 
 assert.match(

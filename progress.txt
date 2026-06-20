@@ -228,3 +228,13 @@
 - Decisions: keep the web dataset helper as the owner of service-loaded equipment/weapons/compositions/NPC DBs; build NPC defence composition from the already resolved CombatCompositionRecord in TypeScript instead of adding new C++ binding surface; preserve manual NPC defence mode as default.
 - Files changed: web DPS calculator helper/view/tests, generated WASM scenario test, progress.txt.
 - Validation: node web/test/dps-calculator.test.mjs; node web/test/dps-calculator-view.test.mjs; node web/test/generated-dps-service.test.mjs; yarn --cwd web typecheck; yarn --cwd web test; yarn --cwd web build; git diff --check passed. No blockers.
+
+2026-06-20 #84 Saved combat composition layer
+- Selected issue: #84, unblocked because #83 is closed. Parent PRD: #76. #85 skipped because blocked by #84.
+- Docs read: docs/adr/0007-engine-owned-equipment-database.md, docs/adr/0008-file-backed-engine-dataset.md, docs/architecture/simulation-model.md, PRD #76, feature #84, blocker #83.
+- Plan: TDD CombatCompositionDatabase saved layer CRUD/export/import with saved ID range and all-or-nothing validation; bind saved APIs to WASM; add web DPS saved-composition mode and localStorage import/export.
+- Scope guard: only #84. Do not start legacy default API removal #85.
+- Completed: PRD #76 stories 3-9, 44-47 and feature #84 acceptance for saved combat composition CRUD/list/export/import, reserved saved IDs, all-or-nothing saved import, current WeaponDatabase resolution, built-in immutability, and web localStorage persistence.
+- Decisions: keep storage caller-owned by exporting/importing saved-layer JSON through CombatCompositionDatabase; saved export has independent version 1; web saved setup mode reuses engine-resolved CombatComposition records and persists after save.
+- Files changed: cpp/engine CombatCompositionDatabase/bindings/tests; web dps calculator/view/type contracts/tests/generated WASM test; progress.txt.
+- Validation: cmake --build build; ctest --test-dir build --output-on-failure; source /home/jordan/dev/emsdk/emsdk_env.sh && yarn wasm:build; node web/test/generated-dps-service.test.mjs; node web/test/dps-calculator.test.mjs; node web/test/dps-calculator-view.test.mjs; yarn --cwd web typecheck; yarn --cwd web test; yarn --cwd web build; git diff --check passed. No blockers.

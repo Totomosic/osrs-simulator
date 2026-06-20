@@ -90,6 +90,20 @@ bool ThrowsInvalidArgument(auto callback)
     return false;
 }
 
+bool ThrowsOutOfRange(auto callback)
+{
+    try
+    {
+        callback();
+    }
+    catch (const std::out_of_range&)
+    {
+        return true;
+    }
+
+    return false;
+}
+
 }  // namespace
 
 int main()
@@ -135,6 +149,170 @@ int main()
     assert(database.GetCombatCompositionRecordsBySource(
                        osrssim::CombatCompositionSource::Saved)
                .empty());
+
+    osrssim::CombatCompositionDatabase savedDatabase = database;
+    osrssim::CombatComposition savedComposition = firstRecord.composition;
+    savedComposition.stats.attack = 70;
+    savedComposition.bonuses.slashAttack = 45;
+    savedComposition.weapon = weaponDatabase.GetWeaponRecord(300).weapon;
+
+    const osrssim::CombatCompositionId savedId =
+        savedDatabase.CreateSavedCombatCompositionRecord(
+            "Saved scimitar setup",
+            savedComposition);
+    assert(savedId ==
+           osrssim::CombatCompositionDatabase::FirstSavedCombatCompositionId);
+    assert(savedDatabase.HasCombatCompositionRecord(savedId));
+    assert(savedDatabase.GetCombatCompositionRecord(savedId).source ==
+           osrssim::CombatCompositionSource::Saved);
+    assert(savedDatabase.GetCombatCompositionRecord(savedId).composition.stats.attack ==
+           70);
+    assert(database.GetCombatCompositionRecordsBySource(
+                       osrssim::CombatCompositionSource::Saved)
+               .empty());
+
+    savedComposition.weapon = weaponDatabase.GetWeaponRecord(301).weapon;
+    savedComposition.bonuses.rangedAttack = 32;
+    savedDatabase.UpdateSavedCombatCompositionRecord(
+        savedId,
+        "Saved bow setup",
+        savedComposition);
+    assert(savedDatabase.GetCombatCompositionRecord(savedId).name ==
+           "Saved bow setup");
+    assert(savedDatabase.GetCombatCompositionRecord(savedId).composition.weapon.id ==
+           301);
+
+    const std::vector<osrssim::CombatCompositionRecord> savedRecords =
+        savedDatabase.GetCombatCompositionRecordsBySource(
+            osrssim::CombatCompositionSource::Saved);
+    assert(savedRecords.size() == 1);
+    assert(savedRecords[0].id == savedId);
+
+    const std::vector<osrssim::CombatCompositionRecord> combinedRecords =
+        savedDatabase.GetAllCombatCompositionRecords();
+    assert(combinedRecords.size() == 3);
+    assert(combinedRecords[0].source == osrssim::CombatCompositionSource::BuiltIn);
+    assert(combinedRecords[2].source == osrssim::CombatCompositionSource::Saved);
+
+    assert(ThrowsInvalidArgument(
+        [&savedDatabase, savedComposition]
+        {
+            savedDatabase.UpdateSavedCombatCompositionRecord(
+                1000,
+                "Cannot mutate built-in",
+                savedComposition);
+        }));
+    assert(ThrowsOutOfRange(
+        [&savedDatabase, savedComposition]
+        {
+            savedDatabase.UpdateSavedCombatCompositionRecord(
+                osrssim::CombatCompositionDatabase::
+                        FirstSavedCombatCompositionId +
+                    500,
+                "Missing saved",
+                savedComposition);
+        }));
+    assert(!savedDatabase.DeleteSavedCombatCompositionRecord(1000));
+
+    const std::string exportedSavedJson =
+        savedDatabase.ExportSavedCombatCompositionRecordsToJson();
+    osrssim::CombatCompositionDatabase importedSavedDatabase = database;
+    importedSavedDatabase.LoadSavedCombatCompositionRecordsFromJson(
+        exportedSavedJson,
+        weaponDatabase);
+    assert(importedSavedDatabase.GetCombatCompositionRecordsBySource(
+                                   osrssim::CombatCompositionSource::Saved)
+               .size() == 1);
+    assert(importedSavedDatabase.GetCombatCompositionRecord(savedId).name ==
+           "Saved bow setup");
+    assert(importedSavedDatabase.GetCombatCompositionRecord(savedId)
+               .composition.weapon.id == 301);
+
+    assert(importedSavedDatabase.DeleteSavedCombatCompositionRecord(savedId));
+    assert(!importedSavedDatabase.HasCombatCompositionRecord(savedId));
+    const osrssim::CombatCompositionId recreatedSavedId =
+        importedSavedDatabase.CreateSavedCombatCompositionRecord(
+            "Recreated",
+            savedComposition);
+    assert(recreatedSavedId == savedId);
+
+    assert(ThrowsInvalidArgument(
+        [&importedSavedDatabase, &weaponDatabase]
+        {
+            importedSavedDatabase.LoadSavedCombatCompositionRecordsFromJson(
+                R"({
+                    "version": 1,
+                    "savedCombatCompositions": [
+                        {
+                            "id": 1000,
+                            "name": "Outside saved range",
+                            "stats": {
+                                "attack": 1,
+                                "strength": 1,
+                                "defence": 1,
+                                "ranged": 1,
+                                "magic": 1,
+                                "hitpoints": 5
+                            },
+                            "bonuses": {},
+                            "attackType": "slash",
+                            "magicBaseMaximumHit": 0,
+                            "weaponId": 300
+                        }
+                    ]
+                })",
+                weaponDatabase);
+        }));
+    assert(importedSavedDatabase.HasCombatCompositionRecord(recreatedSavedId));
+
+    assert(ThrowsInvalidArgument(
+        [&importedSavedDatabase, &weaponDatabase]
+        {
+            importedSavedDatabase.LoadSavedCombatCompositionRecordsFromJson(
+                R"({
+                    "version": 1,
+                    "savedCombatCompositions": [
+                        {
+                            "id": 9000000000000000000,
+                            "name": "Valid saved",
+                            "stats": {
+                                "attack": 1,
+                                "strength": 1,
+                                "defence": 1,
+                                "ranged": 1,
+                                "magic": 1,
+                                "hitpoints": 5
+                            },
+                            "bonuses": {},
+                            "attackType": "slash",
+                            "magicBaseMaximumHit": 0,
+                            "weaponId": 300
+                        },
+                        {
+                            "id": 9000000000000000001,
+                            "name": "Missing weapon",
+                            "stats": {
+                                "attack": 1,
+                                "strength": 1,
+                                "defence": 1,
+                                "ranged": 1,
+                                "magic": 1,
+                                "hitpoints": 5
+                            },
+                            "bonuses": {},
+                            "attackType": "slash",
+                            "magicBaseMaximumHit": 0,
+                            "weaponId": 999
+                        }
+                    ]
+                })",
+                weaponDatabase);
+        }));
+    assert(importedSavedDatabase.GetCombatCompositionRecordsBySource(
+                                    osrssim::CombatCompositionSource::Saved)
+               .size() == 1);
+    assert(importedSavedDatabase.GetCombatCompositionRecord(recreatedSavedId)
+               .name == "Recreated");
 
     assert(ThrowsInvalidArgument(
         [&weaponDatabase]

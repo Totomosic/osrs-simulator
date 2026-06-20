@@ -1,7 +1,9 @@
 import type {
     AttackType,
     CombatStats,
+    CombatComposition,
     CombatCompositionDatabase,
+    CombatCompositionRecord,
     DefenceComposition,
     DefenderKind,
     DpsRequest,
@@ -64,7 +66,7 @@ export type CombatStylePreset =
     | "magic-standard"
     | "magic-defensive";
 
-export type PlayerAttackSetupMode = "manual" | "equipment";
+export type PlayerAttackSetupMode = "manual" | "equipment" | "saved";
 
 export type EquipmentSlotKey =
     | "head"
@@ -107,6 +109,7 @@ export interface PlayerAttackSetup {
     name: string;
     mode: PlayerAttackSetupMode;
     equipmentPieceIds: EquipmentPieceSelections;
+    selectedSavedCombatCompositionId: CalculatorNumber;
     attackType: CalculatorAttackType;
     combatStylePreset: CombatStylePreset;
     attack: CalculatorNumber;
@@ -174,7 +177,20 @@ export interface EquipmentSlotOptions {
     options: EquipmentOption[];
 }
 
+export interface SavedCombatCompositionOption {
+    id: number | bigint;
+    name: string;
+}
+
+export interface CombatCompositionStorage {
+    getItem(key: string): string | null;
+    setItem(key: string, value: string): void;
+    removeItem(key: string): void;
+}
+
 export const maxPlayerAttackSetups = 12;
+export const savedCombatCompositionStorageKey =
+    "osrs-simulator.saved-combat-compositions.v1";
 
 export function loadEquipmentDataset(
     module: EngineModule,
@@ -323,9 +339,9 @@ export function buildNpcDpsRequest(
         finalAttackRollMultiplier: 1.0,
         finalDefenceRollMultiplier: 1.0,
         finalDamageMultiplier: 1.0,
-        magicBaseMaximumHit: sanitizeWholeNumber(
-            playerAttackSetup.magicBaseMaximumHit,
-            0,
+        magicBaseMaximumHit: getPlayerMagicBaseMaximumHit(
+            playerAttackSetup,
+            equipmentDataset,
         ),
     };
 }
@@ -364,6 +380,76 @@ export function getNpcDefenceOptions(
         name: npc.name,
         combatLevel: npc.hasCombatLevel ? npc.combatLevel : null,
     }));
+}
+
+export function getSavedCombatCompositionOptions(
+    equipmentDataset: EquipmentDataset,
+): SavedCombatCompositionOption[] {
+    return getCombatCompositionRecordsBySource(
+        equipmentDataset.combatCompositionDatabase,
+        1,
+    ).map((record) => ({
+        id: record.id,
+        name: record.name,
+    }));
+}
+
+export function loadSavedCombatCompositions(
+    equipmentDataset: EquipmentDataset,
+    savedCompositionsJson: string,
+): void {
+    equipmentDataset.combatCompositionDatabase.LoadSavedCombatCompositionRecordsFromJson(
+        savedCompositionsJson,
+        equipmentDataset.weaponDatabase,
+    );
+}
+
+export function exportSavedCombatCompositions(
+    equipmentDataset: EquipmentDataset,
+): string {
+    return equipmentDataset.combatCompositionDatabase.ExportSavedCombatCompositionRecordsToJson();
+}
+
+export function loadSavedCombatCompositionsFromStorage(
+    equipmentDataset: EquipmentDataset,
+    storage: CombatCompositionStorage | undefined = globalThis.localStorage,
+): boolean {
+    const savedCompositionsJson = storage?.getItem(savedCombatCompositionStorageKey);
+    if (savedCompositionsJson === undefined || savedCompositionsJson === null) {
+        return false;
+    }
+
+    loadSavedCombatCompositions(equipmentDataset, savedCompositionsJson);
+    return true;
+}
+
+export function persistSavedCombatCompositionsToStorage(
+    equipmentDataset: EquipmentDataset,
+    storage: CombatCompositionStorage | undefined = globalThis.localStorage,
+): void {
+    storage?.setItem(
+        savedCombatCompositionStorageKey,
+        exportSavedCombatCompositions(equipmentDataset),
+    );
+}
+
+export function saveActivePlayerAttackSetupAsCombatComposition(
+    module: EngineModule,
+    state: DpsCalculatorState,
+    equipmentDataset: EquipmentDataset,
+    name: string,
+    storage?: CombatCompositionStorage,
+): number | bigint {
+    const setup = getActivePlayerAttackSetup(state);
+    const id =
+        equipmentDataset.combatCompositionDatabase.CreateSavedCombatCompositionRecord(
+            name,
+            buildPlayerCombatComposition(module, setup, equipmentDataset),
+        );
+    setup.mode = "saved";
+    setup.selectedSavedCombatCompositionId = id;
+    persistSavedCombatCompositionsToStorage(equipmentDataset, storage);
+    return id;
 }
 
 export function buildManualNpcDefenceComposition(
@@ -651,6 +737,7 @@ function createDefaultPlayerAttackSetup(name: string): PlayerAttackSetup {
         name,
         mode: "manual",
         equipmentPieceIds: createDefaultEquipmentPieceSelections(),
+        selectedSavedCombatCompositionId: "",
         attackType: "slash",
         combatStylePreset: "melee-accurate",
         attack: 99,
@@ -676,6 +763,13 @@ function buildPlayerAttackComposition(
     attackType: CalculatorAttackType,
     equipmentDataset?: EquipmentDataset,
 ) {
+    if (setup.mode === "saved") {
+        return buildSavedModeAttackComposition(
+            setup,
+            requireEquipmentDataset(equipmentDataset),
+        );
+    }
+
     if (setup.mode === "equipment") {
         return buildEquipmentModeAttackComposition(
             module,
@@ -700,12 +794,95 @@ function buildPlayerAttackComposition(
     };
 }
 
+function buildPlayerCombatComposition(
+    module: EngineModule,
+    setup: PlayerAttackSetup,
+    dataset: EquipmentDataset,
+): CombatComposition {
+    if (setup.mode === "saved") {
+        return getSelectedSavedCombatComposition(setup, dataset).composition;
+    }
+
+    if (setup.mode === "equipment") {
+        return buildEquipmentModeCombatComposition(
+            module,
+            setup,
+            setup.attackType,
+            dataset,
+        );
+    }
+
+    const attackComposition = buildPlayerAttackComposition(
+        module,
+        setup,
+        setup.attackType,
+        dataset,
+    );
+    return {
+        ...attackComposition,
+        magicBaseMaximumHit: sanitizeWholeNumber(
+            setup.magicBaseMaximumHit,
+            0,
+        ),
+    };
+}
+
+function buildSavedModeAttackComposition(
+    setup: PlayerAttackSetup,
+    dataset: EquipmentDataset,
+) {
+    const composition =
+        getSelectedSavedCombatComposition(setup, dataset).composition;
+
+    return {
+        attackType: composition.attackType,
+        stats: composition.stats,
+        bonuses: composition.bonuses,
+        weapon: composition.weapon,
+    };
+}
+
+function getPlayerMagicBaseMaximumHit(
+    setup: PlayerAttackSetup,
+    equipmentDataset?: EquipmentDataset,
+): number {
+    if (setup.mode === "saved") {
+        return getSelectedSavedCombatComposition(
+            setup,
+            requireEquipmentDataset(equipmentDataset),
+        ).composition.magicBaseMaximumHit;
+    }
+
+    return sanitizeWholeNumber(setup.magicBaseMaximumHit, 0);
+}
+
 function buildEquipmentModeAttackComposition(
     module: EngineModule,
     setup: PlayerAttackSetup,
     attackType: CalculatorAttackType,
     dataset: EquipmentDataset,
 ) {
+    const composition = buildEquipmentModeCombatComposition(
+        module,
+        setup,
+        attackType,
+        dataset,
+    );
+
+    return {
+        attackType: composition.attackType,
+        stats: composition.stats,
+        bonuses: composition.bonuses,
+        weapon: composition.weapon,
+    };
+}
+
+function buildEquipmentModeCombatComposition(
+    module: EngineModule,
+    setup: PlayerAttackSetup,
+    attackType: CalculatorAttackType,
+    dataset: EquipmentDataset,
+): CombatComposition {
     const equipmentSet = new module.EquipmentSet();
 
     for (const slot of equipmentSlotControls) {
@@ -772,6 +949,39 @@ function getAllNpcDefinitions(database: NpcDatabase): NpcDefinition[] {
     }
 
     return result;
+}
+
+function getCombatCompositionRecordsBySource(
+    database: CombatCompositionDatabase,
+    source: number,
+): CombatCompositionRecord[] {
+    const records = database.GetCombatCompositionRecordsBySource(source);
+    const result: CombatCompositionRecord[] = [];
+
+    try {
+        for (let index = 0; index < records.size(); index += 1) {
+            const record = records.get(index);
+            if (record !== undefined) {
+                result.push(record);
+            }
+        }
+    } finally {
+        records.delete();
+    }
+
+    return result;
+}
+
+function getSelectedSavedCombatComposition(
+    setup: PlayerAttackSetup,
+    dataset: EquipmentDataset,
+): CombatCompositionRecord {
+    const id = sanitizeOptionalCatalogueId(setup.selectedSavedCombatCompositionId);
+    if (id === null) {
+        throw new Error("saved combat composition has not been selected");
+    }
+
+    return dataset.combatCompositionDatabase.GetCombatCompositionRecord(id);
 }
 
 function requireEquipmentDataset(

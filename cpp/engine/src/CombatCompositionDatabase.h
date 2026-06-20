@@ -30,8 +30,11 @@ class CombatCompositionDatabase
 {
 private:
     std::vector<CombatCompositionRecord> m_BuiltInRecords;
+    std::vector<CombatCompositionRecord> m_SavedRecords;
     std::unordered_map<CombatCompositionId, std::size_t>
         m_BuiltInRecordIndexById;
+    std::unordered_map<CombatCompositionId, std::size_t>
+        m_SavedRecordIndexById;
 
 public:
     static constexpr CombatCompositionId FirstSavedCombatCompositionId =
@@ -40,6 +43,19 @@ public:
     static CombatCompositionDatabase LoadFromJson(
         const std::string& json,
         const WeaponDatabase& weaponDatabase);
+
+    void LoadSavedCombatCompositionRecordsFromJson(
+        const std::string& json,
+        const WeaponDatabase& weaponDatabase);
+    std::string ExportSavedCombatCompositionRecordsToJson() const;
+    CombatCompositionId CreateSavedCombatCompositionRecord(
+        const std::string& name,
+        const CombatComposition& composition);
+    void UpdateSavedCombatCompositionRecord(
+        CombatCompositionId id,
+        const std::string& name,
+        const CombatComposition& composition);
+    bool DeleteSavedCombatCompositionRecord(CombatCompositionId id);
 
     const CombatCompositionRecord* TryGetCombatCompositionRecord(
         CombatCompositionId id) const;
@@ -53,6 +69,8 @@ public:
 
 private:
     void AddBuiltInCombatCompositionRecord(
+        const CombatCompositionRecord& record);
+    void AddSavedCombatCompositionRecord(
         const CombatCompositionRecord& record);
 };
 

@@ -263,6 +263,21 @@ export interface CombatCompositionDatabase {
     GetCombatCompositionRecordsBySource(
         source: CombatCompositionSource,
     ): CombatCompositionRecordVector;
+    LoadSavedCombatCompositionRecordsFromJson(
+        json: string,
+        weaponDatabase: WeaponDatabase,
+    ): void;
+    ExportSavedCombatCompositionRecordsToJson(): string;
+    CreateSavedCombatCompositionRecord(
+        name: string,
+        composition: CombatComposition,
+    ): bigint;
+    UpdateSavedCombatCompositionRecord(
+        id: number | bigint,
+        name: string,
+        composition: CombatComposition,
+    ): void;
+    DeleteSavedCombatCompositionRecord(id: number | bigint): boolean;
 }
 
 export interface NpcDatabase {

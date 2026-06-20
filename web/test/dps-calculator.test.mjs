@@ -31,8 +31,13 @@ const {
     getEquipmentModeWeaponOptions,
     getEquipmentModeSlotOptions,
     getNpcDefenceOptions,
+    getSavedCombatCompositionOptions,
+    loadSavedCombatCompositionsFromStorage,
     loadEquipmentDataset,
+    persistSavedCombatCompositionsToStorage,
     renamePlayerAttackSetup,
+    saveActivePlayerAttackSetupAsCombatComposition,
+    savedCombatCompositionStorageKey,
     setPlayerAttackType,
     formatDpsNumber,
     formatDpsPercent,
@@ -84,6 +89,22 @@ class FakeNpcDefinitionVector {
 
     get(index) {
         return this.definitions[index];
+    }
+
+    delete() {}
+}
+
+class FakeCombatCompositionRecordVector {
+    constructor(records) {
+        this.records = records;
+    }
+
+    size() {
+        return this.records.length;
+    }
+
+    get(index) {
+        return this.records[index];
     }
 
     delete() {}
@@ -155,8 +176,14 @@ class FakeWeaponDatabase {
 }
 
 class FakeCombatCompositionDatabase {
+    constructor() {
+        this.records = fakeCombatCompositionRecords.map((record) => ({
+            ...record,
+        }));
+    }
+
     GetCombatCompositionRecord(id) {
-        const record = fakeCombatCompositionRecords.find(
+        const record = this.records.find(
             (candidate) => candidate.id === BigInt(id),
         );
         if (record === undefined) {
@@ -164,6 +191,81 @@ class FakeCombatCompositionDatabase {
         }
 
         return record;
+    }
+
+    GetCombatCompositionRecordsBySource(source) {
+        return new FakeCombatCompositionRecordVector(
+            this.records.filter((record) => record.source === source),
+        );
+    }
+
+    LoadSavedCombatCompositionRecordsFromJson(json) {
+        const document = JSON.parse(json);
+        this.records = [
+            ...this.records.filter((record) => record.source !== 1),
+            ...document.savedCombatCompositions.map((record) => ({
+                id: BigInt(record.id),
+                name: record.name,
+                source: 1,
+                composition: {
+                    stats: record.stats,
+                    bonuses: {
+                        ...createFakeEquipmentBonuses(),
+                        ...record.bonuses,
+                    },
+                    attackType: module.AttackType.Slash,
+                    magicBaseMaximumHit: record.magicBaseMaximumHit,
+                    weapon: fakeWeaponRecords.find(
+                        (candidate) => candidate.weapon.id === record.weaponId,
+                    ).weapon,
+                },
+            })),
+        ];
+    }
+
+    ExportSavedCombatCompositionRecordsToJson() {
+        return JSON.stringify({
+            version: 1,
+            savedCombatCompositions: this.records
+                .filter((record) => record.source === 1)
+                .map((record) => ({
+                    id: record.id.toString(),
+                    name: record.name,
+                    stats: record.composition.stats,
+                    bonuses: record.composition.bonuses,
+                    attackType: "slash",
+                    magicBaseMaximumHit:
+                        record.composition.magicBaseMaximumHit,
+                    weaponId: Number(record.composition.weapon.id),
+                })),
+        });
+    }
+
+    CreateSavedCombatCompositionRecord(name, composition) {
+        const id = 9000000000000000000n + BigInt(
+            this.records.filter((record) => record.source === 1).length,
+        );
+        this.records.push({
+            id,
+            name,
+            source: 1,
+            composition,
+        });
+        return id;
+    }
+
+    UpdateSavedCombatCompositionRecord(id, name, composition) {
+        const record = this.GetCombatCompositionRecord(id);
+        record.name = name;
+        record.composition = composition;
+    }
+
+    DeleteSavedCombatCompositionRecord(id) {
+        const previousLength = this.records.length;
+        this.records = this.records.filter(
+            (record) => record.id !== BigInt(id) || record.source !== 1,
+        );
+        return this.records.length !== previousLength;
     }
 }
 
@@ -265,6 +367,10 @@ const module = {
         Feet: 8,
         Ring: 9,
         Ammo: 10,
+    },
+    CombatCompositionSource: {
+        BuiltIn: 0,
+        Saved: 1,
     },
     DpsService: FakeDpsService,
     EquipmentDatabase: FakeEquipmentDatabase,
@@ -413,6 +519,7 @@ assert.equal(state.activePlayerAttackSetupIndex, 0);
 assert.equal(state.playerAttackSetups.length, 1);
 assert.equal(state.playerAttackSetups[0].name, "Baseline");
 assert.equal(state.playerAttackSetups[0].mode, "manual");
+assert.equal(state.playerAttackSetups[0].selectedSavedCombatCompositionId, "");
 assert.deepEqual(Object.keys(state.playerAttackSetups[0].equipmentPieceIds), [
     "head",
     "cape",
@@ -514,6 +621,68 @@ assert.equal(npcBackedRequest.defenceComposition.stats.defence, 1);
 assert.equal(npcBackedRequest.defenceComposition.stats.magic, 1);
 assert.equal(npcBackedRequest.defenceComposition.bonuses.slashDefence, 2);
 assert.equal(npcBackedRequest.defenceComposition.bonuses.rangedDefenceLight, 3);
+
+const storage = new Map();
+const storageAdapter = {
+    getItem(key) {
+        return storage.get(key) ?? null;
+    },
+    setItem(key, value) {
+        storage.set(key, value);
+    },
+    removeItem(key) {
+        storage.delete(key);
+    },
+};
+const savedState = createDefaultCalculatorState();
+savedState.playerAttackSetups[0].magicBaseMaximumHit = 24;
+const savedId = saveActivePlayerAttackSetupAsCombatComposition(
+    module,
+    savedState,
+    equipmentDataset,
+    "Saved baseline",
+    storageAdapter,
+);
+assert.equal(savedId, 9000000000000000000n);
+assert.equal(savedState.playerAttackSetups[0].mode, "saved");
+assert.equal(savedState.playerAttackSetups[0].selectedSavedCombatCompositionId, savedId);
+assert.deepEqual(
+    getSavedCombatCompositionOptions(equipmentDataset).map((option) => [
+        option.id,
+        option.name,
+    ]),
+    [[9000000000000000000n, "Saved baseline"]],
+);
+assert.equal(storage.get(savedCombatCompositionStorageKey).includes("Saved baseline"), true);
+
+const savedBackedRequest = buildNpcDpsRequest(
+    module,
+    savedState,
+    savedState.activePlayerAttackSetupIndex,
+    equipmentDataset,
+);
+assert.equal(savedBackedRequest.attackComposition.stats.attack, 99);
+assert.equal(savedBackedRequest.attackComposition.bonuses.slashAttack, 132);
+assert.equal(savedBackedRequest.magicBaseMaximumHit, 24);
+
+const reloadedDataset = loadEquipmentDataset(
+    module,
+    '{"version":1,"documents":{"equipment":"equipment.json","weapons":"weapons.json","combatCompositions":"combat_compositions.json","npcs":"npcs.json"}}',
+    '{"version":1,"equipmentPieces":[]}',
+    '{"version":1,"weapons":[]}',
+    '{"version":1,"combatCompositions":[]}',
+    '{"version":1,"npcs":[]}',
+);
+assert.equal(loadSavedCombatCompositionsFromStorage(reloadedDataset, storageAdapter), true);
+assert.deepEqual(
+    getSavedCombatCompositionOptions(reloadedDataset).map((option) => [
+        option.id,
+        option.name,
+    ]),
+    [[9000000000000000000n, "Saved baseline"]],
+);
+persistSavedCombatCompositionsToStorage(reloadedDataset, storageAdapter);
+assert.equal(storage.get(savedCombatCompositionStorageKey).includes("Saved baseline"), true);
 
 const weaponOptions = getEquipmentModeWeaponOptions(module, equipmentDataset);
 assert.deepEqual(

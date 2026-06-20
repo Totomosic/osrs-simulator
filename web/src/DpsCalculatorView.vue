@@ -9,10 +9,13 @@ import {
     getActivePlayerAttackSetup,
     getEquipmentModeSlotOptions,
     getNpcDefenceOptions,
+    getSavedCombatCompositionOptions,
     isMeleeAttackType,
     isRangedAttackType,
     loadEquipmentDataset,
+    loadSavedCombatCompositionsFromStorage,
     maxPlayerAttackSetups,
+    saveActivePlayerAttackSetupAsCombatComposition,
     setPlayerAttackType,
     type CalculatorAttackType,
     type CombatStylePreset,
@@ -20,6 +23,7 @@ import {
     type EquipmentDataset,
     type EquipmentSlotOptions,
     type NpcOption,
+    type SavedCombatCompositionOption,
 } from "./dpsCalculator";
 import {
     loadEngineModule,
@@ -124,6 +128,16 @@ const npcDefenceOptions = computed<NpcOption[]>(() => {
     return getNpcDefenceOptions(equipmentDataset.value);
 });
 
+const savedCombatCompositionOptions = computed<SavedCombatCompositionOption[]>(
+    () => {
+        if (equipmentDataset.value === null) {
+            return [];
+        }
+
+        return getSavedCombatCompositionOptions(equipmentDataset.value);
+    },
+);
+
 const resultRows = computed<DpsResultRow[]>(() => {
     if (engineModule.value === null || equipmentDataset.value === null) {
         return [];
@@ -174,6 +188,19 @@ function onDeleteActivePlayerAttackSetup(): void {
     );
 }
 
+function onSaveActivePlayerAttackSetup(): void {
+    if (engineModule.value === null || equipmentDataset.value === null) {
+        return;
+    }
+
+    saveActivePlayerAttackSetupAsCombatComposition(
+        engineModule.value,
+        calculatorState,
+        equipmentDataset.value,
+        activePlayerAttackSetup.value.name,
+    );
+}
+
 function formatNpcOption(option: NpcOption): string {
     if (option.combatLevel === null) {
         return option.name;
@@ -189,6 +216,7 @@ onMounted(async () => {
         equipmentDataset.value = await loadBuiltInEquipmentDataset(
             loadedEngineModule,
         );
+        loadSavedCombatCompositionsFromStorage(equipmentDataset.value);
         engineModuleStatus.value = "loaded";
     } catch (error) {
         console.error("Failed to load engine wasm module or dataset", error);
@@ -326,7 +354,43 @@ async function fetchTextAsset(path: string): Promise<string> {
             >
             <span>Equipment</span>
           </label>
+          <label>
+            <input
+              v-model="activePlayerAttackSetup.mode"
+              type="radio"
+              value="saved"
+            >
+            <span>Saved</span>
+          </label>
         </fieldset>
+
+        <div
+          v-if="activePlayerAttackSetup.mode === 'saved'"
+          class="saved-composition-row wide-field"
+        >
+          <label>
+            <span>Saved setup</span>
+            <select v-model="activePlayerAttackSetup.selectedSavedCombatCompositionId">
+              <option value="">None</option>
+              <option
+                v-for="option in savedCombatCompositionOptions"
+                :key="option.id.toString()"
+                :value="option.id"
+              >
+                {{ option.name }}
+              </option>
+            </select>
+          </label>
+        </div>
+
+        <div class="saved-actions wide-field">
+          <button
+            type="button"
+            @click="onSaveActivePlayerAttackSetup"
+          >
+            Save setup
+          </button>
+        </div>
 
         <div
           v-if="activePlayerAttackSetup.mode === 'equipment'"

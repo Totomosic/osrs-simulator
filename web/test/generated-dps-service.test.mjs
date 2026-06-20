@@ -73,6 +73,53 @@ assert.equal(
     fileBackedCombatCompositionDatabase.GetCombatCompositionRecord(1000).source,
     module.CombatCompositionSource.BuiltIn,
 );
+const savedComposition =
+    fileBackedCombatCompositionDatabase.GetCombatCompositionRecord(1000)
+        .composition;
+const savedCompositionId =
+    fileBackedCombatCompositionDatabase.CreateSavedCombatCompositionRecord(
+        "Saved goblin setup",
+        savedComposition,
+    );
+assert.equal(savedCompositionId, 9000000000000000000n);
+assert.equal(
+    fileBackedCombatCompositionDatabase.GetCombatCompositionRecord(
+        savedCompositionId,
+    ).source,
+    module.CombatCompositionSource.Saved,
+);
+assert.equal(
+    fileBackedCombatCompositionDatabase.GetCombatCompositionRecordsBySource(
+        module.CombatCompositionSource.Saved,
+    ).size(),
+    1,
+);
+const exportedSavedCompositions =
+    fileBackedCombatCompositionDatabase.ExportSavedCombatCompositionRecordsToJson();
+assert.equal(exportedSavedCompositions.includes("Saved goblin setup"), true);
+const reloadedDatabase = databaseService.GetCombatCompositionDatabase();
+reloadedDatabase.LoadSavedCombatCompositionRecordsFromJson(
+    exportedSavedCompositions,
+    databaseService.GetWeaponDatabase(),
+);
+assert.equal(
+    reloadedDatabase.GetCombatCompositionRecord(savedCompositionId).name,
+    "Saved goblin setup",
+);
+reloadedDatabase.UpdateSavedCombatCompositionRecord(
+    savedCompositionId,
+    "Updated goblin setup",
+    savedComposition,
+);
+assert.equal(
+    reloadedDatabase.GetCombatCompositionRecord(savedCompositionId).name,
+    "Updated goblin setup",
+);
+assert.equal(
+    reloadedDatabase.DeleteSavedCombatCompositionRecord(savedCompositionId),
+    true,
+);
+assert.equal(reloadedDatabase.HasCombatCompositionRecord(savedCompositionId), false);
 const fileBackedNpcDatabase = databaseService.GetNpcDatabase();
 assert.equal(fileBackedNpcDatabase.HasNpcDefinition(2000n), true);
 assert.equal(fileBackedNpcDatabase.GetNpcDefinition(2000n).name, "Goblin");
