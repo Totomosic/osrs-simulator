@@ -1,0 +1,21 @@
+{
+  "version": 1,
+  "combatCompositions": [
+    {
+      "id": 1000,
+      "name": "Goblin",
+      "stats": {
+        "attack": 1,
+        "strength": 1,
+        "defence": 1,
+        "ranged": 1,
+        "magic": 1,
+        "hitpoints": 5
+      },
+      "bonuses": {},
+      "attackType": "slash",
+      "magicBaseMaximumHit": 0,
+      "weaponId": 0
+    }
+  ]
+}

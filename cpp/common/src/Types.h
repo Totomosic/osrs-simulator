@@ -11,6 +11,7 @@ using ActorId = std::uint64_t;
 using SceneId = std::uint64_t;
 using Seed = std::uint64_t;
 using WeaponId = std::uint64_t;
+using CombatCompositionId = std::uint64_t;
 
 struct SceneCoordinate
 {

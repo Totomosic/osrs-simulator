@@ -168,11 +168,13 @@ export function loadEquipmentDataset(
     manifestJson: string,
     equipmentJson: string,
     weaponsJson: string,
+    combatCompositionsJson: string,
 ): EquipmentDataset {
     const service = module.DatabaseService.LoadFromJsonDocuments(
         manifestJson,
         equipmentJson,
         weaponsJson,
+        combatCompositionsJson,
     );
 
     return {

@@ -198,3 +198,13 @@
 - Decisions: keep hasWeapon as optional marker for embind but replace embedded weapon with weaponId; EquipmentSet requires WeaponDatabase for attack/combat composition builds; web loadEquipmentDataset returns equipment+weapon databases so equipment mode uses engine-resolved weapons.
 - Files changed: cpp/engine equipment/database/composition/bindings/tests; data/equipment.json; web dps calculator/view/type contract/tests; progress.txt.
 - Validation: cmake --build build; ctest --test-dir build --output-on-failure; source /home/jordan/dev/emsdk/emsdk_env.sh && yarn wasm:build; node web/test/generated-dps-service.test.mjs; node web/test/dps-calculator.test.mjs; yarn --cwd web typecheck; yarn --cwd web test; yarn --cwd web build passed. No blockers.
+
+2026-06-20 #81 Built-in combat composition database
+- Selected issue: #81, unblocked because #79 is closed. Parent PRD: #76.
+- Docs read: CONTEXT.md, docs/agents/domain.md, docs/adr/0007-engine-owned-equipment-database.md, docs/adr/0008-file-backed-engine-dataset.md, PRD #76, feature #81, blocker #79.
+- Plan: TDD CombatCompositionDatabase built-in JSON loading through WeaponDatabase resolution, record metadata/source, saved-range rejection, listing by source/order, then DatabaseService manifest/document integration and seed data.
+- Scope guard: only #81. Do not start NPC definitions (#82), web NPC path (#83), saved composition mutation (#84), or legacy default removal (#85).
+- Completed: PRD #76 stories 1, 10-11, 43-44, 47-48, 52 and feature #81 acceptance for immutable built-in CombatCompositionDatabase records, weapon-ID resolution, source metadata, saved-range rejection, duplicate ID rejection, duplicate-name allowance, and dataset service loading.
+- Decisions: reserve saved composition IDs at 9e18 for the high range; expose built-in/source-filtered lists now with empty saved source until #84; seed one Goblin built-in composition using Unarmed so #82 can attach NPC definitions next.
+- Files changed: cpp/common Types; cpp/engine CombatCompositionDatabase, DatabaseService, bindings, tests/CMake; data manifest/combat_compositions; web dataset loader/type contract/tests; progress.txt.
+- Validation: cmake --build build; ctest --test-dir build --output-on-failure; source /home/jordan/dev/emsdk/emsdk_env.sh && yarn wasm:build; node web/test/generated-dps-service.test.mjs; node web/test/dps-calculator.test.mjs; yarn --cwd web test; yarn --cwd web typecheck; yarn --cwd web build passed. No blockers.

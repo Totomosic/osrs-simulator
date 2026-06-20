@@ -40,10 +40,15 @@ const fileBackedWeaponsJson = await readFile(
     resolve(root, "../data/weapons.json"),
     "utf8",
 );
+const fileBackedCombatCompositionsJson = await readFile(
+    resolve(root, "../data/combat_compositions.json"),
+    "utf8",
+);
 const databaseService = module.DatabaseService.LoadFromJsonDocuments(
     manifestJson,
     fileBackedEquipmentJson,
     fileBackedWeaponsJson,
+    fileBackedCombatCompositionsJson,
 );
 const fileBackedEquipmentDatabase = databaseService.GetEquipmentDatabase();
 assert.equal(fileBackedEquipmentDatabase.HasEquipmentPiece(1001), true);
@@ -51,13 +56,24 @@ assert.equal(
     fileBackedEquipmentDatabase.GetEquipmentPiece(1002).name,
     "Maple shortbow",
 );
+const fileBackedCombatCompositionDatabase =
+    databaseService.GetCombatCompositionDatabase();
+assert.equal(
+    fileBackedCombatCompositionDatabase.HasCombatCompositionRecord(1000),
+    true,
+);
+assert.equal(
+    fileBackedCombatCompositionDatabase.GetCombatCompositionRecord(1000).source,
+    module.CombatCompositionSource.BuiltIn,
+);
 
 const customDatabaseService = module.DatabaseService.LoadFromJsonDocuments(
     `{
         "version": 1,
         "documents": {
             "equipment": "equipment.json",
-            "weapons": "weapons.json"
+            "weapons": "weapons.json",
+            "combatCompositions": "combat_compositions.json"
         }
     }`,
     `{
@@ -99,6 +115,27 @@ const customDatabaseService = module.DatabaseService.LoadFromJsonDocuments(
             "range": 1,
             "speed": 4,
             "attackCallbackName": "standard_attack"
+        }
+    ]
+}`,
+    `{
+    "version": 1,
+    "combatCompositions": [
+        {
+            "id": 1000,
+            "name": "Training dummy",
+            "stats": {
+                "attack": 1,
+                "strength": 1,
+                "defence": 1,
+                "ranged": 1,
+                "magic": 1,
+                "hitpoints": 10
+            },
+            "bonuses": {},
+            "attackType": "slash",
+            "magicBaseMaximumHit": 0,
+            "weaponId": 0
         }
     ]
 }`,

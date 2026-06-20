@@ -76,17 +76,28 @@ class FakeEquipmentDatabase {
     static nextManifestJson = "";
     static nextEquipmentJson = "";
     static nextWeaponsJson = "";
+    static nextCombatCompositionsJson = "";
 
-    static LoadFromJsonDocuments(manifestJson, equipmentJson, weaponsJson) {
+    static LoadFromJsonDocuments(
+        manifestJson,
+        equipmentJson,
+        weaponsJson,
+        combatCompositionsJson,
+    ) {
         FakeEquipmentDatabase.nextManifestJson = manifestJson;
         FakeEquipmentDatabase.nextEquipmentJson = equipmentJson;
         FakeEquipmentDatabase.nextWeaponsJson = weaponsJson;
+        FakeEquipmentDatabase.nextCombatCompositionsJson =
+            combatCompositionsJson;
         return {
             GetEquipmentDatabase() {
                 return new FakeEquipmentDatabase();
             },
             GetWeaponDatabase() {
                 return new FakeWeaponDatabase();
+            },
+            GetCombatCompositionDatabase() {
+                return {};
             },
         };
     }
@@ -283,19 +294,24 @@ const fakeEquipmentPieces = [
 
 const equipmentDataset = loadEquipmentDataset(
     module,
-    '{"version":1,"documents":{"equipment":"equipment.json","weapons":"weapons.json"}}',
+    '{"version":1,"documents":{"equipment":"equipment.json","weapons":"weapons.json","combatCompositions":"combat_compositions.json"}}',
     '{"version":1,"equipmentPieces":[]}',
     '{"version":1,"weapons":[]}',
+    '{"version":1,"combatCompositions":[]}',
 );
 assert.equal(
     FakeEquipmentDatabase.nextManifestJson,
-    '{"version":1,"documents":{"equipment":"equipment.json","weapons":"weapons.json"}}',
+    '{"version":1,"documents":{"equipment":"equipment.json","weapons":"weapons.json","combatCompositions":"combat_compositions.json"}}',
 );
 assert.equal(
     FakeEquipmentDatabase.nextEquipmentJson,
     '{"version":1,"equipmentPieces":[]}',
 );
 assert.equal(FakeEquipmentDatabase.nextWeaponsJson, '{"version":1,"weapons":[]}');
+assert.equal(
+    FakeEquipmentDatabase.nextCombatCompositionsJson,
+    '{"version":1,"combatCompositions":[]}',
+);
 
 const state = createDefaultCalculatorState();
 assert.equal(state.activePlayerAttackSetupIndex, 0);

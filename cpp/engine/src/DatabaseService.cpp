@@ -99,7 +99,7 @@ void ValidateManifest(const Json& manifest)
     }
 
     const Json& documents = manifest.at("documents");
-    if (!HasOnlyKeys(documents, {"equipment", "weapons"}))
+    if (!HasOnlyKeys(documents, {"equipment", "weapons", "combatCompositions"}))
     {
         throw std::invalid_argument("documents contains an unknown dataset");
     }
@@ -116,6 +116,14 @@ void ValidateManifest(const Json& manifest)
     if (weaponsDocument.empty())
     {
         throw std::invalid_argument("weapons document path must not be empty");
+    }
+
+    const std::string combatCompositionsDocument =
+        GetRequiredString(documents, "combatCompositions");
+    if (combatCompositionsDocument.empty())
+    {
+        throw std::invalid_argument(
+            "combat compositions document path must not be empty");
     }
 }
 
@@ -178,11 +186,23 @@ DatabaseService DatabaseService::LoadFromDocuments(
         throw std::invalid_argument("weapons document is missing");
     }
 
+    const auto combatCompositionsDocument =
+        documents.find("combatCompositions");
+    if (combatCompositionsDocument == documents.end())
+    {
+        throw std::invalid_argument(
+            "combat compositions document is missing");
+    }
+
     DatabaseService service;
     service.m_EquipmentDatabase =
         EquipmentDatabase::LoadFromJson(equipmentDocument->second);
     service.m_WeaponDatabase =
         WeaponDatabase::LoadFromJson(weaponsDocument->second);
+    service.m_CombatCompositionDatabase =
+        CombatCompositionDatabase::LoadFromJson(
+            combatCompositionsDocument->second,
+            service.m_WeaponDatabase);
     ValidateWeaponCallbacks(service.m_WeaponDatabase, combatService);
     ValidateEquipmentWeapons(
         service.m_EquipmentDatabase,
@@ -194,11 +214,22 @@ DatabaseService DatabaseService::LoadFromDocuments(
 DatabaseService DatabaseService::LoadFromJsonDocuments(
     const std::string& manifestJson,
     const std::string& equipmentJson,
-    const std::string& weaponsJson)
+    const std::string& weaponsJson,
+    const std::string& combatCompositionsJson)
 {
     return LoadFromDocuments(
         manifestJson,
-        {{"equipment", equipmentJson}, {"weapons", weaponsJson}});
+        {
+            {"equipment", equipmentJson},
+            {"weapons", weaponsJson},
+            {"combatCompositions", combatCompositionsJson},
+        });
+}
+
+const CombatCompositionDatabase&
+DatabaseService::GetCombatCompositionDatabase() const
+{
+    return m_CombatCompositionDatabase;
 }
 
 const EquipmentDatabase& DatabaseService::GetEquipmentDatabase() const

@@ -99,6 +99,19 @@ export interface EquipmentPieceVector {
     delete(): void;
 }
 
+export interface CombatCompositionRecord {
+    id: number | bigint;
+    name: string;
+    source: CombatCompositionSource;
+    composition: CombatComposition;
+}
+
+export interface CombatCompositionRecordVector {
+    size(): number;
+    get(index: number): CombatCompositionRecord | undefined;
+    delete(): void;
+}
+
 export interface DpsRequest {
     attackComposition: AttackComposition;
     defenceComposition: DefenceComposition;
@@ -212,6 +225,7 @@ export interface WeaponDatabase {
 export interface DatabaseService {
     GetEquipmentDatabase(): EquipmentDatabase;
     GetWeaponDatabase(): WeaponDatabase;
+    GetCombatCompositionDatabase(): CombatCompositionDatabase;
 }
 
 export interface DatabaseServiceConstructor {
@@ -220,7 +234,17 @@ export interface DatabaseServiceConstructor {
         manifestJson: string,
         equipmentJson: string,
         weaponsJson: string,
+        combatCompositionsJson: string,
     ): DatabaseService;
+}
+
+export interface CombatCompositionDatabase {
+    HasCombatCompositionRecord(id: number | bigint): boolean;
+    GetCombatCompositionRecord(id: number | bigint): CombatCompositionRecord;
+    GetAllCombatCompositionRecords(): CombatCompositionRecordVector;
+    GetCombatCompositionRecordsBySource(
+        source: CombatCompositionSource,
+    ): CombatCompositionRecordVector;
 }
 
 export interface EquipmentSet {
@@ -333,6 +357,7 @@ export type EquipmentSlot =
     | "Feet"
     | "Ring"
     | "Ammo";
+export type CombatCompositionSource = number | "BuiltIn" | "Saved";
 
 export interface EngineModule {
     Engine: new () => Engine;
@@ -371,6 +396,10 @@ export interface EngineModule {
         Feet: EquipmentSlot;
         Ring: EquipmentSlot;
         Ammo: EquipmentSlot;
+    };
+    CombatCompositionSource: {
+        BuiltIn: CombatCompositionSource;
+        Saved: CombatCompositionSource;
     };
     World?: new () => World;
 }

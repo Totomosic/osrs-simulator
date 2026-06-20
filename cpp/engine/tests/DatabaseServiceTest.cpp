@@ -13,7 +13,8 @@ const std::string ManifestJson = R"({
     "version": 1,
     "documents": {
         "equipment": "equipment.json",
-        "weapons": "weapons.json"
+        "weapons": "weapons.json",
+        "combatCompositions": "combat_compositions.json"
     }
 })";
 
@@ -65,6 +66,28 @@ const std::string WeaponsJson = R"({
     ]
 })";
 
+const std::string CombatCompositionsJson = R"({
+    "version": 1,
+    "combatCompositions": [
+        {
+            "id": 1000,
+            "name": "Goblin",
+            "stats": {
+                "attack": 1,
+                "strength": 1,
+                "defence": 1,
+                "ranged": 1,
+                "magic": 1,
+                "hitpoints": 5
+            },
+            "bonuses": {},
+            "attackType": "slash",
+            "magicBaseMaximumHit": 0,
+            "weaponId": 0
+        }
+    ]
+})";
+
 bool ThrowsInvalidArgument(auto callback)
 {
     try
@@ -94,7 +117,11 @@ int main()
     const osrssim::DatabaseService service =
         osrssim::DatabaseService::LoadFromDocuments(
             ManifestJson,
-            {{"equipment", EquipmentJson}, {"weapons", WeaponsJson}});
+            {
+                {"equipment", EquipmentJson},
+                {"weapons", WeaponsJson},
+                {"combatCompositions", CombatCompositionsJson},
+            });
 
     const osrssim::EquipmentDatabase& equipmentDatabase =
         service.GetEquipmentDatabase();
@@ -113,6 +140,12 @@ int main()
            "standard_attack");
     assert(weaponDatabase.GetAllWeaponRecords().size() == 3);
 
+    const osrssim::CombatCompositionDatabase& combatCompositionDatabase =
+        service.GetCombatCompositionDatabase();
+    assert(combatCompositionDatabase.HasCombatCompositionRecord(1000));
+    assert(combatCompositionDatabase.GetCombatCompositionRecord(1000)
+               .composition.weapon.id == 0);
+
     assert(ThrowsInvalidArgument(
         []
         {
@@ -121,11 +154,16 @@ int main()
                     "version": 1,
                     "documents": {
                         "equipment": "equipment.json",
-                        "weapons": "weapons.json"
+                        "weapons": "weapons.json",
+                        "combatCompositions": "combat_compositions.json"
                     },
                     "extra": true
                 })",
-                {{"equipment", EquipmentJson}, {"weapons", WeaponsJson}});
+                {
+                    {"equipment", EquipmentJson},
+                    {"weapons", WeaponsJson},
+                    {"combatCompositions", CombatCompositionsJson},
+                });
         }));
 
     assert(ThrowsInvalidArgument(
@@ -133,7 +171,10 @@ int main()
         {
             osrssim::DatabaseService::LoadFromDocuments(
                 ManifestJson,
-                {{"weapons", WeaponsJson}});
+                {
+                    {"weapons", WeaponsJson},
+                    {"combatCompositions", CombatCompositionsJson},
+                });
         }));
 
     assert(ThrowsInvalidArgument(
@@ -141,7 +182,10 @@ int main()
         {
             osrssim::DatabaseService::LoadFromDocuments(
                 ManifestJson,
-                {{"equipment", EquipmentJson}});
+                {
+                    {"equipment", EquipmentJson},
+                    {"weapons", WeaponsJson},
+                });
         }));
 
     assert(ThrowsInvalidArgument(
@@ -149,7 +193,51 @@ int main()
         {
             osrssim::DatabaseService::LoadFromDocuments(
                 ManifestJson,
-                {{"equipment", R"({
+                {
+                    {"equipment", EquipmentJson},
+                    {"combatCompositions", CombatCompositionsJson},
+                });
+        }));
+
+    assert(ThrowsInvalidArgument(
+        []
+        {
+            osrssim::DatabaseService::LoadFromDocuments(
+                ManifestJson,
+                {
+                    {"equipment", EmptyEquipmentJson},
+                    {"weapons", WeaponsJson},
+                    {"combatCompositions", R"({
+                        "version": 1,
+                        "combatCompositions": [
+                            {
+                                "id": 1000,
+                                "name": "Broken composition",
+                                "stats": {
+                                    "attack": 1,
+                                    "strength": 1,
+                                    "defence": 1,
+                                    "ranged": 1,
+                                    "magic": 1,
+                                    "hitpoints": 5
+                                },
+                                "bonuses": {},
+                                "attackType": "slash",
+                                "magicBaseMaximumHit": 0,
+                                "weaponId": 999
+                            }
+                        ]
+                    })"},
+                });
+        }));
+
+    assert(ThrowsInvalidArgument(
+        []
+        {
+            osrssim::DatabaseService::LoadFromDocuments(
+                ManifestJson,
+                {
+                    {"equipment", R"({
                     "version": 1,
                     "equipmentPieces": [
                         {
@@ -166,7 +254,9 @@ int main()
                         }
                     ]
                 })"},
-                 {"weapons", WeaponsJson}});
+                    {"weapons", WeaponsJson},
+                    {"combatCompositions", CombatCompositionsJson},
+                });
         }));
 
     assert(ThrowsInvalidArgument(
@@ -174,7 +264,8 @@ int main()
         {
             osrssim::DatabaseService::LoadFromDocuments(
                 ManifestJson,
-                {{"equipment", R"({
+                {
+                    {"equipment", R"({
                     "version": 1,
                     "equipmentPieces": [
                         {
@@ -185,7 +276,9 @@ int main()
                         }
                     ]
                 })"},
-                 {"weapons", WeaponsJson}});
+                    {"weapons", WeaponsJson},
+                    {"combatCompositions", CombatCompositionsJson},
+                });
         }));
 
     assert(ThrowsInvalidArgument(
@@ -193,7 +286,8 @@ int main()
         {
             osrssim::DatabaseService::LoadFromDocuments(
                 ManifestJson,
-                {{"equipment", R"({
+                {
+                    {"equipment", R"({
                     "version": 1,
                     "equipmentPieces": [
                         {
@@ -205,7 +299,9 @@ int main()
                         }
                     ]
                 })"},
-                 {"weapons", WeaponsJson}});
+                    {"weapons", WeaponsJson},
+                    {"combatCompositions", CombatCompositionsJson},
+                });
         }));
 
     assert(ThrowsInvalidArgument(
@@ -213,8 +309,9 @@ int main()
         {
             osrssim::DatabaseService::LoadFromDocuments(
                 ManifestJson,
-                {{"equipment", EmptyEquipmentJson},
-                 {"weapons", R"({
+                {
+                    {"equipment", EmptyEquipmentJson},
+                    {"weapons", R"({
                     "version": 1,
                     "weapons": [
                         {
@@ -232,7 +329,9 @@ int main()
                             "attackCallbackName": "standard_attack"
                         }
                     ]
-                })"}});
+                })"},
+                    {"combatCompositions", CombatCompositionsJson},
+                });
         }));
 
     assert(ThrowsInvalidArgument(
@@ -240,8 +339,9 @@ int main()
         {
             osrssim::DatabaseService::LoadFromDocuments(
                 ManifestJson,
-                {{"equipment", EmptyEquipmentJson},
-                 {"weapons", R"({
+                {
+                    {"equipment", EmptyEquipmentJson},
+                    {"weapons", R"({
                     "version": 1,
                     "weapons": [
                         {
@@ -252,7 +352,9 @@ int main()
                             "attackCallbackName": "standard_attack"
                         }
                     ]
-                })"}});
+                })"},
+                    {"combatCompositions", CombatCompositionsJson},
+                });
         }));
 
     assert(ThrowsInvalidArgument(
@@ -260,8 +362,9 @@ int main()
         {
             osrssim::DatabaseService::LoadFromDocuments(
                 ManifestJson,
-                {{"equipment", EmptyEquipmentJson},
-                 {"weapons", R"({
+                {
+                    {"equipment", EmptyEquipmentJson},
+                    {"weapons", R"({
                     "version": 1,
                     "weapons": [
                         {
@@ -272,7 +375,9 @@ int main()
                             "attackCallbackName": "missing_callback"
                         }
                     ]
-                })"}});
+                })"},
+                    {"combatCompositions", CombatCompositionsJson},
+                });
         }));
 
     {
@@ -291,8 +396,9 @@ int main()
         const osrssim::DatabaseService serviceWithCustomCallback =
             osrssim::DatabaseService::LoadFromDocuments(
                 ManifestJson,
-                {{"equipment", EmptyEquipmentJson},
-                 {"weapons", R"({
+                {
+                    {"equipment", EmptyEquipmentJson},
+                    {"weapons", R"({
                     "version": 1,
                     "weapons": [
                         {
@@ -317,7 +423,9 @@ int main()
                             "attackCallbackName": "special_attack"
                         }
                     ]
-                })"}},
+                })"},
+                    {"combatCompositions", CombatCompositionsJson},
+                },
                 combatService);
 
         assert(serviceWithCustomCallback.GetWeaponDatabase()
@@ -348,8 +456,9 @@ int main()
         const osrssim::DatabaseService serviceWithCustomCallback =
             osrssim::DatabaseService::LoadFromDocuments(
                 ManifestJson,
-                {{"equipment", EmptyEquipmentJson},
-                 {"weapons", R"({
+                {
+                    {"equipment", EmptyEquipmentJson},
+                    {"weapons", R"({
                     "version": 1,
                     "weapons": [
                         {
@@ -367,7 +476,9 @@ int main()
                             "attackCallbackName": "special_attack"
                         }
                     ]
-                })"}},
+                })"},
+                    {"combatCompositions", CombatCompositionsJson},
+                },
                 combatService);
 
         serviceWithCustomCallback.ConfigureCombatService(combatService);
@@ -388,8 +499,9 @@ int main()
         {
             osrssim::DatabaseService::LoadFromDocuments(
                 ManifestJson,
-                {{"equipment", EmptyEquipmentJson},
-                 {"weapons", R"({
+                {
+                    {"equipment", EmptyEquipmentJson},
+                    {"weapons", R"({
                     "version": 1,
                     "weapons": [
                         {
@@ -400,7 +512,9 @@ int main()
                             "attackCallbackName": "standard_attack"
                         }
                     ]
-                })"}});
+                })"},
+                    {"combatCompositions", CombatCompositionsJson},
+                });
         }));
 
     return 0;

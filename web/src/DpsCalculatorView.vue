@@ -181,10 +181,15 @@ onMounted(async () => {
 async function loadBuiltInEquipmentDataset(module: EngineModule) {
     const manifestJson = await fetchTextAsset("manifest.json");
     const manifest = JSON.parse(manifestJson) as {
-        documents?: { equipment?: string; weapons?: string };
+        documents?: {
+            equipment?: string;
+            weapons?: string;
+            combatCompositions?: string;
+        };
     };
     const equipmentPath = manifest.documents?.equipment;
     const weaponsPath = manifest.documents?.weapons;
+    const combatCompositionsPath = manifest.documents?.combatCompositions;
 
     if (equipmentPath === undefined) {
         throw new Error("dataset manifest is missing equipment document");
@@ -192,10 +197,22 @@ async function loadBuiltInEquipmentDataset(module: EngineModule) {
     if (weaponsPath === undefined) {
         throw new Error("dataset manifest is missing weapons document");
     }
+    if (combatCompositionsPath === undefined) {
+        throw new Error(
+            "dataset manifest is missing combat compositions document",
+        );
+    }
 
     const equipmentJson = await fetchTextAsset(equipmentPath);
     const weaponsJson = await fetchTextAsset(weaponsPath);
-    return loadEquipmentDataset(module, manifestJson, equipmentJson, weaponsJson);
+    const combatCompositionsJson = await fetchTextAsset(combatCompositionsPath);
+    return loadEquipmentDataset(
+        module,
+        manifestJson,
+        equipmentJson,
+        weaponsJson,
+        combatCompositionsJson,
+    );
 }
 
 async function fetchTextAsset(path: string): Promise<string> {

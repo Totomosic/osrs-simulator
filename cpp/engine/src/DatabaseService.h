@@ -1,6 +1,7 @@
 #pragma once
 
 #include "CombatService.h"
+#include "CombatCompositionDatabase.h"
 #include "EquipmentDatabase.h"
 #include "WeaponDatabase.h"
 
@@ -13,6 +14,7 @@ namespace osrssim
 class DatabaseService
 {
 private:
+    CombatCompositionDatabase m_CombatCompositionDatabase;
     EquipmentDatabase m_EquipmentDatabase;
     WeaponDatabase m_WeaponDatabase;
 
@@ -27,8 +29,10 @@ public:
     static DatabaseService LoadFromJsonDocuments(
         const std::string& manifestJson,
         const std::string& equipmentJson,
-        const std::string& weaponsJson);
+        const std::string& weaponsJson,
+        const std::string& combatCompositionsJson);
 
+    const CombatCompositionDatabase& GetCombatCompositionDatabase() const;
     const EquipmentDatabase& GetEquipmentDatabase() const;
     const WeaponDatabase& GetWeaponDatabase() const;
     void ConfigureCombatService(CombatService& combatService) const;

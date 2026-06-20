@@ -1,4 +1,5 @@
 #include "Engine.h"
+#include "CombatCompositionDatabase.h"
 #include "DatabaseService.h"
 #include "DpsService.h"
 #include "EquipmentDatabase.h"
@@ -247,12 +248,20 @@ osrssim::WeaponDatabase GetDatabaseServiceWeaponDatabase(
     return service.GetWeaponDatabase();
 }
 
+osrssim::CombatCompositionDatabase GetDatabaseServiceCombatCompositionDatabase(
+    const osrssim::DatabaseService& service)
+{
+    return service.GetCombatCompositionDatabase();
+}
+
 }  // namespace
 
 EMSCRIPTEN_BINDINGS(osrssim_engine)
 {
     emscripten::register_vector<osrssim::EquipmentPiece>(
         "EquipmentPieceVector");
+    emscripten::register_vector<osrssim::CombatCompositionRecord>(
+        "CombatCompositionRecordVector");
 
     emscripten::value_object<osrssim::SceneCoordinate>("SceneCoordinate")
         .field("x", &osrssim::SceneCoordinate::x)
@@ -307,6 +316,11 @@ EMSCRIPTEN_BINDINGS(osrssim_engine)
         .value("Feet", osrssim::EquipmentSlot::Feet)
         .value("Ring", osrssim::EquipmentSlot::Ring)
         .value("Ammo", osrssim::EquipmentSlot::Ammo);
+
+    emscripten::enum_<osrssim::CombatCompositionSource>(
+        "CombatCompositionSource")
+        .value("BuiltIn", osrssim::CombatCompositionSource::BuiltIn)
+        .value("Saved", osrssim::CombatCompositionSource::Saved);
 
     emscripten::value_object<osrssim::CombatStats>("CombatStats")
         .field("attack", &osrssim::CombatStats::attack)
@@ -376,6 +390,13 @@ EMSCRIPTEN_BINDINGS(osrssim_engine)
         .field("bonuses", &osrssim::EquipmentPiece::bonuses)
         .field("hasWeapon", &osrssim::EquipmentPiece::hasWeapon)
         .field("weaponId", &osrssim::EquipmentPiece::weaponId);
+
+    emscripten::value_object<osrssim::CombatCompositionRecord>(
+        "CombatCompositionRecord")
+        .field("id", &osrssim::CombatCompositionRecord::id)
+        .field("name", &osrssim::CombatCompositionRecord::name)
+        .field("source", &osrssim::CombatCompositionRecord::source)
+        .field("composition", &osrssim::CombatCompositionRecord::composition);
 
     emscripten::value_object<osrssim::DpsRequest>("DpsRequest")
         .field(
@@ -526,7 +547,10 @@ EMSCRIPTEN_BINDINGS(osrssim_engine)
             &GetDatabaseServiceEquipmentDatabase)
         .function(
             "GetWeaponDatabase",
-            &GetDatabaseServiceWeaponDatabase);
+            &GetDatabaseServiceWeaponDatabase)
+        .function(
+            "GetCombatCompositionDatabase",
+            &GetDatabaseServiceCombatCompositionDatabase);
 
     emscripten::class_<osrssim::WeaponDatabase>("WeaponDatabase")
         .function(
@@ -535,6 +559,23 @@ EMSCRIPTEN_BINDINGS(osrssim_engine)
         .function(
             "GetWeaponRecord",
             &osrssim::WeaponDatabase::GetWeaponRecord);
+
+    emscripten::class_<osrssim::CombatCompositionDatabase>(
+        "CombatCompositionDatabase")
+        .function(
+            "HasCombatCompositionRecord",
+            &osrssim::CombatCompositionDatabase::HasCombatCompositionRecord)
+        .function(
+            "GetCombatCompositionRecord",
+            &osrssim::CombatCompositionDatabase::GetCombatCompositionRecord)
+        .function(
+            "GetAllCombatCompositionRecords",
+            &osrssim::CombatCompositionDatabase::
+                GetAllCombatCompositionRecords)
+        .function(
+            "GetCombatCompositionRecordsBySource",
+            &osrssim::CombatCompositionDatabase::
+                GetCombatCompositionRecordsBySource);
 
     emscripten::class_<osrssim::EquipmentSet>("EquipmentSet")
         .constructor<>()
