@@ -1,5 +1,6 @@
 #pragma once
 
+#include "DpsService.h"
 #include "Pathing.h"
 #include "Scene.h"
 #include "Types.h"
@@ -15,7 +16,7 @@ struct ActorCore
     ActorId id = 0;
     int size = 1;
     int speed = 0;
-    WeaponDefinition weapon;
+    CombatComposition combatComposition;
     int attackTimer = 0;
 };
 
@@ -64,8 +65,14 @@ public:
     SceneId GetDefaultSceneId() const;
     Scene* TryGetScene(SceneId sceneId);
     const Scene* TryGetScene(SceneId sceneId) const;
-    ActorId CreatePlayer(int size, int speed);
-    ActorId CreateNpc(int size, int speed);
+    ActorId CreatePlayer(
+        int size,
+        int speed,
+        CombatComposition combatComposition);
+    ActorId CreateNpc(
+        int size,
+        int speed,
+        CombatComposition combatComposition);
     const std::unordered_map<ActorId, Player>& GetPlayers() const;
     const std::unordered_map<ActorId, Npc>& GetNpcs() const;
     const std::unordered_map<ActorId, SceneMembership>& GetSceneMemberships() const;
@@ -76,10 +83,10 @@ public:
     bool AreActorFootprintsOverlapping(
         ActorId firstActorId,
         ActorId secondActorId) const;
-    const WeaponDefinition* GetActorWeaponDefinition(ActorId actorId) const;
-    bool SetActorWeaponDefinition(
+    const CombatComposition* GetActorCombatComposition(ActorId actorId) const;
+    bool SetActorCombatComposition(
         ActorId actorId,
-        WeaponDefinition weaponDefinition);
+        CombatComposition combatComposition);
     int GetActorAttackTimer(ActorId actorId) const;
     bool SetActorAttackTimer(ActorId actorId, int attackTimer);
     bool SetActorSpeed(ActorId actorId, int speed);

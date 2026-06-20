@@ -281,13 +281,21 @@ export interface Scene {
 export interface World {
     GetDefaultSceneId(): number;
     TryGetScene(sceneId: number): Scene | null;
-    CreatePlayer(size: number, speed: number): number;
-    CreateNpc(size: number, speed: number): number;
+    CreatePlayer(
+        size: number,
+        speed: number,
+        combatComposition: CombatComposition,
+    ): number;
+    CreateNpc(
+        size: number,
+        speed: number,
+        combatComposition: CombatComposition,
+    ): number;
     PlaceActor(actorId: number, sceneId: number, coordinate: SceneCoordinate): boolean;
     RemoveActor(actorId: number): boolean;
-    SetActorWeaponDefinition(
+    SetActorCombatComposition(
         actorId: number,
-        weaponDefinition: WeaponDefinition,
+        combatComposition: CombatComposition,
     ): boolean;
     SetActorMovementTarget(actorId: number, targetActorId: number): boolean;
     SetPlayerSceneCoordinateMovementTarget(

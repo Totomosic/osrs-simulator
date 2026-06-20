@@ -70,12 +70,12 @@ class FakeWorld {
         return sceneId === this.defaultSceneId ? this.scene : null;
     }
 
-    CreatePlayer(size, speed) {
-        return this.createActor("Player", size, speed);
+    CreatePlayer(size, speed, combatComposition) {
+        return this.createActor("Player", size, speed, combatComposition);
     }
 
-    CreateNpc(size, speed) {
-        return this.createActor("NPC", size, speed);
+    CreateNpc(size, speed, combatComposition) {
+        return this.createActor("NPC", size, speed, combatComposition);
     }
 
     PlaceActor(actorId, sceneId, coordinate) {
@@ -93,14 +93,14 @@ class FakeWorld {
         return this.actors.delete(actorId);
     }
 
-    SetActorWeaponDefinition(actorId, weaponDefinition) {
+    SetActorCombatComposition(actorId, combatComposition) {
         const actor = this.actors.get(actorId);
 
         if (actor === undefined) {
             return false;
         }
 
-        actor.weapon = weaponDefinition;
+        actor.weapon = combatComposition.weapon;
         return true;
     }
 
@@ -149,7 +149,7 @@ class FakeWorld {
         return JSON.stringify(actor);
     }
 
-    createActor(kind, size, speed) {
+    createActor(kind, size, speed, combatComposition) {
         const id = this.nextActorId;
         this.nextActorId += 1;
         this.actors.set(id, {
@@ -158,11 +158,7 @@ class FakeWorld {
             coordinate: null,
             size,
             speed,
-            weapon: {
-                id: 0,
-                range: 1,
-                speed: 4,
-            },
+            weapon: combatComposition.weapon,
             movementTarget: null,
         });
         return id;

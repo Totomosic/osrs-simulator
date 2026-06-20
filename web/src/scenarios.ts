@@ -1,6 +1,7 @@
 import type {
     ActionFeedback,
     CardinalDirection,
+    CombatComposition,
     Engine,
     EngineModule,
     Scene,
@@ -220,8 +221,15 @@ class WebPlayerChaseScenario implements PlayerChaseScenario {
         y: number,
         plane: number,
     ): boolean {
-        const npcId = this.m_World.CreateNpc(size, speed);
-        this.setActorWeaponRange(npcId, npcWeaponRange);
+        const npcId = this.m_World.CreateNpc(
+            size,
+            speed,
+            createActorCombatComposition({
+                id: 0,
+                range: npcWeaponRange,
+                speed: 4,
+            }),
+        );
         const placed = this.m_World.PlaceActor(
             npcId,
             this.m_World.GetDefaultSceneId(),
@@ -409,10 +417,24 @@ class WebPlayerChaseScenario implements PlayerChaseScenario {
         this.m_Running = false;
         this.m_LastClickBlocked = false;
         this.m_ActionFeedback = { state: "none" };
-        this.m_PlayerId = this.m_World.CreatePlayer(1, 2);
-        this.setActorWeaponRange(this.m_PlayerId, playerWeaponRange);
-        const npcId = this.m_World.CreateNpc(4, 1);
-        this.setActorWeaponRange(npcId, npcWeaponRange);
+        this.m_PlayerId = this.m_World.CreatePlayer(
+            1,
+            2,
+            createActorCombatComposition({
+                id: 0,
+                range: playerWeaponRange,
+                speed: 4,
+            }),
+        );
+        const npcId = this.m_World.CreateNpc(
+            4,
+            1,
+            createActorCombatComposition({
+                id: 0,
+                range: npcWeaponRange,
+                speed: 4,
+            }),
+        );
         this.m_NpcIds = [npcId];
         this.m_SelectedNpcId = npcId;
         this.m_GameObjects = [];
@@ -523,11 +545,14 @@ class WebPlayerChaseScenario implements PlayerChaseScenario {
     }
 
     private setActorWeaponRange(actorId: number, range: number): void {
-        this.m_World.SetActorWeaponDefinition(actorId, {
-            id: 0,
-            range,
-            speed: 4,
-        });
+        this.m_World.SetActorCombatComposition(
+            actorId,
+            createActorCombatComposition({
+                id: 0,
+                range,
+                speed: 4,
+            }),
+        );
     }
 
     private normalizeMovementTarget(
@@ -716,4 +741,39 @@ class WebPlayerChaseScenario implements PlayerChaseScenario {
 
         return "North";
     }
+}
+
+function createActorCombatComposition(
+    weapon: WeaponDefinition,
+): CombatComposition {
+    return {
+        stats: {
+            attack: 1,
+            strength: 1,
+            defence: 1,
+            ranged: 1,
+            magic: 1,
+            hitpoints: 10,
+        },
+        bonuses: {
+            stabAttack: 0,
+            slashAttack: 0,
+            crushAttack: 0,
+            magicAttack: 0,
+            rangedAttack: 0,
+            stabDefence: 0,
+            slashDefence: 0,
+            crushDefence: 0,
+            magicDefence: 0,
+            rangedDefenceLight: 0,
+            rangedDefenceStandard: 0,
+            rangedDefenceHeavy: 0,
+            meleeStrength: 0,
+            rangedStrength: 0,
+            magicDamagePercent: 0,
+        },
+        attackType: "Slash",
+        magicBaseMaximumHit: 0,
+        weapon,
+    };
 }

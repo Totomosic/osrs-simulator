@@ -89,12 +89,12 @@ bool CombatService::CanAttackActorTarget(
         world.GetSceneMembership(attackerId);
     const SceneMembership* targetMembership =
         world.GetSceneMembership(targetId);
-    const WeaponDefinition* weapon =
-        world.GetActorWeaponDefinition(attackerId);
+    const CombatComposition* combatComposition =
+        world.GetActorCombatComposition(attackerId);
 
     if (attacker == nullptr || target == nullptr ||
         attackerMembership == nullptr || targetMembership == nullptr ||
-        weapon == nullptr ||
+        combatComposition == nullptr ||
         attackerMembership->sceneId != targetMembership->sceneId ||
         attackerMembership->coordinate.plane !=
             targetMembership->coordinate.plane)
@@ -115,7 +115,7 @@ bool CombatService::CanAttackActorTarget(
         attacker->size,
         targetMembership->coordinate,
         target->size,
-        weapon->range);
+        combatComposition->weapon.range);
 }
 
 bool CombatService::DispatchAttack(
@@ -124,15 +124,15 @@ bool CombatService::DispatchAttack(
     ActorId targetId,
     Tick currentTick) const
 {
-    const WeaponDefinition* weapon =
-        world.GetActorWeaponDefinition(attackerId);
+    const CombatComposition* combatComposition =
+        world.GetActorCombatComposition(attackerId);
 
-    if (weapon == nullptr || world.GetActorCore(targetId) == nullptr)
+    if (combatComposition == nullptr || world.GetActorCore(targetId) == nullptr)
     {
         return false;
     }
 
-    const WeaponDefinition attackWeapon = *weapon;
+    const WeaponDefinition attackWeapon = combatComposition->weapon;
 
     world.SetActorAttackTimer(attackerId, attackWeapon.speed);
 

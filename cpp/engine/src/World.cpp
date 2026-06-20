@@ -166,21 +166,31 @@ const Scene* World::TryGetScene(SceneId sceneId) const
     return &m_Scene;
 }
 
-ActorId World::CreatePlayer(int size, int speed)
+ActorId World::CreatePlayer(
+    int size,
+    int speed,
+    CombatComposition combatComposition)
 {
     const ActorId actorId = m_NextActorId++;
     m_Players.emplace(
         actorId,
-        Player{{actorId, ClampSize(size), ClampSpeed(speed)}, std::nullopt});
+        Player{
+            {actorId, ClampSize(size), ClampSpeed(speed), combatComposition},
+            std::nullopt});
     return actorId;
 }
 
-ActorId World::CreateNpc(int size, int speed)
+ActorId World::CreateNpc(
+    int size,
+    int speed,
+    CombatComposition combatComposition)
 {
     const ActorId actorId = m_NextActorId++;
     m_Npcs.emplace(
         actorId,
-        Npc{{actorId, ClampSize(size), ClampSpeed(speed)}, std::nullopt});
+        Npc{
+            {actorId, ClampSize(size), ClampSpeed(speed), combatComposition},
+            std::nullopt});
     return actorId;
 }
 
@@ -242,15 +252,16 @@ bool World::AreActorFootprintsOverlapping(
                secondMembership->coordinate);
 }
 
-const WeaponDefinition* World::GetActorWeaponDefinition(ActorId actorId) const
+const CombatComposition* World::GetActorCombatComposition(
+    ActorId actorId) const
 {
     const ActorCore* actor = TryGetActorCore(actorId);
-    return actor == nullptr ? nullptr : &actor->weapon;
+    return actor == nullptr ? nullptr : &actor->combatComposition;
 }
 
-bool World::SetActorWeaponDefinition(
+bool World::SetActorCombatComposition(
     ActorId actorId,
-    WeaponDefinition weaponDefinition)
+    CombatComposition combatComposition)
 {
     ActorCore* actor = TryGetActorCore(actorId);
 
@@ -259,7 +270,7 @@ bool World::SetActorWeaponDefinition(
         return false;
     }
 
-    actor->weapon = weaponDefinition;
+    actor->combatComposition = combatComposition;
 
     return true;
 }

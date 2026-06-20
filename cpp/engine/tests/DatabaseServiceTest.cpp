@@ -79,6 +79,14 @@ bool ThrowsInvalidArgument(auto callback)
     return false;
 }
 
+osrssim::CombatComposition CombatCompositionWithWeapon(
+    osrssim::WeaponDefinition weapon)
+{
+    osrssim::CombatComposition combatComposition;
+    combatComposition.weapon = weapon;
+    return combatComposition;
+}
+
 }  // namespace
 
 int main()
@@ -365,9 +373,9 @@ int main()
         serviceWithCustomCallback.ConfigureCombatService(combatService);
 
         osrssim::World world;
-        const osrssim::ActorId attackerId = world.CreatePlayer(1, 1);
-        const osrssim::ActorId targetId = world.CreateNpc(1, 1);
-        assert(world.SetActorWeaponDefinition(attackerId, {900, 8, 5}));
+        const osrssim::ActorId attackerId = world.CreatePlayer(1, 1, osrssim::CombatComposition{});
+        const osrssim::ActorId targetId = world.CreateNpc(1, 1, osrssim::CombatComposition{});
+        assert(world.SetActorCombatComposition(attackerId, CombatCompositionWithWeapon({900, 8, 5})));
 
         assert(combatService.DispatchAttack(world, attackerId, targetId, 1));
         assert(attackCount == 1);

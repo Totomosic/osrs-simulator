@@ -131,12 +131,12 @@ class FakeWorld {
         return sceneId === this.defaultSceneId ? this.scene : null;
     }
 
-    CreatePlayer(size, speed) {
-        return this.createActor("Player", size, speed);
+    CreatePlayer(size, speed, combatComposition) {
+        return this.createActor("Player", size, speed, combatComposition);
     }
 
-    CreateNpc(size, speed) {
-        return this.createActor("NPC", size, speed);
+    CreateNpc(size, speed, combatComposition) {
+        return this.createActor("NPC", size, speed, combatComposition);
     }
 
     PlaceActor(actorId, sceneId, coordinate) {
@@ -160,14 +160,14 @@ class FakeWorld {
         return this.actors.delete(actorId);
     }
 
-    SetActorWeaponDefinition(actorId, weaponDefinition) {
+    SetActorCombatComposition(actorId, combatComposition) {
         const actor = this.actors.get(actorId);
 
         if (actor === undefined) {
             return false;
         }
 
-        actor.weapon = { ...weaponDefinition };
+        actor.weapon = { ...combatComposition.weapon };
         return true;
     }
 
@@ -212,7 +212,7 @@ class FakeWorld {
         return JSON.stringify(actor);
     }
 
-    createActor(kind, size, speed) {
+    createActor(kind, size, speed, combatComposition) {
         const id = this.nextActorId;
         this.nextActorId += 1;
         this.actors.set(id, {
@@ -221,7 +221,7 @@ class FakeWorld {
             coordinate: { x: 0, y: 0, plane: 0 },
             size,
             speed,
-            weapon: { id: 0, range: 1, speed: 4 },
+            weapon: { ...combatComposition.weapon },
             attackTimer: 0,
             movementTarget: null,
         });
@@ -297,9 +297,15 @@ assert.equal(initialSnapshot.npcs.length, 1);
 assert.equal(initialSnapshot.npcs[0].coordinate.x, 18);
 assert.deepEqual(initialSnapshot.npcs[0].weapon, { id: 0, range: 8, speed: 4 });
 assert.equal(
-    module.Engine.lastCreated.world.SetActorWeaponDefinition(
+    module.Engine.lastCreated.world.SetActorCombatComposition(
         initialSnapshot.player.id,
-        { id: 12, range: 6, speed: 3 },
+        {
+            stats: {},
+            bonuses: {},
+            attackType: "Slash",
+            magicBaseMaximumHit: 0,
+            weapon: { id: 12, range: 6, speed: 3 },
+        },
     ),
     true,
 );

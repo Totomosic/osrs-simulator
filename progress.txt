@@ -1,3 +1,13 @@
+2026-06-20 #80 Actors Store Required Combat Compositions
+- Selected issue: #80, unblocked because #79 is closed. Parent PRD: #76. #81 also unblocked but skipped to work exactly one feature.
+- Docs read: CONTEXT.md, docs/agents/domain.md, docs/architecture/simulation-model.md, docs/adr/0007-engine-owned-equipment-database.md, docs/adr/0008-file-backed-engine-dataset.md, PRD #76, feature #80, blocker #79.
+- Plan: TDD World/Engine actor creation through explicit CombatComposition snapshots; replace actor weapon getter/setter with combat-composition getter/setter; route combat range/timer through actor composition weapon; migrate native and web tests/callers; keep DpsService database-independent.
+- Scope guard: only actor live-state migration for #80. Do not start built-in combat composition database (#81), NPC definitions (#82), web DatabaseService path (#83), saved compositions (#84), or legacy loader removal (#85).
+- Completed: PRD #76 stories 14-17, 27-28 and feature #80 acceptance for required player/NPC combat compositions, ActorCore composition snapshots, composition replacement, and combat range/speed from composition weapon.
+- Decisions: remove World weapon-only getter/setter instead of deprecating in place; keep actor snapshots exposing weapon JSON for existing viewer UI while sourcing it from combatComposition.weapon; leave DpsService unchanged because it already consumes calculation-ready compositions.
+- Files changed: cpp/engine World/CombatService/EngineBindings/tests, web scenario/binding contracts/tests, progress.txt.
+- Validation: cmake --build build; ctest --test-dir build --output-on-failure; yarn --cwd web typecheck; yarn --cwd web test; yarn --cwd web build; tools/build_wasm.sh; node web/test/generated-dps-service.test.mjs passed. No blockers.
+
 2026-06-19 #75 Full Equipment Set Controls
 - Selected issue: #75, unblocked because #74 is closed. Parent PRD: #69.
 - Docs read: CONTEXT.md, docs/agents/domain.md, docs/adr/0007-engine-owned-equipment-database.md, PRD #69, feature #75, blocker #74.

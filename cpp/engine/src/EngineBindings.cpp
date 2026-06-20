@@ -195,7 +195,7 @@ std::string GetActorSnapshotJson(
     AppendCoordinateJson(output, membership->coordinate);
     output << ",\"size\":" << actor->size << ",\"speed\":" << actor->speed
            << ",\"weapon\":";
-    AppendWeaponDefinitionJson(output, actor->weapon);
+    AppendWeaponDefinitionJson(output, actor->combatComposition.weapon);
     output << ",\"attackTimer\":" << actor->attackTimer
            << ",\"movementTarget\":";
 
@@ -584,8 +584,8 @@ EMSCRIPTEN_BINDINGS(osrssim_engine)
         .function("PlaceActor", &osrssim::World::PlaceActor)
         .function("RemoveActor", &osrssim::World::RemoveActor)
         .function(
-            "SetActorWeaponDefinition",
-            &osrssim::World::SetActorWeaponDefinition)
+            "SetActorCombatComposition",
+            &osrssim::World::SetActorCombatComposition)
         .function(
             "SetActorMovementTarget",
             &osrssim::World::SetActorMovementTarget)
