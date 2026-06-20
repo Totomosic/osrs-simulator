@@ -238,3 +238,13 @@
 - Decisions: keep storage caller-owned by exporting/importing saved-layer JSON through CombatCompositionDatabase; saved export has independent version 1; web saved setup mode reuses engine-resolved CombatComposition records and persists after save.
 - Files changed: cpp/engine CombatCompositionDatabase/bindings/tests; web dps calculator/view/type contracts/tests/generated WASM test; progress.txt.
 - Validation: cmake --build build; ctest --test-dir build --output-on-failure; source /home/jordan/dev/emsdk/emsdk_env.sh && yarn wasm:build; node web/test/generated-dps-service.test.mjs; node web/test/dps-calculator.test.mjs; node web/test/dps-calculator-view.test.mjs; yarn --cwd web typecheck; yarn --cwd web test; yarn --cwd web build; git diff --check passed. No blockers.
+
+2026-06-20 #85 Remove legacy default equipment loading path
+- Selected issue: #85, unblocked because #84 is closed. Parent PRD: #76.
+- Docs read: docs/adr/0007-engine-owned-equipment-database.md, docs/adr/0008-file-backed-engine-dataset.md, docs/architecture/repo-structure.md, PRD #76, feature #85, blocker #84.
+- Plan: TDD by removing default-loader expectations from focused EquipmentDatabase coverage, remove app-facing LoadDefault/GetDefaultJson C++ and WASM surfaces, keep LoadFromJson for focused tests/tooling, then validate native/web feedback loops.
+- Scope guard: only #85. Do not broaden dataset schema or saved composition behavior.
+- Completed: PRD #76 stories 31-34 and feature #85 acceptance for removing embedded default equipment JSON and app-facing LoadDefault/GetDefaultJson from C++/WASM; kept focused LoadFromJson parser for tests/tooling.
+- Decisions: remove rather than deprecate because all production/web paths now load the file-backed dataset through DatabaseService per ADR 0008; no compatibility shim to avoid accidental cross-validation bypass.
+- Files changed: cpp/engine/src/EquipmentDatabase.h, cpp/engine/src/EquipmentDatabase.cpp, cpp/engine/src/EngineBindings.cpp, cpp/engine/tests/EquipmentDatabaseTest.cpp, web/src/wasm/EngineModule.ts, progress.txt.
+- Validation: cmake --build build; ctest --test-dir build --output-on-failure; source /home/jordan/dev/emsdk/emsdk_env.sh && yarn wasm:build; node web/test/generated-dps-service.test.mjs; node web/test/dps-calculator.test.mjs; node web/test/dps-calculator-view.test.mjs; yarn --cwd web typecheck; yarn --cwd web test; yarn --cwd web build; git diff --check passed. No blockers.

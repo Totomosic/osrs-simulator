@@ -43,8 +43,6 @@ private:
 
 public:
     static EquipmentDatabase LoadFromJson(const std::string& json);
-    static EquipmentDatabase LoadDefault();
-    static const std::string& GetDefaultJson();
 
     const EquipmentPiece* TryGetEquipmentPiece(int id) const;
     bool HasEquipmentPiece(int id) const;

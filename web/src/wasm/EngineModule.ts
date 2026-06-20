@@ -223,8 +223,6 @@ export interface EquipmentDatabase {
 export interface EquipmentDatabaseConstructor {
     new (): EquipmentDatabase;
     LoadFromJson(json: string): EquipmentDatabase;
-    LoadDefault(): EquipmentDatabase;
-    GetDefaultJson(): string;
 }
 
 export interface WeaponRecord {

@@ -232,11 +232,6 @@ emscripten::val GetActorSnapshot(
     return emscripten::val(snapshot);
 }
 
-std::string GetDefaultEquipmentJson()
-{
-    return osrssim::EquipmentDatabase::GetDefaultJson();
-}
-
 osrssim::EquipmentDatabase GetDatabaseServiceEquipmentDatabase(
     const osrssim::DatabaseService& service)
 {
@@ -540,10 +535,6 @@ EMSCRIPTEN_BINDINGS(osrssim_engine)
         .class_function(
             "LoadFromJson",
             &osrssim::EquipmentDatabase::LoadFromJson)
-        .class_function(
-            "LoadDefault",
-            &osrssim::EquipmentDatabase::LoadDefault)
-        .class_function("GetDefaultJson", &GetDefaultEquipmentJson)
         .function(
             "HasEquipmentPiece",
             &osrssim::EquipmentDatabase::HasEquipmentPiece)

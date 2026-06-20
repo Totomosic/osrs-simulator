@@ -155,13 +155,5 @@ int main()
     }
     assert(nonWeaponWithDefinitionFailed);
 
-    const osrssim::EquipmentDatabase seedDatabase =
-        osrssim::EquipmentDatabase::LoadDefault();
-    assert(seedDatabase.GetAllEquipmentPieces().size() >= 4);
-    assert(
-        !seedDatabase
-             .GetEquipmentPiecesBySlot(osrssim::EquipmentSlot::Weapon)
-             .empty());
-
     return 0;
 }

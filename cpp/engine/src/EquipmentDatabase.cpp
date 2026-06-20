@@ -292,62 +292,6 @@ EquipmentPiece ParseEquipmentPiece(const Json& value)
     return piece;
 }
 
-const std::string DefaultEquipmentJson = R"({
-    "version": 1,
-    "equipmentPieces": [
-        {
-            "id": 1001,
-            "name": "Bronze scimitar",
-            "slot": "weapon",
-            "bonuses": {
-                "slashAttack": 7,
-                "meleeStrength": 6
-            },
-            "weaponId": 1
-        },
-        {
-            "id": 1002,
-            "name": "Maple shortbow",
-            "slot": "weapon",
-            "bonuses": {
-                "rangedAttack": 29
-            },
-            "weaponId": 2
-        },
-        {
-            "id": 1003,
-            "name": "Amulet of strength",
-            "slot": "amulet",
-            "bonuses": {
-                "meleeStrength": 10
-            }
-        },
-        {
-            "id": 1004,
-            "name": "Rune platebody",
-            "slot": "body",
-            "bonuses": {
-                "stabDefence": 82,
-                "slashDefence": 80,
-                "crushDefence": 72,
-                "magicDefence": -30,
-                "rangedDefenceStandard": 80
-            }
-        },
-        {
-            "id": 1005,
-            "name": "Leather gloves",
-            "slot": "hands",
-            "bonuses": {
-                "stabDefence": 2,
-                "slashDefence": 2,
-                "crushDefence": 2,
-                "rangedDefenceStandard": 2
-            }
-        }
-    ]
-})";
-
 }  // namespace
 
 EquipmentDatabase EquipmentDatabase::LoadFromJson(const std::string& json)
@@ -390,16 +334,6 @@ EquipmentDatabase EquipmentDatabase::LoadFromJson(const std::string& json)
     }
 
     return database;
-}
-
-EquipmentDatabase EquipmentDatabase::LoadDefault()
-{
-    return LoadFromJson(GetDefaultJson());
-}
-
-const std::string& EquipmentDatabase::GetDefaultJson()
-{
-    return DefaultEquipmentJson;
 }
 
 const EquipmentPiece* EquipmentDatabase::TryGetEquipmentPiece(int id) const
