@@ -1,6 +1,7 @@
 {
   "version": 1,
   "documents": {
-    "equipment": "equipment.json"
+    "equipment": "equipment.json",
+    "weapons": "weapons.json"
   }
 }

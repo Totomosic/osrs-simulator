@@ -95,6 +95,16 @@
 - Files changed: cpp/engine DpsService + bindings/tests; web EngineModule type contract, DPS fixtures/tests; progress.txt.
 - Validation: focused DpsService/generated/helper tests, tools/build_wasm.sh, cmake build, ctest, web test, web typecheck, web build passed. No blockers.
 
+2026-06-20 #78 Weapon records and validated attack callbacks
+- Selected issue: #78, unblocked because #77 is closed. Parent PRD: #76.
+- Docs read: CONTEXT.md, docs/agents/domain.md, docs/architecture/repo-structure.md, docs/adr/0007-engine-owned-equipment-database.md, docs/adr/0008-file-backed-engine-dataset.md, PRD #76, feature #78, blocker #77.
+- Plan: TDD WeaponDatabase records from file-backed dataset; extend manifest/documents with weapons; validate callback names through CombatService registry; bind validated weapon IDs into CombatService; keep direct weapon-ID callback registration for focused tests.
+- Scope guard: only weapon records/callback validation. Do not start equipment weapon-ID migration (#79), actor combat compositions (#80), built-in combat composition database (#81), NPC definitions (#82), web NPC path (#83), saved compositions (#84), or legacy default removal (#85).
+- Completed: PRD #76 stories 18-24, 49-51 and feature #78 acceptance for file-backed weapon records, explicit Unarmed, strict callback validation, callback-name registration, and DatabaseService-to-CombatService binding.
+- Decisions: use `attackCallbackName` as JSON field; validate callback names during DatabaseService load with default `standard_attack` registry unless caller passes a preconfigured CombatService; keep equipment embedded weapon definitions unchanged for #79.
+- Files changed: cpp/engine WeaponDatabase, DatabaseService, CombatService, CMake/tests; data manifest/weapons; web loader/type/test call sites; progress.txt.
+- Validation: cmake --build build; ctest --test-dir build --output-on-failure; tools/build_wasm.sh; yarn --cwd web test; yarn --cwd web typecheck; yarn --cwd web build passed. No blockers.
+
 2026-06-17 #61 Ranged and Magic Attack Type Scenarios
 - Selected issue: #61, unblocked because #57 is closed. Parent PRD: #56.
 - Docs read: docs/osrs/combat-rolls.md, docs/adr/0002-deterministic-engine.md, docs/adr/0006-web-development-viewer.md, PRD #56, feature #61, blocker #57.

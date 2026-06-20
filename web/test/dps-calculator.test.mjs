@@ -75,10 +75,12 @@ class FakeEquipmentPieceVector {
 class FakeEquipmentDatabase {
     static nextManifestJson = "";
     static nextEquipmentJson = "";
+    static nextWeaponsJson = "";
 
-    static LoadFromJsonDocuments(manifestJson, equipmentJson) {
+    static LoadFromJsonDocuments(manifestJson, equipmentJson, weaponsJson) {
         FakeEquipmentDatabase.nextManifestJson = manifestJson;
         FakeEquipmentDatabase.nextEquipmentJson = equipmentJson;
+        FakeEquipmentDatabase.nextWeaponsJson = weaponsJson;
         return {
             GetEquipmentDatabase() {
                 return new FakeEquipmentDatabase();
@@ -244,17 +246,19 @@ const fakeEquipmentPieces = [
 
 const equipmentDatabase = loadEquipmentDataset(
     module,
-    '{"version":1,"documents":{"equipment":"equipment.json"}}',
+    '{"version":1,"documents":{"equipment":"equipment.json","weapons":"weapons.json"}}',
     '{"version":1,"equipmentPieces":[]}',
+    '{"version":1,"weapons":[]}',
 );
 assert.equal(
     FakeEquipmentDatabase.nextManifestJson,
-    '{"version":1,"documents":{"equipment":"equipment.json"}}',
+    '{"version":1,"documents":{"equipment":"equipment.json","weapons":"weapons.json"}}',
 );
 assert.equal(
     FakeEquipmentDatabase.nextEquipmentJson,
     '{"version":1,"equipmentPieces":[]}',
 );
+assert.equal(FakeEquipmentDatabase.nextWeaponsJson, '{"version":1,"weapons":[]}');
 
 const state = createDefaultCalculatorState();
 assert.equal(state.activePlayerAttackSetupIndex, 0);

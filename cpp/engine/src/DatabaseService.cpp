@@ -99,7 +99,7 @@ void ValidateManifest(const Json& manifest)
     }
 
     const Json& documents = manifest.at("documents");
-    if (!HasOnlyKeys(documents, {"equipment"}))
+    if (!HasOnlyKeys(documents, {"equipment", "weapons"}))
     {
         throw std::invalid_argument("documents contains an unknown dataset");
     }
@@ -110,6 +110,27 @@ void ValidateManifest(const Json& manifest)
     {
         throw std::invalid_argument("equipment document path must not be empty");
     }
+
+    const std::string weaponsDocument =
+        GetRequiredString(documents, "weapons");
+    if (weaponsDocument.empty())
+    {
+        throw std::invalid_argument("weapons document path must not be empty");
+    }
+}
+
+void ValidateWeaponCallbacks(
+    const WeaponDatabase& weaponDatabase,
+    const CombatService& combatService)
+{
+    for (const WeaponRecord& record : weaponDatabase.GetAllWeaponRecords())
+    {
+        if (!combatService.HasAttackCallbackName(record.attackCallbackName))
+        {
+            throw std::invalid_argument(
+                "weapon record references an unknown attack callback name");
+        }
+    }
 }
 
 }  // namespace
@@ -117,6 +138,15 @@ void ValidateManifest(const Json& manifest)
 DatabaseService DatabaseService::LoadFromDocuments(
     const std::string& manifestJson,
     const std::unordered_map<std::string, std::string>& documents)
+{
+    const CombatService combatService;
+    return LoadFromDocuments(manifestJson, documents, combatService);
+}
+
+DatabaseService DatabaseService::LoadFromDocuments(
+    const std::string& manifestJson,
+    const std::unordered_map<std::string, std::string>& documents,
+    const CombatService& combatService)
 {
     const Json manifest = ParseManifestJson(manifestJson);
     ValidateManifest(manifest);
@@ -127,23 +157,51 @@ DatabaseService DatabaseService::LoadFromDocuments(
         throw std::invalid_argument("equipment document is missing");
     }
 
+    const auto weaponsDocument = documents.find("weapons");
+    if (weaponsDocument == documents.end())
+    {
+        throw std::invalid_argument("weapons document is missing");
+    }
+
     DatabaseService service;
     service.m_EquipmentDatabase =
         EquipmentDatabase::LoadFromJson(equipmentDocument->second);
+    service.m_WeaponDatabase =
+        WeaponDatabase::LoadFromJson(weaponsDocument->second);
+    ValidateWeaponCallbacks(service.m_WeaponDatabase, combatService);
 
     return service;
 }
 
 DatabaseService DatabaseService::LoadFromJsonDocuments(
     const std::string& manifestJson,
-    const std::string& equipmentJson)
+    const std::string& equipmentJson,
+    const std::string& weaponsJson)
 {
-    return LoadFromDocuments(manifestJson, {{"equipment", equipmentJson}});
+    return LoadFromDocuments(
+        manifestJson,
+        {{"equipment", equipmentJson}, {"weapons", weaponsJson}});
 }
 
 const EquipmentDatabase& DatabaseService::GetEquipmentDatabase() const
 {
     return m_EquipmentDatabase;
+}
+
+const WeaponDatabase& DatabaseService::GetWeaponDatabase() const
+{
+    return m_WeaponDatabase;
+}
+
+void DatabaseService::ConfigureCombatService(
+    CombatService& combatService) const
+{
+    for (const WeaponRecord& record : m_WeaponDatabase.GetAllWeaponRecords())
+    {
+        combatService.BindWeaponAttackCallbackName(
+            record.weapon.id,
+            record.attackCallbackName);
+    }
 }
 
 }  // namespace osrssim

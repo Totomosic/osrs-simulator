@@ -199,6 +199,7 @@ export interface DatabaseServiceConstructor {
     LoadFromJsonDocuments(
         manifestJson: string,
         equipmentJson: string,
+        weaponsJson: string,
     ): DatabaseService;
 }
 

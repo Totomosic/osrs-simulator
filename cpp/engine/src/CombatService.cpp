@@ -2,14 +2,47 @@
 
 #include "LineOfSight.h"
 
+#include <stdexcept>
 #include <utility>
 
 namespace osrssim
 {
 
+CombatService::CombatService()
+{
+    RegisterAttackCallbackName(
+        "standard_attack",
+        [](
+            World&,
+            ActorId,
+            ActorId,
+            Tick,
+            const WeaponDefinition&)
+        {
+        });
+}
+
 void CombatService::RegisterGenericAttackCallback(AttackCallback callback)
 {
     m_GenericAttackCallback = std::move(callback);
+}
+
+void CombatService::RegisterAttackCallbackName(
+    const std::string& callbackName,
+    AttackCallback callback)
+{
+    if (callbackName.empty())
+    {
+        throw std::invalid_argument("attack callback name must not be empty");
+    }
+
+    m_AttackCallbacksByName[callbackName] = std::move(callback);
+}
+
+bool CombatService::HasAttackCallbackName(
+    const std::string& callbackName) const
+{
+    return m_AttackCallbacksByName.contains(callbackName);
 }
 
 void CombatService::RegisterWeaponAttackCallback(
@@ -17,6 +50,19 @@ void CombatService::RegisterWeaponAttackCallback(
     AttackCallback callback)
 {
     m_WeaponAttackCallbacks[weaponId] = std::move(callback);
+}
+
+void CombatService::BindWeaponAttackCallbackName(
+    WeaponId weaponId,
+    const std::string& callbackName)
+{
+    const auto callback = m_AttackCallbacksByName.find(callbackName);
+    if (callback == m_AttackCallbacksByName.end())
+    {
+        throw std::invalid_argument("attack callback name is not registered");
+    }
+
+    m_WeaponAttackCallbacks[weaponId] = callback->second;
 }
 
 void CombatService::DecrementAttackTimers(World& world) const

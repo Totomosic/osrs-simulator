@@ -1,0 +1,26 @@
+{
+  "version": 1,
+  "weapons": [
+    {
+      "id": 0,
+      "name": "Unarmed",
+      "range": 1,
+      "speed": 4,
+      "attackCallbackName": "standard_attack"
+    },
+    {
+      "id": 1,
+      "name": "Bronze scimitar",
+      "range": 1,
+      "speed": 4,
+      "attackCallbackName": "standard_attack"
+    },
+    {
+      "id": 2,
+      "name": "Maple shortbow",
+      "range": 7,
+      "speed": 4,
+      "attackCallbackName": "standard_attack"
+    }
+  ]
+}

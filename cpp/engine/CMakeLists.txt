@@ -9,6 +9,7 @@ add_library(osrssim_engine
   src/Pathing.cpp
   src/Scene.cpp
   src/Tile.cpp
+  src/WeaponDatabase.cpp
   src/World.cpp
 )
 

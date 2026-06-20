@@ -36,9 +36,14 @@ const fileBackedEquipmentJson = await readFile(
     resolve(root, "../data/equipment.json"),
     "utf8",
 );
+const fileBackedWeaponsJson = await readFile(
+    resolve(root, "../data/weapons.json"),
+    "utf8",
+);
 const databaseService = module.DatabaseService.LoadFromJsonDocuments(
     manifestJson,
     fileBackedEquipmentJson,
+    fileBackedWeaponsJson,
 );
 const fileBackedEquipmentDatabase = databaseService.GetEquipmentDatabase();
 assert.equal(fileBackedEquipmentDatabase.HasEquipmentPiece(1001), true);

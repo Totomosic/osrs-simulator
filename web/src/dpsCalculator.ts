@@ -161,10 +161,12 @@ export function loadEquipmentDataset(
     module: EngineModule,
     manifestJson: string,
     equipmentJson: string,
+    weaponsJson: string,
 ): EquipmentDatabase {
     return module.DatabaseService.LoadFromJsonDocuments(
         manifestJson,
         equipmentJson,
+        weaponsJson,
     ).GetEquipmentDatabase();
 }
 
