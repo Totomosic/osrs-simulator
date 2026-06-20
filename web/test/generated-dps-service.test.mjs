@@ -31,8 +31,21 @@ const wasmBinary = await readFile(
 const module = await createGeneratedEngineModule({ wasmBinary });
 const service = new module.DpsService();
 
-const defaultEquipmentJson = module.EquipmentDatabase.GetDefaultJson();
-assert.match(defaultEquipmentJson, /"equipmentPieces"/);
+const manifestJson = await readFile(resolve(root, "../data/manifest.json"), "utf8");
+const fileBackedEquipmentJson = await readFile(
+    resolve(root, "../data/equipment.json"),
+    "utf8",
+);
+const databaseService = module.DatabaseService.LoadFromJsonDocuments(
+    manifestJson,
+    fileBackedEquipmentJson,
+);
+const fileBackedEquipmentDatabase = databaseService.GetEquipmentDatabase();
+assert.equal(fileBackedEquipmentDatabase.HasEquipmentPiece(1001), true);
+assert.equal(
+    fileBackedEquipmentDatabase.GetEquipmentPiece(1002).name,
+    "Maple shortbow",
+);
 
 const equipmentDatabase = module.EquipmentDatabase.LoadFromJson(`{
     "version": 1,

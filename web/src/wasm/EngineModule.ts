@@ -190,6 +190,18 @@ export interface EquipmentDatabaseConstructor {
     GetDefaultJson(): string;
 }
 
+export interface DatabaseService {
+    GetEquipmentDatabase(): EquipmentDatabase;
+}
+
+export interface DatabaseServiceConstructor {
+    new (): DatabaseService;
+    LoadFromJsonDocuments(
+        manifestJson: string,
+        equipmentJson: string,
+    ): DatabaseService;
+}
+
 export interface EquipmentSet {
     SetEquipmentPiece(piece: EquipmentPiece): void;
     HasEquipmentPiece(slot: EquipmentSlot): boolean;
@@ -290,6 +302,7 @@ export interface EngineModule {
     Engine: new () => Engine;
     DpsService: DpsServiceConstructor;
     EquipmentDatabase: EquipmentDatabaseConstructor;
+    DatabaseService: DatabaseServiceConstructor;
     EquipmentSet: EquipmentSetConstructor;
     CardinalDirection: {
         North: CardinalDirection;

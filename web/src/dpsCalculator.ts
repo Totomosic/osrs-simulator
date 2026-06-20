@@ -9,11 +9,14 @@ import type {
     DpsSampleResult,
     EngineModule,
     EquipmentBonuses,
+    EquipmentDatabase,
     EquipmentPiece,
     EquipmentSlot,
     StyleBonus,
     WeaponDefinition,
 } from "./wasm/EngineModule";
+
+export type { EquipmentDatabase };
 
 export interface DpsScenario {
     name: string;
@@ -154,6 +157,17 @@ export interface EquipmentSlotOptions {
 
 export const maxPlayerAttackSetups = 12;
 
+export function loadEquipmentDataset(
+    module: EngineModule,
+    manifestJson: string,
+    equipmentJson: string,
+): EquipmentDatabase {
+    return module.DatabaseService.LoadFromJsonDocuments(
+        manifestJson,
+        equipmentJson,
+    ).GetEquipmentDatabase();
+}
+
 export function createDefaultCalculatorState(): DpsCalculatorState {
     return {
         playerAttackSetups: [createDefaultPlayerAttackSetup("Baseline")],
@@ -243,6 +257,7 @@ export function buildNpcDpsRequest(
     module: EngineModule,
     state: DpsCalculatorState,
     setupIndex = state.activePlayerAttackSetupIndex,
+    equipmentDatabase?: EquipmentDatabase,
 ): DpsRequest {
     const playerAttackSetup =
         state.playerAttackSetups[
@@ -256,6 +271,7 @@ export function buildNpcDpsRequest(
             module,
             playerAttackSetup,
             attackType,
+            equipmentDatabase,
         ),
         defenceComposition: buildManualNpcDefenceComposition(npcDefenceSetup),
         attackerStyle: createCombatStyleBonus(playerAttackSetup.combatStylePreset),
@@ -279,20 +295,22 @@ export function buildNpcDpsRequest(
 
 export function getEquipmentModeWeaponOptions(
     module: EngineModule,
+    equipmentDatabase: EquipmentDatabase,
 ): EquipmentOption[] {
-    return getEquipmentModeSlotOptions(module).find(
+    return getEquipmentModeSlotOptions(module, equipmentDatabase).find(
         (slot) => slot.key === "weapon",
     )?.options ?? [];
 }
 
 export function getEquipmentModeSlotOptions(
     module: EngineModule,
+    equipmentDatabase: EquipmentDatabase,
 ): EquipmentSlotOptions[] {
     return equipmentSlotControls.map((slot) => ({
         key: slot.key,
         label: slot.label,
         options: getEquipmentPiecesBySlot(
-            module,
+            equipmentDatabase,
             module.EquipmentSlot[slot.moduleSlot],
         ).map((piece) => ({
             id: piece.id,
@@ -320,19 +338,21 @@ export function buildManualNpcDefenceComposition(
 export function buildSingleSetupResultRow(
     module: EngineModule,
     state: DpsCalculatorState,
+    equipmentDatabase?: EquipmentDatabase,
 ): DpsResultRow {
-    return buildSetupResultRows(module, state)[0];
+    return buildSetupResultRows(module, state, equipmentDatabase)[0];
 }
 
 export function buildSetupResultRows(
     module: EngineModule,
     state: DpsCalculatorState,
+    equipmentDatabase?: EquipmentDatabase,
 ): DpsResultRow[] {
     const service = new module.DpsService();
     const results = state.playerAttackSetups.map((setup, setupIndex) => ({
         setup,
         result: service.CalculateExpected(
-            buildNpcDpsRequest(module, state, setupIndex),
+            buildNpcDpsRequest(module, state, setupIndex, equipmentDatabase),
         ),
     }));
     const baselineDps = results[0]?.result.dps ?? 0;
@@ -581,9 +601,15 @@ function buildPlayerAttackComposition(
     module: EngineModule,
     setup: PlayerAttackSetup,
     attackType: CalculatorAttackType,
+    equipmentDatabase?: EquipmentDatabase,
 ) {
     if (setup.mode === "equipment") {
-        return buildEquipmentModeAttackComposition(module, setup, attackType);
+        return buildEquipmentModeAttackComposition(
+            module,
+            setup,
+            attackType,
+            requireEquipmentDatabase(equipmentDatabase),
+        );
     }
 
     const attackerBonuses = {
@@ -605,9 +631,9 @@ function buildEquipmentModeAttackComposition(
     module: EngineModule,
     setup: PlayerAttackSetup,
     attackType: CalculatorAttackType,
+    database: EquipmentDatabase,
 ) {
     const equipmentSet = new module.EquipmentSet();
-    const database = module.EquipmentDatabase.LoadDefault();
 
     for (const slot of equipmentSlotControls) {
         const selectedPieceId = sanitizeOptionalWholeNumber(
@@ -635,10 +661,9 @@ function buildEquipmentModeAttackComposition(
 }
 
 function getEquipmentPiecesBySlot(
-    module: EngineModule,
+    database: EquipmentDatabase,
     slot: EquipmentSlot,
 ): EquipmentPiece[] {
-    const database = module.EquipmentDatabase.LoadDefault();
     const pieces = database.GetEquipmentPiecesBySlot(slot);
     const result: EquipmentPiece[] = [];
 
@@ -654,6 +679,16 @@ function getEquipmentPiecesBySlot(
     }
 
     return result;
+}
+
+function requireEquipmentDatabase(
+    equipmentDatabase: EquipmentDatabase | undefined,
+): EquipmentDatabase {
+    if (equipmentDatabase === undefined) {
+        throw new Error("equipment dataset has not been loaded");
+    }
+
+    return equipmentDatabase;
 }
 
 function createDefaultEquipmentPieceSelections(): EquipmentPieceSelections {

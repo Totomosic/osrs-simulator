@@ -58,6 +58,28 @@ int GetRequiredInt(const Json& value, const std::string& key)
     return value.at(key).get<int>();
 }
 
+int GetRequiredNonNegativeInt(const Json& value, const std::string& key)
+{
+    const int result = GetRequiredInt(value, key);
+    if (result < 0)
+    {
+        throw std::invalid_argument(key + " must be non-negative");
+    }
+
+    return result;
+}
+
+int GetRequiredPositiveInt(const Json& value, const std::string& key)
+{
+    const int result = GetRequiredInt(value, key);
+    if (result < 1)
+    {
+        throw std::invalid_argument(key + " must be at least 1");
+    }
+
+    return result;
+}
+
 int GetOptionalInt(const Json& value, const std::string& key)
 {
     if (!value.contains(key))
@@ -211,9 +233,9 @@ WeaponDefinition ParseWeaponDefinition(const Json& value)
 
     WeaponDefinition weapon;
 
-    weapon.id = GetRequiredInt(value, "id");
-    weapon.range = GetRequiredInt(value, "range");
-    weapon.speed = GetRequiredInt(value, "speed");
+    weapon.id = GetRequiredNonNegativeInt(value, "id");
+    weapon.range = GetRequiredPositiveInt(value, "range");
+    weapon.speed = GetRequiredPositiveInt(value, "speed");
 
     return weapon;
 }
@@ -234,7 +256,7 @@ EquipmentPiece ParseEquipmentPiece(const Json& value)
 
     EquipmentPiece piece;
 
-    piece.id = GetRequiredInt(value, "id");
+    piece.id = GetRequiredNonNegativeInt(value, "id");
     piece.name = GetRequiredString(value, "name");
     piece.slot = ParseEquipmentSlot(GetRequiredString(value, "slot"));
     piece.bonuses = ParseEquipmentBonuses(value.at("bonuses"));

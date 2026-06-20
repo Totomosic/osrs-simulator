@@ -158,3 +158,13 @@
 - Decisions: use `nlohmann_json` through CMake FetchContent for strict C++ parsing; represent optional weapon data as `hasWeapon` plus `weapon` for straightforward native and Embind value objects; keep validation failures covered in native tests because Embind prints noisy abort diagnostics for thrown C++ exceptions.
 - Files changed: CMakeLists.txt, cpp/engine/CMakeLists.txt, cpp/engine/src/EquipmentDatabase.h, cpp/engine/src/EquipmentDatabase.cpp, cpp/engine/src/EngineBindings.cpp, cpp/engine/tests/EquipmentDatabaseTest.cpp, web/src/wasm/EngineModule.ts, web/test/generated-dps-service.test.mjs, progress.txt.
 - Validation: cmake --build build, ctest --test-dir build --output-on-failure, source /home/jordan/dev/emsdk/emsdk_env.sh && yarn wasm:build && node web/test/generated-dps-service.test.mjs, yarn --cwd web typecheck, yarn --cwd web test, yarn --cwd web build passed. No blockers.
+
+2026-06-20 #77 File-Backed Equipment Dataset Loading
+- Selected issue: #77, unblocked ready-for-agent, blocked by none. Parent PRD: #76.
+- Docs read: CONTEXT.md, docs/agents/domain.md, docs/architecture/repo-structure.md, docs/adr/0007-engine-owned-equipment-database.md, docs/adr/0008-file-backed-engine-dataset.md, PRD #76, feature #77.
+- Plan: TDD DatabaseService manifest+equipment raw document loading, data/ manifest/equipment seed files, WASM binding for new loading path, web DPS equipment mode via fetched file-backed dataset.
+- Scope guard: only first equipment dataset slice. Do not start weapon records (#78), combat compositions (#79/#81), actors (#80), NPCs (#82), saved compositions (#84), or legacy API removal (#85).
+- Completed: PRD #76 stories 31-36 and feature #77 acceptance for manifest+equipment raw document loading through DatabaseService, strict equipment validation/range checks, WASM loading binding, and web DPS equipment mode using fetched file-backed data.
+- Decisions: manifest supports only the equipment logical dataset in this slice; web Vite publicDir points at repo data/ so static assets stay file-backed; legacy EquipmentDatabase default APIs remain compatibility-only for #85.
+- Files changed: data/manifest.json, data/equipment.json, cpp/engine DatabaseService/CMake/bindings/equipment validation/tests, web dps calculator/view/type contract/tests/Vite config, progress.txt.
+- Validation: cmake --build build; ctest --test-dir build --output-on-failure; source /home/jordan/dev/emsdk/emsdk_env.sh && yarn wasm:build; node web/test/generated-dps-service.test.mjs; yarn --cwd web test; yarn --cwd web typecheck; yarn --cwd web build passed. No blockers.

@@ -10,11 +10,13 @@ import {
     getEquipmentModeSlotOptions,
     isMeleeAttackType,
     isRangedAttackType,
+    loadEquipmentDataset,
     maxPlayerAttackSetups,
     setPlayerAttackType,
     type CalculatorAttackType,
     type CombatStylePreset,
     type DpsResultRow,
+    type EquipmentDatabase,
     type EquipmentSlotOptions,
 } from "./dpsCalculator";
 import {
@@ -24,6 +26,7 @@ import {
 
 const engineModuleStatus = ref<"loading" | "loaded" | "failed">("loading");
 const engineModule = ref<EngineModule | null>(null);
+const equipmentDatabase = ref<EquipmentDatabase | null>(null);
 const calculatorState = reactive(createDefaultCalculatorState());
 const activePlayerAttackSetup = computed(() =>
     getActivePlayerAttackSetup(calculatorState),
@@ -100,7 +103,7 @@ const combatStyleOptions = computed(() => {
 });
 
 const equipmentModeSlotOptions = computed<EquipmentSlotOptions[]>(() => {
-    if (engineModule.value === null) {
+    if (engineModule.value === null || equipmentDatabase.value === null) {
         return equipmentSlotControls.map((slot) => ({
             key: slot.key,
             label: slot.label,
@@ -108,15 +111,19 @@ const equipmentModeSlotOptions = computed<EquipmentSlotOptions[]>(() => {
         }));
     }
 
-    return getEquipmentModeSlotOptions(engineModule.value);
+    return getEquipmentModeSlotOptions(engineModule.value, equipmentDatabase.value);
 });
 
 const resultRows = computed<DpsResultRow[]>(() => {
-    if (engineModule.value === null) {
+    if (engineModule.value === null || equipmentDatabase.value === null) {
         return [];
     }
 
-    return buildSetupResultRows(engineModule.value, calculatorState);
+    return buildSetupResultRows(
+        engineModule.value,
+        calculatorState,
+        equipmentDatabase.value,
+    );
 });
 
 const canAddPlayerAttackSetup = computed(
@@ -159,13 +166,42 @@ function onDeleteActivePlayerAttackSetup(): void {
 
 onMounted(async () => {
     try {
-        engineModule.value = await loadEngineModule();
+        const loadedEngineModule = await loadEngineModule();
+        engineModule.value = loadedEngineModule;
+        equipmentDatabase.value = await loadBuiltInEquipmentDatabase(
+            loadedEngineModule,
+        );
         engineModuleStatus.value = "loaded";
     } catch (error) {
-        console.error("Failed to load engine wasm module", error);
+        console.error("Failed to load engine wasm module or dataset", error);
         engineModuleStatus.value = "failed";
     }
 });
+
+async function loadBuiltInEquipmentDatabase(module: EngineModule) {
+    const manifestJson = await fetchTextAsset("manifest.json");
+    const manifest = JSON.parse(manifestJson) as {
+        documents?: { equipment?: string };
+    };
+    const equipmentPath = manifest.documents?.equipment;
+
+    if (equipmentPath === undefined) {
+        throw new Error("dataset manifest is missing equipment document");
+    }
+
+    const equipmentJson = await fetchTextAsset(equipmentPath);
+    return loadEquipmentDataset(module, manifestJson, equipmentJson);
+}
+
+async function fetchTextAsset(path: string): Promise<string> {
+    const response = await fetch(`${import.meta.env.BASE_URL}${path}`);
+
+    if (!response.ok) {
+        throw new Error(`failed to fetch ${path}`);
+    }
+
+    return response.text();
+}
 </script>
 
 <template>

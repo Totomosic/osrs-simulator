@@ -30,6 +30,7 @@ const {
     equipmentSlotControls,
     getEquipmentModeWeaponOptions,
     getEquipmentModeSlotOptions,
+    loadEquipmentDataset,
     renamePlayerAttackSetup,
     setPlayerAttackType,
     formatDpsNumber,
@@ -72,8 +73,17 @@ class FakeEquipmentPieceVector {
 }
 
 class FakeEquipmentDatabase {
-    static LoadDefault() {
-        return new FakeEquipmentDatabase();
+    static nextManifestJson = "";
+    static nextEquipmentJson = "";
+
+    static LoadFromJsonDocuments(manifestJson, equipmentJson) {
+        FakeEquipmentDatabase.nextManifestJson = manifestJson;
+        FakeEquipmentDatabase.nextEquipmentJson = equipmentJson;
+        return {
+            GetEquipmentDatabase() {
+                return new FakeEquipmentDatabase();
+            },
+        };
     }
 
     GetEquipmentPiece(id) {
@@ -173,6 +183,7 @@ const module = {
     },
     DpsService: FakeDpsService,
     EquipmentDatabase: FakeEquipmentDatabase,
+    DatabaseService: FakeEquipmentDatabase,
     EquipmentSet: FakeEquipmentSet,
 };
 
@@ -230,6 +241,20 @@ const fakeEquipmentPieces = [
         weapon: { id: 0, range: 1, speed: 4 },
     },
 ];
+
+const equipmentDatabase = loadEquipmentDataset(
+    module,
+    '{"version":1,"documents":{"equipment":"equipment.json"}}',
+    '{"version":1,"equipmentPieces":[]}',
+);
+assert.equal(
+    FakeEquipmentDatabase.nextManifestJson,
+    '{"version":1,"documents":{"equipment":"equipment.json"}}',
+);
+assert.equal(
+    FakeEquipmentDatabase.nextEquipmentJson,
+    '{"version":1,"equipmentPieces":[]}',
+);
 
 const state = createDefaultCalculatorState();
 assert.equal(state.activePlayerAttackSetupIndex, 0);
@@ -309,7 +334,7 @@ assert.equal(request.attackPrayerMultiplier, 1);
 assert.equal(request.finalDamageMultiplier, 1);
 assert.equal(request.magicBaseMaximumHit, 0);
 
-const weaponOptions = getEquipmentModeWeaponOptions(module);
+const weaponOptions = getEquipmentModeWeaponOptions(module, equipmentDatabase);
 assert.deepEqual(
     weaponOptions.map((option) => [option.id, option.name]),
     [
@@ -318,7 +343,7 @@ assert.deepEqual(
     ],
 );
 
-const slotOptions = getEquipmentModeSlotOptions(module);
+const slotOptions = getEquipmentModeSlotOptions(module, equipmentDatabase);
 assert.deepEqual(
     slotOptions.map((slot) => slot.key),
     equipmentSlotControls.map((slot) => slot.key),
@@ -360,7 +385,12 @@ equipmentState.playerAttackSetups[0].ranged = 112;
 equipmentState.playerAttackSetups[0].rangedAttack = 999;
 equipmentState.playerAttackSetups[0].rangedStrength = 88;
 equipmentState.playerAttackSetups[0].weaponSpeedTicks = 6;
-const equipmentRequest = buildNpcDpsRequest(module, equipmentState);
+const equipmentRequest = buildNpcDpsRequest(
+    module,
+    equipmentState,
+    equipmentState.activePlayerAttackSetupIndex,
+    equipmentDatabase,
+);
 assert.equal(
     equipmentRequest.attackComposition.attackType,
     module.AttackType.RangedHeavy,
@@ -383,7 +413,12 @@ fullEquipmentState.playerAttackSetups[0].strength = 118;
 fullEquipmentState.playerAttackSetups[0].slashAttack = 999;
 fullEquipmentState.playerAttackSetups[0].meleeStrength = 999;
 fullEquipmentState.playerAttackSetups[0].weaponSpeedTicks = 7;
-const fullEquipmentRequest = buildNpcDpsRequest(module, fullEquipmentState);
+const fullEquipmentRequest = buildNpcDpsRequest(
+    module,
+    fullEquipmentState,
+    fullEquipmentState.activePlayerAttackSetupIndex,
+    equipmentDatabase,
+);
 assert.equal(fullEquipmentRequest.attackComposition.stats.attack, 107);
 assert.equal(fullEquipmentRequest.attackComposition.stats.strength, 118);
 assert.equal(fullEquipmentRequest.attackComposition.attackType, module.AttackType.Slash);
@@ -401,7 +436,11 @@ mixedModeState.playerAttackSetups[1].equipmentPieceIds.weapon = 1002;
 setPlayerAttackType(mixedModeState.playerAttackSetups[1], "ranged-heavy");
 assert.equal(mixedModeState.playerAttackSetups[0].mode, "manual");
 FakeDpsService.nextDpsValues = [4, 5];
-const mixedModeRows = buildSetupResultRows(module, mixedModeState);
+const mixedModeRows = buildSetupResultRows(
+    module,
+    mixedModeState,
+    equipmentDatabase,
+);
 assert.equal(mixedModeRows.length, 2);
 assert.equal(mixedModeRows[0].name, "Manual slash");
 assert.equal(mixedModeRows[1].name, "Bow");

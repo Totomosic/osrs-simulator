@@ -1,4 +1,5 @@
 #include "Engine.h"
+#include "DatabaseService.h"
 #include "DpsService.h"
 #include "EquipmentDatabase.h"
 #include "EquipmentSet.h"
@@ -232,6 +233,12 @@ emscripten::val GetActorSnapshot(
 std::string GetDefaultEquipmentJson()
 {
     return osrssim::EquipmentDatabase::GetDefaultJson();
+}
+
+osrssim::EquipmentDatabase GetDatabaseServiceEquipmentDatabase(
+    const osrssim::DatabaseService& service)
+{
+    return service.GetEquipmentDatabase();
 }
 
 }  // namespace
@@ -487,6 +494,15 @@ EMSCRIPTEN_BINDINGS(osrssim_engine)
         .function(
             "GetEquipmentPiecesBySlot",
             &osrssim::EquipmentDatabase::GetEquipmentPiecesBySlot);
+
+    emscripten::class_<osrssim::DatabaseService>("DatabaseService")
+        .constructor<>()
+        .class_function(
+            "LoadFromJsonDocuments",
+            &osrssim::DatabaseService::LoadFromJsonDocuments)
+        .function(
+            "GetEquipmentDatabase",
+            &GetDatabaseServiceEquipmentDatabase);
 
     emscripten::class_<osrssim::EquipmentSet>("EquipmentSet")
         .constructor<>()

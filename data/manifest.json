@@ -1,0 +1,6 @@
+{
+  "version": 1,
+  "documents": {
+    "equipment": "equipment.json"
+  }
+}
