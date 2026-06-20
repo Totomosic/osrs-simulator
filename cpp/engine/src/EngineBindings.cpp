@@ -5,6 +5,7 @@
 #include "EquipmentDatabase.h"
 #include "EquipmentSet.h"
 #include "LineOfSight.h"
+#include "NpcDatabase.h"
 #include "Scene.h"
 #include "Tile.h"
 #include "World.h"
@@ -254,6 +255,12 @@ osrssim::CombatCompositionDatabase GetDatabaseServiceCombatCompositionDatabase(
     return service.GetCombatCompositionDatabase();
 }
 
+osrssim::NpcDatabase GetDatabaseServiceNpcDatabase(
+    const osrssim::DatabaseService& service)
+{
+    return service.GetNpcDatabase();
+}
+
 }  // namespace
 
 EMSCRIPTEN_BINDINGS(osrssim_engine)
@@ -262,6 +269,8 @@ EMSCRIPTEN_BINDINGS(osrssim_engine)
         "EquipmentPieceVector");
     emscripten::register_vector<osrssim::CombatCompositionRecord>(
         "CombatCompositionRecordVector");
+    emscripten::register_vector<osrssim::NpcDefinition>(
+        "NpcDefinitionVector");
 
     emscripten::value_object<osrssim::SceneCoordinate>("SceneCoordinate")
         .field("x", &osrssim::SceneCoordinate::x)
@@ -397,6 +406,17 @@ EMSCRIPTEN_BINDINGS(osrssim_engine)
         .field("name", &osrssim::CombatCompositionRecord::name)
         .field("source", &osrssim::CombatCompositionRecord::source)
         .field("composition", &osrssim::CombatCompositionRecord::composition);
+
+    emscripten::value_object<osrssim::NpcDefinition>("NpcDefinition")
+        .field("id", &osrssim::NpcDefinition::id)
+        .field("name", &osrssim::NpcDefinition::name)
+        .field("hasCombatLevel", &osrssim::NpcDefinition::hasCombatLevel)
+        .field("combatLevel", &osrssim::NpcDefinition::combatLevel)
+        .field("size", &osrssim::NpcDefinition::size)
+        .field("speed", &osrssim::NpcDefinition::speed)
+        .field(
+            "combatCompositionId",
+            &osrssim::NpcDefinition::combatCompositionId);
 
     emscripten::value_object<osrssim::DpsRequest>("DpsRequest")
         .field(
@@ -550,7 +570,8 @@ EMSCRIPTEN_BINDINGS(osrssim_engine)
             &GetDatabaseServiceWeaponDatabase)
         .function(
             "GetCombatCompositionDatabase",
-            &GetDatabaseServiceCombatCompositionDatabase);
+            &GetDatabaseServiceCombatCompositionDatabase)
+        .function("GetNpcDatabase", &GetDatabaseServiceNpcDatabase);
 
     emscripten::class_<osrssim::WeaponDatabase>("WeaponDatabase")
         .function(
@@ -576,6 +597,13 @@ EMSCRIPTEN_BINDINGS(osrssim_engine)
             "GetCombatCompositionRecordsBySource",
             &osrssim::CombatCompositionDatabase::
                 GetCombatCompositionRecordsBySource);
+
+    emscripten::class_<osrssim::NpcDatabase>("NpcDatabase")
+        .function("HasNpcDefinition", &osrssim::NpcDatabase::HasNpcDefinition)
+        .function("GetNpcDefinition", &osrssim::NpcDatabase::GetNpcDefinition)
+        .function(
+            "GetAllNpcDefinitions",
+            &osrssim::NpcDatabase::GetAllNpcDefinitions);
 
     emscripten::class_<osrssim::EquipmentSet>("EquipmentSet")
         .constructor<>()

@@ -14,7 +14,8 @@ const std::string ManifestJson = R"({
     "documents": {
         "equipment": "equipment.json",
         "weapons": "weapons.json",
-        "combatCompositions": "combat_compositions.json"
+        "combatCompositions": "combat_compositions.json",
+        "npcs": "npcs.json"
     }
 })";
 
@@ -88,6 +89,20 @@ const std::string CombatCompositionsJson = R"({
     ]
 })";
 
+const std::string NpcsJson = R"({
+    "version": 1,
+    "npcs": [
+        {
+            "id": 2000,
+            "name": "Goblin",
+            "combatLevel": 2,
+            "size": 1,
+            "speed": 1,
+            "combatCompositionId": 1000
+        }
+    ]
+})";
+
 bool ThrowsInvalidArgument(auto callback)
 {
     try
@@ -121,6 +136,7 @@ int main()
                 {"equipment", EquipmentJson},
                 {"weapons", WeaponsJson},
                 {"combatCompositions", CombatCompositionsJson},
+                {"npcs", NpcsJson},
             });
 
     const osrssim::EquipmentDatabase& equipmentDatabase =
@@ -146,6 +162,11 @@ int main()
     assert(combatCompositionDatabase.GetCombatCompositionRecord(1000)
                .composition.weapon.id == 0);
 
+    const osrssim::NpcDatabase& npcDatabase = service.GetNpcDatabase();
+    assert(npcDatabase.HasNpcDefinition(2000));
+    assert(npcDatabase.GetNpcDefinition(2000).combatCompositionId == 1000);
+    assert(npcDatabase.GetNpcDefinition(2000).size == 1);
+
     assert(ThrowsInvalidArgument(
         []
         {
@@ -163,6 +184,7 @@ int main()
                     {"equipment", EquipmentJson},
                     {"weapons", WeaponsJson},
                     {"combatCompositions", CombatCompositionsJson},
+                    {"npcs", NpcsJson},
                 });
         }));
 
@@ -174,6 +196,7 @@ int main()
                 {
                     {"weapons", WeaponsJson},
                     {"combatCompositions", CombatCompositionsJson},
+                    {"npcs", NpcsJson},
                 });
         }));
 
@@ -185,6 +208,7 @@ int main()
                 {
                     {"equipment", EquipmentJson},
                     {"weapons", WeaponsJson},
+                    {"npcs", NpcsJson},
                 });
         }));
 
@@ -195,6 +219,19 @@ int main()
                 ManifestJson,
                 {
                     {"equipment", EquipmentJson},
+                    {"combatCompositions", CombatCompositionsJson},
+                    {"npcs", NpcsJson},
+                });
+        }));
+
+    assert(ThrowsInvalidArgument(
+        []
+        {
+            osrssim::DatabaseService::LoadFromDocuments(
+                ManifestJson,
+                {
+                    {"equipment", EmptyEquipmentJson},
+                    {"weapons", WeaponsJson},
                     {"combatCompositions", CombatCompositionsJson},
                 });
         }));
@@ -228,6 +265,7 @@ int main()
                             }
                         ]
                     })"},
+                    {"npcs", NpcsJson},
                 });
         }));
 
@@ -256,6 +294,7 @@ int main()
                 })"},
                     {"weapons", WeaponsJson},
                     {"combatCompositions", CombatCompositionsJson},
+                    {"npcs", NpcsJson},
                 });
         }));
 
@@ -278,6 +317,7 @@ int main()
                 })"},
                     {"weapons", WeaponsJson},
                     {"combatCompositions", CombatCompositionsJson},
+                    {"npcs", NpcsJson},
                 });
         }));
 
@@ -301,6 +341,7 @@ int main()
                 })"},
                     {"weapons", WeaponsJson},
                     {"combatCompositions", CombatCompositionsJson},
+                    {"npcs", NpcsJson},
                 });
         }));
 
@@ -331,6 +372,7 @@ int main()
                     ]
                 })"},
                     {"combatCompositions", CombatCompositionsJson},
+                    {"npcs", NpcsJson},
                 });
         }));
 
@@ -354,6 +396,7 @@ int main()
                     ]
                 })"},
                     {"combatCompositions", CombatCompositionsJson},
+                    {"npcs", NpcsJson},
                 });
         }));
 
@@ -377,6 +420,7 @@ int main()
                     ]
                 })"},
                     {"combatCompositions", CombatCompositionsJson},
+                    {"npcs", NpcsJson},
                 });
         }));
 
@@ -425,6 +469,7 @@ int main()
                     ]
                 })"},
                     {"combatCompositions", CombatCompositionsJson},
+                    {"npcs", NpcsJson},
                 },
                 combatService);
 
@@ -478,6 +523,7 @@ int main()
                     ]
                 })"},
                     {"combatCompositions", CombatCompositionsJson},
+                    {"npcs", NpcsJson},
                 },
                 combatService);
 
@@ -514,6 +560,55 @@ int main()
                     ]
                 })"},
                     {"combatCompositions", CombatCompositionsJson},
+                    {"npcs", NpcsJson},
+                });
+        }));
+
+    assert(ThrowsInvalidArgument(
+        []
+        {
+            osrssim::DatabaseService::LoadFromDocuments(
+                ManifestJson,
+                {
+                    {"equipment", EmptyEquipmentJson},
+                    {"weapons", WeaponsJson},
+                    {"combatCompositions", CombatCompositionsJson},
+                    {"npcs", R"({
+                        "version": 1,
+                        "npcs": [
+                            {
+                                "id": 2001,
+                                "name": "Missing composition",
+                                "size": 1,
+                                "speed": 1,
+                                "combatCompositionId": 9999
+                            }
+                        ]
+                    })"},
+                });
+        }));
+
+    assert(ThrowsInvalidArgument(
+        []
+        {
+            osrssim::DatabaseService::LoadFromDocuments(
+                ManifestJson,
+                {
+                    {"equipment", EmptyEquipmentJson},
+                    {"weapons", WeaponsJson},
+                    {"combatCompositions", CombatCompositionsJson},
+                    {"npcs", R"({
+                        "version": 1,
+                        "npcs": [
+                            {
+                                "id": 2002,
+                                "name": "Saved composition",
+                                "size": 1,
+                                "speed": 1,
+                                "combatCompositionId": 9000000000000000000
+                            }
+                        ]
+                    })"},
                 });
         }));
 

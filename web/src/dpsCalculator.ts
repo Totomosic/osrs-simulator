@@ -12,15 +12,17 @@ import type {
     EquipmentDatabase,
     EquipmentPiece,
     EquipmentSlot,
+    NpcDatabase,
     StyleBonus,
     WeaponDefinition,
     WeaponDatabase,
 } from "./wasm/EngineModule";
 
-export type { EquipmentDatabase, WeaponDatabase };
+export type { EquipmentDatabase, NpcDatabase, WeaponDatabase };
 
 export interface EquipmentDataset {
     equipmentDatabase: EquipmentDatabase;
+    npcDatabase: NpcDatabase;
     weaponDatabase: WeaponDatabase;
 }
 
@@ -169,16 +171,19 @@ export function loadEquipmentDataset(
     equipmentJson: string,
     weaponsJson: string,
     combatCompositionsJson: string,
+    npcsJson: string,
 ): EquipmentDataset {
     const service = module.DatabaseService.LoadFromJsonDocuments(
         manifestJson,
         equipmentJson,
         weaponsJson,
         combatCompositionsJson,
+        npcsJson,
     );
 
     return {
         equipmentDatabase: service.GetEquipmentDatabase(),
+        npcDatabase: service.GetNpcDatabase(),
         weaponDatabase: service.GetWeaponDatabase(),
     };
 }

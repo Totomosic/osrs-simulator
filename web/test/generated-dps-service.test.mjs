@@ -44,11 +44,13 @@ const fileBackedCombatCompositionsJson = await readFile(
     resolve(root, "../data/combat_compositions.json"),
     "utf8",
 );
+const fileBackedNpcsJson = await readFile(resolve(root, "../data/npcs.json"), "utf8");
 const databaseService = module.DatabaseService.LoadFromJsonDocuments(
     manifestJson,
     fileBackedEquipmentJson,
     fileBackedWeaponsJson,
     fileBackedCombatCompositionsJson,
+    fileBackedNpcsJson,
 );
 const fileBackedEquipmentDatabase = databaseService.GetEquipmentDatabase();
 assert.equal(fileBackedEquipmentDatabase.HasEquipmentPiece(1001), true);
@@ -66,6 +68,16 @@ assert.equal(
     fileBackedCombatCompositionDatabase.GetCombatCompositionRecord(1000).source,
     module.CombatCompositionSource.BuiltIn,
 );
+const fileBackedNpcDatabase = databaseService.GetNpcDatabase();
+assert.equal(fileBackedNpcDatabase.HasNpcDefinition(2000n), true);
+assert.equal(fileBackedNpcDatabase.GetNpcDefinition(2000n).name, "Goblin");
+assert.equal(
+    fileBackedNpcDatabase.GetNpcDefinition(2000n).combatCompositionId,
+    1000n,
+);
+const fileBackedNpcDefinitions = fileBackedNpcDatabase.GetAllNpcDefinitions();
+assert.equal(fileBackedNpcDefinitions.size(), 1);
+fileBackedNpcDefinitions.delete();
 
 const customDatabaseService = module.DatabaseService.LoadFromJsonDocuments(
     `{
@@ -73,7 +85,8 @@ const customDatabaseService = module.DatabaseService.LoadFromJsonDocuments(
         "documents": {
             "equipment": "equipment.json",
             "weapons": "weapons.json",
-            "combatCompositions": "combat_compositions.json"
+            "combatCompositions": "combat_compositions.json",
+            "npcs": "npcs.json"
         }
     }`,
     `{
@@ -136,6 +149,18 @@ const customDatabaseService = module.DatabaseService.LoadFromJsonDocuments(
             "attackType": "slash",
             "magicBaseMaximumHit": 0,
             "weaponId": 0
+        }
+    ]
+}`,
+    `{
+    "version": 1,
+    "npcs": [
+        {
+            "id": 2000,
+            "name": "Training dummy",
+            "size": 1,
+            "speed": 0,
+            "combatCompositionId": 1000
         }
     ]
 }`,

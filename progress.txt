@@ -208,3 +208,13 @@
 - Decisions: reserve saved composition IDs at 9e18 for the high range; expose built-in/source-filtered lists now with empty saved source until #84; seed one Goblin built-in composition using Unarmed so #82 can attach NPC definitions next.
 - Files changed: cpp/common Types; cpp/engine CombatCompositionDatabase, DatabaseService, bindings, tests/CMake; data manifest/combat_compositions; web dataset loader/type contract/tests; progress.txt.
 - Validation: cmake --build build; ctest --test-dir build --output-on-failure; source /home/jordan/dev/emsdk/emsdk_env.sh && yarn wasm:build; node web/test/generated-dps-service.test.mjs; node web/test/dps-calculator.test.mjs; yarn --cwd web test; yarn --cwd web typecheck; yarn --cwd web build passed. No blockers.
+
+2026-06-20 #82 NPC definitions resolve combat compositions
+- Selected issue: #82, unblocked because #81 is closed. Parent PRD: #76.
+- Docs read: CONTEXT.md, docs/agents/domain.md, docs/adr/0007-engine-owned-equipment-database.md, docs/adr/0008-file-backed-engine-dataset.md, PRD #76, feature #82, blocker #81.
+- Plan: TDD NpcDatabase JSON loading/list/lookup/order, duplicate and actor trait validation, DatabaseService NPC manifest/document loading and built-in composition reference validation, seed data, bindings/type tests if public WASM surface changes.
+- Scope guard: only #82. Do not start web DPS NPC selection (#83), saved combat compositions (#84), or legacy default removal (#85).
+- Completed: PRD #76 stories 1-2, 38, 40, 43, 48 and feature #82 acceptance for file-backed NPC definitions, NPC ID alias, optional combat level metadata, actor trait validation, duplicate-ID rejection, duplicate-name allowance, file-order list/lookup APIs, and DatabaseService composition-reference validation.
+- Decisions: keep NpcDatabase focused on local NPC schema; DatabaseService owns cross-database validation and rejects saved-range composition IDs before lookup; bind NpcDatabase through WASM now so #83 can use the service-loaded catalogue.
+- Files changed: cpp/common Types; cpp/engine NpcDatabase, DatabaseService, bindings, CMake/tests; data manifest/npcs; web dataset loader/type contract/tests; progress.txt.
+- Validation: cmake --build build; ctest --test-dir build --output-on-failure; source /home/jordan/dev/emsdk/emsdk_env.sh && yarn wasm:build; node web/test/generated-dps-service.test.mjs; node web/test/dps-calculator.test.mjs; yarn --cwd web typecheck; yarn --cwd web test; yarn --cwd web build; git diff --check passed. No blockers.

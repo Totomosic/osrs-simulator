@@ -1,0 +1,13 @@
+{
+  "version": 1,
+  "npcs": [
+    {
+      "id": 2000,
+      "name": "Goblin",
+      "combatLevel": 2,
+      "size": 1,
+      "speed": 1,
+      "combatCompositionId": 1000
+    }
+  ]
+}

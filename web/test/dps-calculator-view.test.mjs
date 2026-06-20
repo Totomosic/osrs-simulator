@@ -37,6 +37,7 @@ assert.match(viewSource, /loadEquipmentDataset/);
 assert.match(viewSource, /fetchTextAsset\("manifest\.json"\)/);
 assert.match(viewSource, /manifest\.documents\?\.equipment/);
 assert.match(viewSource, /manifest\.documents\?\.combatCompositions/);
+assert.match(viewSource, /manifest\.documents\?\.npcs/);
 assert.match(viewSource, /equipmentSlotControls/);
 assert.match(playerFormSource, /v-for="slot in equipmentModeSlotOptions"/);
 for (const label of [

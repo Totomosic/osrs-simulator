@@ -7,6 +7,7 @@ add_library(osrssim_engine
   src/EquipmentSet.cpp
   src/Engine.cpp
   src/LineOfSight.cpp
+  src/NpcDatabase.cpp
   src/Pathing.cpp
   src/Scene.cpp
   src/Tile.cpp
@@ -88,6 +89,10 @@ if(BUILD_TESTING)
     tests/CombatCompositionDatabaseTest.cpp
   )
 
+  add_executable(osrssim_engine_npc_database_test
+    tests/NpcDatabaseTest.cpp
+  )
+
   add_executable(osrssim_engine_database_service_test
     tests/DatabaseServiceTest.cpp
   )
@@ -136,6 +141,11 @@ if(BUILD_TESTING)
       osrssim::engine
   )
 
+  target_link_libraries(osrssim_engine_npc_database_test
+    PRIVATE
+      osrssim::engine
+  )
+
   target_link_libraries(osrssim_engine_database_service_test
     PRIVATE
       osrssim::engine
@@ -154,6 +164,7 @@ if(BUILD_TESTING)
   add_test(NAME osrssim_engine_dps_service_test COMMAND osrssim_engine_dps_service_test)
   add_test(NAME osrssim_engine_equipment_database_test COMMAND osrssim_engine_equipment_database_test)
   add_test(NAME osrssim_engine_combat_composition_database_test COMMAND osrssim_engine_combat_composition_database_test)
+  add_test(NAME osrssim_engine_npc_database_test COMMAND osrssim_engine_npc_database_test)
   add_test(NAME osrssim_engine_database_service_test COMMAND osrssim_engine_database_service_test)
   add_test(NAME osrssim_engine_equipment_set_test COMMAND osrssim_engine_equipment_set_test)
 endif()

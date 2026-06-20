@@ -112,6 +112,22 @@ export interface CombatCompositionRecordVector {
     delete(): void;
 }
 
+export interface NpcDefinition {
+    id: bigint;
+    name: string;
+    hasCombatLevel: boolean;
+    combatLevel: number;
+    size: number;
+    speed: number;
+    combatCompositionId: bigint;
+}
+
+export interface NpcDefinitionVector {
+    size(): number;
+    get(index: number): NpcDefinition | undefined;
+    delete(): void;
+}
+
 export interface DpsRequest {
     attackComposition: AttackComposition;
     defenceComposition: DefenceComposition;
@@ -226,6 +242,7 @@ export interface DatabaseService {
     GetEquipmentDatabase(): EquipmentDatabase;
     GetWeaponDatabase(): WeaponDatabase;
     GetCombatCompositionDatabase(): CombatCompositionDatabase;
+    GetNpcDatabase(): NpcDatabase;
 }
 
 export interface DatabaseServiceConstructor {
@@ -235,6 +252,7 @@ export interface DatabaseServiceConstructor {
         equipmentJson: string,
         weaponsJson: string,
         combatCompositionsJson: string,
+        npcsJson: string,
     ): DatabaseService;
 }
 
@@ -245,6 +263,12 @@ export interface CombatCompositionDatabase {
     GetCombatCompositionRecordsBySource(
         source: CombatCompositionSource,
     ): CombatCompositionRecordVector;
+}
+
+export interface NpcDatabase {
+    HasNpcDefinition(id: number | bigint): boolean;
+    GetNpcDefinition(id: number | bigint): NpcDefinition;
+    GetAllNpcDefinitions(): NpcDefinitionVector;
 }
 
 export interface EquipmentSet {

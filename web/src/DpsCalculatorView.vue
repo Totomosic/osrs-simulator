@@ -185,11 +185,13 @@ async function loadBuiltInEquipmentDataset(module: EngineModule) {
             equipment?: string;
             weapons?: string;
             combatCompositions?: string;
+            npcs?: string;
         };
     };
     const equipmentPath = manifest.documents?.equipment;
     const weaponsPath = manifest.documents?.weapons;
     const combatCompositionsPath = manifest.documents?.combatCompositions;
+    const npcsPath = manifest.documents?.npcs;
 
     if (equipmentPath === undefined) {
         throw new Error("dataset manifest is missing equipment document");
@@ -202,16 +204,21 @@ async function loadBuiltInEquipmentDataset(module: EngineModule) {
             "dataset manifest is missing combat compositions document",
         );
     }
+    if (npcsPath === undefined) {
+        throw new Error("dataset manifest is missing NPCs document");
+    }
 
     const equipmentJson = await fetchTextAsset(equipmentPath);
     const weaponsJson = await fetchTextAsset(weaponsPath);
     const combatCompositionsJson = await fetchTextAsset(combatCompositionsPath);
+    const npcsJson = await fetchTextAsset(npcsPath);
     return loadEquipmentDataset(
         module,
         manifestJson,
         equipmentJson,
         weaponsJson,
         combatCompositionsJson,
+        npcsJson,
     );
 }
 

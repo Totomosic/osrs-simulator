@@ -77,18 +77,21 @@ class FakeEquipmentDatabase {
     static nextEquipmentJson = "";
     static nextWeaponsJson = "";
     static nextCombatCompositionsJson = "";
+    static nextNpcsJson = "";
 
     static LoadFromJsonDocuments(
         manifestJson,
         equipmentJson,
         weaponsJson,
         combatCompositionsJson,
+        npcsJson,
     ) {
         FakeEquipmentDatabase.nextManifestJson = manifestJson;
         FakeEquipmentDatabase.nextEquipmentJson = equipmentJson;
         FakeEquipmentDatabase.nextWeaponsJson = weaponsJson;
         FakeEquipmentDatabase.nextCombatCompositionsJson =
             combatCompositionsJson;
+        FakeEquipmentDatabase.nextNpcsJson = npcsJson;
         return {
             GetEquipmentDatabase() {
                 return new FakeEquipmentDatabase();
@@ -97,6 +100,9 @@ class FakeEquipmentDatabase {
                 return new FakeWeaponDatabase();
             },
             GetCombatCompositionDatabase() {
+                return {};
+            },
+            GetNpcDatabase() {
                 return {};
             },
         };
@@ -294,14 +300,15 @@ const fakeEquipmentPieces = [
 
 const equipmentDataset = loadEquipmentDataset(
     module,
-    '{"version":1,"documents":{"equipment":"equipment.json","weapons":"weapons.json","combatCompositions":"combat_compositions.json"}}',
+    '{"version":1,"documents":{"equipment":"equipment.json","weapons":"weapons.json","combatCompositions":"combat_compositions.json","npcs":"npcs.json"}}',
     '{"version":1,"equipmentPieces":[]}',
     '{"version":1,"weapons":[]}',
     '{"version":1,"combatCompositions":[]}',
+    '{"version":1,"npcs":[]}',
 );
 assert.equal(
     FakeEquipmentDatabase.nextManifestJson,
-    '{"version":1,"documents":{"equipment":"equipment.json","weapons":"weapons.json","combatCompositions":"combat_compositions.json"}}',
+    '{"version":1,"documents":{"equipment":"equipment.json","weapons":"weapons.json","combatCompositions":"combat_compositions.json","npcs":"npcs.json"}}',
 );
 assert.equal(
     FakeEquipmentDatabase.nextEquipmentJson,
@@ -312,6 +319,8 @@ assert.equal(
     FakeEquipmentDatabase.nextCombatCompositionsJson,
     '{"version":1,"combatCompositions":[]}',
 );
+assert.equal(FakeEquipmentDatabase.nextNpcsJson, '{"version":1,"npcs":[]}');
+assert.equal(equipmentDataset.npcDatabase !== undefined, true);
 
 const state = createDefaultCalculatorState();
 assert.equal(state.activePlayerAttackSetupIndex, 0);

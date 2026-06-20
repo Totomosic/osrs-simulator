@@ -3,6 +3,7 @@
   "documents": {
     "equipment": "equipment.json",
     "weapons": "weapons.json",
-    "combatCompositions": "combat_compositions.json"
+    "combatCompositions": "combat_compositions.json",
+    "npcs": "npcs.json"
   }
 }

@@ -99,7 +99,9 @@ void ValidateManifest(const Json& manifest)
     }
 
     const Json& documents = manifest.at("documents");
-    if (!HasOnlyKeys(documents, {"equipment", "weapons", "combatCompositions"}))
+    if (!HasOnlyKeys(
+            documents,
+            {"equipment", "weapons", "combatCompositions", "npcs"}))
     {
         throw std::invalid_argument("documents contains an unknown dataset");
     }
@@ -124,6 +126,12 @@ void ValidateManifest(const Json& manifest)
     {
         throw std::invalid_argument(
             "combat compositions document path must not be empty");
+    }
+
+    const std::string npcsDocument = GetRequiredString(documents, "npcs");
+    if (npcsDocument.empty())
+    {
+        throw std::invalid_argument("NPCs document path must not be empty");
     }
 }
 
@@ -152,6 +160,35 @@ void ValidateEquipmentWeapons(
         {
             throw std::invalid_argument(
                 "equipment piece references an unknown weapon ID");
+        }
+    }
+}
+
+void ValidateNpcCombatCompositions(
+    const NpcDatabase& npcDatabase,
+    const CombatCompositionDatabase& combatCompositionDatabase)
+{
+    for (const NpcDefinition& definition : npcDatabase.GetAllNpcDefinitions())
+    {
+        if (definition.combatCompositionId >=
+            CombatCompositionDatabase::FirstSavedCombatCompositionId)
+        {
+            throw std::invalid_argument(
+                "NPC definition references a non-built-in combat composition");
+        }
+
+        const CombatCompositionRecord* record =
+            combatCompositionDatabase.TryGetCombatCompositionRecord(
+                definition.combatCompositionId);
+        if (record == nullptr)
+        {
+            throw std::invalid_argument(
+                "NPC definition references an unknown combat composition ID");
+        }
+        if (record->source != CombatCompositionSource::BuiltIn)
+        {
+            throw std::invalid_argument(
+                "NPC definition references a non-built-in combat composition");
         }
     }
 }
@@ -194,6 +231,12 @@ DatabaseService DatabaseService::LoadFromDocuments(
             "combat compositions document is missing");
     }
 
+    const auto npcsDocument = documents.find("npcs");
+    if (npcsDocument == documents.end())
+    {
+        throw std::invalid_argument("NPCs document is missing");
+    }
+
     DatabaseService service;
     service.m_EquipmentDatabase =
         EquipmentDatabase::LoadFromJson(equipmentDocument->second);
@@ -203,10 +246,14 @@ DatabaseService DatabaseService::LoadFromDocuments(
         CombatCompositionDatabase::LoadFromJson(
             combatCompositionsDocument->second,
             service.m_WeaponDatabase);
+    service.m_NpcDatabase = NpcDatabase::LoadFromJson(npcsDocument->second);
     ValidateWeaponCallbacks(service.m_WeaponDatabase, combatService);
     ValidateEquipmentWeapons(
         service.m_EquipmentDatabase,
         service.m_WeaponDatabase);
+    ValidateNpcCombatCompositions(
+        service.m_NpcDatabase,
+        service.m_CombatCompositionDatabase);
 
     return service;
 }
@@ -215,7 +262,8 @@ DatabaseService DatabaseService::LoadFromJsonDocuments(
     const std::string& manifestJson,
     const std::string& equipmentJson,
     const std::string& weaponsJson,
-    const std::string& combatCompositionsJson)
+    const std::string& combatCompositionsJson,
+    const std::string& npcsJson)
 {
     return LoadFromDocuments(
         manifestJson,
@@ -223,6 +271,7 @@ DatabaseService DatabaseService::LoadFromJsonDocuments(
             {"equipment", equipmentJson},
             {"weapons", weaponsJson},
             {"combatCompositions", combatCompositionsJson},
+            {"npcs", npcsJson},
         });
 }
 
@@ -235,6 +284,11 @@ DatabaseService::GetCombatCompositionDatabase() const
 const EquipmentDatabase& DatabaseService::GetEquipmentDatabase() const
 {
     return m_EquipmentDatabase;
+}
+
+const NpcDatabase& DatabaseService::GetNpcDatabase() const
+{
+    return m_NpcDatabase;
 }
 
 const WeaponDatabase& DatabaseService::GetWeaponDatabase() const
