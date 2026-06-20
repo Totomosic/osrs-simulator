@@ -1,6 +1,7 @@
 import type {
     AttackType,
     CombatStats,
+    CombatCompositionDatabase,
     DefenceComposition,
     DefenderKind,
     DpsRequest,
@@ -13,6 +14,7 @@ import type {
     EquipmentPiece,
     EquipmentSlot,
     NpcDatabase,
+    NpcDefinition,
     StyleBonus,
     WeaponDefinition,
     WeaponDatabase,
@@ -21,6 +23,7 @@ import type {
 export type { EquipmentDatabase, NpcDatabase, WeaponDatabase };
 
 export interface EquipmentDataset {
+    combatCompositionDatabase: CombatCompositionDatabase;
     equipmentDatabase: EquipmentDatabase;
     npcDatabase: NpcDatabase;
     weaponDatabase: WeaponDatabase;
@@ -98,7 +101,7 @@ export const equipmentSlotControls: EquipmentSlotControl[] = [
     { key: "ammo", label: "Ammo", moduleSlot: "Ammo" },
 ];
 
-type CalculatorNumber = number | string;
+type CalculatorNumber = number | string | bigint;
 
 export interface PlayerAttackSetup {
     name: string;
@@ -123,6 +126,8 @@ export interface PlayerAttackSetup {
 }
 
 export interface NpcDefenceSetup {
+    mode: "manual" | "npc";
+    selectedNpcId: CalculatorNumber;
     defence: CalculatorNumber;
     magic: CalculatorNumber;
     stabDefence: CalculatorNumber;
@@ -157,6 +162,12 @@ export interface EquipmentOption {
     name: string;
 }
 
+export interface NpcOption {
+    id: number | bigint;
+    name: string;
+    combatLevel: number | null;
+}
+
 export interface EquipmentSlotOptions {
     key: EquipmentSlotKey;
     label: string;
@@ -182,6 +193,7 @@ export function loadEquipmentDataset(
     );
 
     return {
+        combatCompositionDatabase: service.GetCombatCompositionDatabase(),
         equipmentDatabase: service.GetEquipmentDatabase(),
         npcDatabase: service.GetNpcDatabase(),
         weaponDatabase: service.GetWeaponDatabase(),
@@ -193,6 +205,8 @@ export function createDefaultCalculatorState(): DpsCalculatorState {
         playerAttackSetups: [createDefaultPlayerAttackSetup("Baseline")],
         activePlayerAttackSetupIndex: 0,
         npcDefenceSetup: {
+            mode: "manual",
+            selectedNpcId: "",
             defence: 80,
             magic: 1,
             stabDefence: 0,
@@ -293,7 +307,10 @@ export function buildNpcDpsRequest(
             attackType,
             equipmentDataset,
         ),
-        defenceComposition: buildManualNpcDefenceComposition(npcDefenceSetup),
+        defenceComposition: buildNpcDefenceComposition(
+            npcDefenceSetup,
+            equipmentDataset,
+        ),
         attackerStyle: createCombatStyleBonus(playerAttackSetup.combatStylePreset),
         defenderStyle: createDefaultStyleBonus(),
         defenderKind: module.DefenderKind.Npc,
@@ -339,6 +356,16 @@ export function getEquipmentModeSlotOptions(
     }));
 }
 
+export function getNpcDefenceOptions(
+    equipmentDataset: EquipmentDataset,
+): NpcOption[] {
+    return getAllNpcDefinitions(equipmentDataset.npcDatabase).map((npc) => ({
+        id: npc.id,
+        name: npc.name,
+        combatLevel: npc.hasCombatLevel ? npc.combatLevel : null,
+    }));
+}
+
 export function buildManualNpcDefenceComposition(
     npcDefenceSetup: NpcDefenceSetup,
 ): DefenceComposition {
@@ -352,6 +379,32 @@ export function buildManualNpcDefenceComposition(
             ...createDefaultEquipmentBonuses(),
             ...createDefenderBonusFields(npcDefenceSetup),
         },
+    };
+}
+
+export function buildNpcDefenceComposition(
+    npcDefenceSetup: NpcDefenceSetup,
+    equipmentDataset?: EquipmentDataset,
+): DefenceComposition {
+    if (npcDefenceSetup.mode !== "npc") {
+        return buildManualNpcDefenceComposition(npcDefenceSetup);
+    }
+
+    const npcId = sanitizeOptionalCatalogueId(npcDefenceSetup.selectedNpcId);
+    if (npcId === null) {
+        return buildManualNpcDefenceComposition(npcDefenceSetup);
+    }
+
+    const dataset = requireEquipmentDataset(equipmentDataset);
+    const npc = dataset.npcDatabase.GetNpcDefinition(npcId);
+    const record =
+        dataset.combatCompositionDatabase.GetCombatCompositionRecord(
+            npc.combatCompositionId,
+        );
+
+    return {
+        stats: record.composition.stats,
+        bonuses: record.composition.bonuses,
     };
 }
 
@@ -703,6 +756,24 @@ function getEquipmentPiecesBySlot(
     return result;
 }
 
+function getAllNpcDefinitions(database: NpcDatabase): NpcDefinition[] {
+    const definitions = database.GetAllNpcDefinitions();
+    const result: NpcDefinition[] = [];
+
+    try {
+        for (let index = 0; index < definitions.size(); index += 1) {
+            const definition = definitions.get(index);
+            if (definition !== undefined) {
+                result.push(definition);
+            }
+        }
+    } finally {
+        definitions.delete();
+    }
+
+    return result;
+}
+
 function requireEquipmentDataset(
     equipmentDataset: EquipmentDataset | undefined,
 ): EquipmentDataset {
@@ -847,6 +918,25 @@ function sanitizeWholeNumber(value: CalculatorNumber, minimum?: number): number 
 function sanitizeOptionalWholeNumber(value: CalculatorNumber): number | null {
     if (value === "") {
         return null;
+    }
+
+    const numericValue = Number(value);
+    if (!Number.isFinite(numericValue)) {
+        return null;
+    }
+
+    return Math.trunc(numericValue);
+}
+
+function sanitizeOptionalCatalogueId(
+    value: CalculatorNumber,
+): number | bigint | null {
+    if (value === "") {
+        return null;
+    }
+
+    if (typeof value === "bigint") {
+        return value;
     }
 
     const numericValue = Number(value);

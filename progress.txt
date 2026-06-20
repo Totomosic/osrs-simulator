@@ -218,3 +218,13 @@
 - Decisions: keep NpcDatabase focused on local NPC schema; DatabaseService owns cross-database validation and rejects saved-range composition IDs before lookup; bind NpcDatabase through WASM now so #83 can use the service-loaded catalogue.
 - Files changed: cpp/common Types; cpp/engine NpcDatabase, DatabaseService, bindings, CMake/tests; data manifest/npcs; web dataset loader/type contract/tests; progress.txt.
 - Validation: cmake --build build; ctest --test-dir build --output-on-failure; source /home/jordan/dev/emsdk/emsdk_env.sh && yarn wasm:build; node web/test/generated-dps-service.test.mjs; node web/test/dps-calculator.test.mjs; yarn --cwd web typecheck; yarn --cwd web test; yarn --cwd web build; git diff --check passed. No blockers.
+
+2026-06-20 #83 Web DPS uses DatabaseService for NPC and equipment data
+- Selected issue: #83, unblocked because #82 is closed. Parent PRD: #76.
+- Docs read: docs/adr/0007-engine-owned-equipment-database.md, docs/adr/0008-file-backed-engine-dataset.md, docs/architecture/repo-structure.md, docs/architecture/simulation-model.md, PRD #76, feature #83, blocker #82.
+- Plan: TDD web dataset helper exposes full DatabaseService path; add NPC-backed defence selection state/options/request construction; keep equipment mode using service-loaded equipment+weapons; extend generated WASM and web source tests.
+- Scope guard: only #83. Do not start saved combat compositions (#84) or legacy default API removal (#85).
+- Completed: PRD #76 stories 1-2, 12, 29, 32, 34 and feature #83 acceptance for web file-backed DatabaseService loading, equipment mode compatibility, NPC-backed defender choices, and calculation-ready DPS requests from resolved NPC combat compositions.
+- Decisions: keep the web dataset helper as the owner of service-loaded equipment/weapons/compositions/NPC DBs; build NPC defence composition from the already resolved CombatCompositionRecord in TypeScript instead of adding new C++ binding surface; preserve manual NPC defence mode as default.
+- Files changed: web DPS calculator helper/view/tests, generated WASM scenario test, progress.txt.
+- Validation: node web/test/dps-calculator.test.mjs; node web/test/dps-calculator-view.test.mjs; node web/test/generated-dps-service.test.mjs; yarn --cwd web typecheck; yarn --cwd web test; yarn --cwd web build; git diff --check passed. No blockers.

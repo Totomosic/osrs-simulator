@@ -30,6 +30,7 @@ const {
     equipmentSlotControls,
     getEquipmentModeWeaponOptions,
     getEquipmentModeSlotOptions,
+    getNpcDefenceOptions,
     loadEquipmentDataset,
     renamePlayerAttackSetup,
     setPlayerAttackType,
@@ -72,6 +73,22 @@ class FakeEquipmentPieceVector {
     delete() {}
 }
 
+class FakeNpcDefinitionVector {
+    constructor(definitions) {
+        this.definitions = definitions;
+    }
+
+    size() {
+        return this.definitions.length;
+    }
+
+    get(index) {
+        return this.definitions[index];
+    }
+
+    delete() {}
+}
+
 class FakeEquipmentDatabase {
     static nextManifestJson = "";
     static nextEquipmentJson = "";
@@ -100,10 +117,10 @@ class FakeEquipmentDatabase {
                 return new FakeWeaponDatabase();
             },
             GetCombatCompositionDatabase() {
-                return {};
+                return new FakeCombatCompositionDatabase();
             },
             GetNpcDatabase() {
-                return {};
+                return new FakeNpcDatabase();
             },
         };
     }
@@ -134,6 +151,36 @@ class FakeWeaponDatabase {
         }
 
         return record;
+    }
+}
+
+class FakeCombatCompositionDatabase {
+    GetCombatCompositionRecord(id) {
+        const record = fakeCombatCompositionRecords.find(
+            (candidate) => candidate.id === BigInt(id),
+        );
+        if (record === undefined) {
+            throw new Error(`missing combat composition ${id}`);
+        }
+
+        return record;
+    }
+}
+
+class FakeNpcDatabase {
+    GetNpcDefinition(id) {
+        const definition = fakeNpcDefinitions.find(
+            (candidate) => candidate.id === BigInt(id),
+        );
+        if (definition === undefined) {
+            throw new Error(`missing NPC ${id}`);
+        }
+
+        return definition;
+    }
+
+    GetAllNpcDefinitions() {
+        return new FakeNpcDefinitionVector(fakeNpcDefinitions);
     }
 }
 
@@ -224,6 +271,45 @@ const module = {
     DatabaseService: FakeEquipmentDatabase,
     EquipmentSet: FakeEquipmentSet,
 };
+
+const fakeNpcComposition = {
+    attackType: module.AttackType.Slash,
+    stats: {
+        attack: 1,
+        strength: 1,
+        defence: 1,
+        ranged: 1,
+        magic: 1,
+        hitpoints: 5,
+    },
+    bonuses: createFakeEquipmentBonuses({
+        slashDefence: 2,
+        rangedDefenceLight: 3,
+    }),
+    magicBaseMaximumHit: 0,
+    weapon: { id: 0, range: 1, speed: 4 },
+};
+
+const fakeCombatCompositionRecords = [
+    {
+        id: 1000n,
+        name: "Goblin",
+        source: 0,
+        composition: fakeNpcComposition,
+    },
+];
+
+const fakeNpcDefinitions = [
+    {
+        id: 2000n,
+        name: "Goblin",
+        hasCombatLevel: true,
+        combatLevel: 2,
+        size: 1,
+        speed: 1,
+        combatCompositionId: 1000n,
+    },
+];
 
 const fakeWeaponRecords = [
     {
@@ -367,6 +453,8 @@ assert.equal(state.npcDefenceSetup.magicDefence, 0);
 assert.equal(state.npcDefenceSetup.rangedDefenceLight, 0);
 assert.equal(state.npcDefenceSetup.rangedDefenceStandard, 0);
 assert.equal(state.npcDefenceSetup.rangedDefenceHeavy, 0);
+assert.equal(state.npcDefenceSetup.mode, "manual");
+assert.equal(state.npcDefenceSetup.selectedNpcId, "");
 
 const defaultDefenceComposition = buildManualNpcDefenceComposition(
     state.npcDefenceSetup,
@@ -399,6 +487,33 @@ assert.equal(request.attackComposition.weapon.speed, 4);
 assert.equal(request.attackPrayerMultiplier, 1);
 assert.equal(request.finalDamageMultiplier, 1);
 assert.equal(request.magicBaseMaximumHit, 0);
+
+const npcOptions = getNpcDefenceOptions(equipmentDataset);
+assert.deepEqual(
+    npcOptions.map((option) => [
+        option.id,
+        option.name,
+        option.combatLevel,
+    ]),
+    [[2000n, "Goblin", 2]],
+);
+
+const npcBackedState = createDefaultCalculatorState();
+npcBackedState.npcDefenceSetup.mode = "npc";
+npcBackedState.npcDefenceSetup.selectedNpcId = 2000n;
+npcBackedState.npcDefenceSetup.defence = 99;
+npcBackedState.npcDefenceSetup.slashDefence = 99;
+const npcBackedRequest = buildNpcDpsRequest(
+    module,
+    npcBackedState,
+    npcBackedState.activePlayerAttackSetupIndex,
+    equipmentDataset,
+);
+assert.equal(npcBackedRequest.defenderKind, module.DefenderKind.Npc);
+assert.equal(npcBackedRequest.defenceComposition.stats.defence, 1);
+assert.equal(npcBackedRequest.defenceComposition.stats.magic, 1);
+assert.equal(npcBackedRequest.defenceComposition.bonuses.slashDefence, 2);
+assert.equal(npcBackedRequest.defenceComposition.bonuses.rangedDefenceLight, 3);
 
 const weaponOptions = getEquipmentModeWeaponOptions(module, equipmentDataset);
 assert.deepEqual(

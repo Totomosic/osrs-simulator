@@ -8,6 +8,7 @@ import {
     equipmentSlotControls,
     getActivePlayerAttackSetup,
     getEquipmentModeSlotOptions,
+    getNpcDefenceOptions,
     isMeleeAttackType,
     isRangedAttackType,
     loadEquipmentDataset,
@@ -18,6 +19,7 @@ import {
     type DpsResultRow,
     type EquipmentDataset,
     type EquipmentSlotOptions,
+    type NpcOption,
 } from "./dpsCalculator";
 import {
     loadEngineModule,
@@ -114,6 +116,14 @@ const equipmentModeSlotOptions = computed<EquipmentSlotOptions[]>(() => {
     return getEquipmentModeSlotOptions(engineModule.value, equipmentDataset.value);
 });
 
+const npcDefenceOptions = computed<NpcOption[]>(() => {
+    if (equipmentDataset.value === null) {
+        return [];
+    }
+
+    return getNpcDefenceOptions(equipmentDataset.value);
+});
+
 const resultRows = computed<DpsResultRow[]>(() => {
     if (engineModule.value === null || equipmentDataset.value === null) {
         return [];
@@ -162,6 +172,14 @@ function onDeleteActivePlayerAttackSetup(): void {
         calculatorState,
         calculatorState.activePlayerAttackSetupIndex,
     );
+}
+
+function formatNpcOption(option: NpcOption): string {
+    if (option.combatLevel === null) {
+        return option.name;
+    }
+
+    return `${option.name} (level ${option.combatLevel})`;
 }
 
 onMounted(async () => {
@@ -516,87 +534,129 @@ async function fetchTextAsset(path: string): Promise<string> {
           <h2>NPC</h2>
         </div>
 
-        <label>
-          <span>Defence</span>
-          <input
-            v-model.number="calculatorState.npcDefenceSetup.defence"
-            min="1"
-            step="1"
-            type="number"
-          >
-        </label>
+        <fieldset class="mode-switch wide-field">
+          <legend>Defender mode</legend>
+          <label>
+            <input
+              v-model="calculatorState.npcDefenceSetup.mode"
+              type="radio"
+              value="manual"
+            >
+            <span>Manual</span>
+          </label>
+          <label>
+            <input
+              v-model="calculatorState.npcDefenceSetup.mode"
+              type="radio"
+              value="npc"
+            >
+            <span>NPC</span>
+          </label>
+        </fieldset>
 
-        <label>
-          <span>Magic</span>
-          <input
-            v-model.number="calculatorState.npcDefenceSetup.magic"
-            min="1"
-            step="1"
-            type="number"
-          >
-        </label>
+        <div
+          v-if="calculatorState.npcDefenceSetup.mode === 'manual'"
+          class="manual-npc-grid wide-field"
+        >
+          <label>
+            <span>Defence</span>
+            <input
+              v-model.number="calculatorState.npcDefenceSetup.defence"
+              min="1"
+              step="1"
+              type="number"
+            >
+          </label>
 
-        <label>
-          <span>Stab defence bonus</span>
-          <input
-            v-model.number="calculatorState.npcDefenceSetup.stabDefence"
-            step="1"
-            type="number"
-          >
-        </label>
+          <label>
+            <span>Magic</span>
+            <input
+              v-model.number="calculatorState.npcDefenceSetup.magic"
+              min="1"
+              step="1"
+              type="number"
+            >
+          </label>
 
-        <label>
-          <span>Slash defence bonus</span>
-          <input
-            v-model.number="calculatorState.npcDefenceSetup.slashDefence"
-            step="1"
-            type="number"
-          >
-        </label>
+          <label>
+            <span>Stab defence bonus</span>
+            <input
+              v-model.number="calculatorState.npcDefenceSetup.stabDefence"
+              step="1"
+              type="number"
+            >
+          </label>
 
-        <label>
-          <span>Crush defence bonus</span>
-          <input
-            v-model.number="calculatorState.npcDefenceSetup.crushDefence"
-            step="1"
-            type="number"
-          >
-        </label>
+          <label>
+            <span>Slash defence bonus</span>
+            <input
+              v-model.number="calculatorState.npcDefenceSetup.slashDefence"
+              step="1"
+              type="number"
+            >
+          </label>
 
-        <label>
-          <span>Magic defence bonus</span>
-          <input
-            v-model.number="calculatorState.npcDefenceSetup.magicDefence"
-            step="1"
-            type="number"
-          >
-        </label>
+          <label>
+            <span>Crush defence bonus</span>
+            <input
+              v-model.number="calculatorState.npcDefenceSetup.crushDefence"
+              step="1"
+              type="number"
+            >
+          </label>
 
-        <label>
-          <span>Ranged light defence bonus</span>
-          <input
-            v-model.number="calculatorState.npcDefenceSetup.rangedDefenceLight"
-            step="1"
-            type="number"
-          >
-        </label>
+          <label>
+            <span>Magic defence bonus</span>
+            <input
+              v-model.number="calculatorState.npcDefenceSetup.magicDefence"
+              step="1"
+              type="number"
+            >
+          </label>
 
-        <label>
-          <span>Ranged standard defence bonus</span>
-          <input
-            v-model.number="calculatorState.npcDefenceSetup.rangedDefenceStandard"
-            step="1"
-            type="number"
-          >
-        </label>
+          <label>
+            <span>Ranged light defence bonus</span>
+            <input
+              v-model.number="calculatorState.npcDefenceSetup.rangedDefenceLight"
+              step="1"
+              type="number"
+            >
+          </label>
 
-        <label>
-          <span>Ranged heavy defence bonus</span>
-          <input
-            v-model.number="calculatorState.npcDefenceSetup.rangedDefenceHeavy"
-            step="1"
-            type="number"
-          >
+          <label>
+            <span>Ranged standard defence bonus</span>
+            <input
+              v-model.number="calculatorState.npcDefenceSetup.rangedDefenceStandard"
+              step="1"
+              type="number"
+            >
+          </label>
+
+          <label>
+            <span>Ranged heavy defence bonus</span>
+            <input
+              v-model.number="calculatorState.npcDefenceSetup.rangedDefenceHeavy"
+              step="1"
+              type="number"
+            >
+          </label>
+        </div>
+
+        <label
+          v-if="calculatorState.npcDefenceSetup.mode === 'npc'"
+          class="wide-field"
+        >
+          <span>NPC</span>
+          <select v-model.number="calculatorState.npcDefenceSetup.selectedNpcId">
+            <option value="">None</option>
+            <option
+              v-for="option in npcDefenceOptions"
+              :key="option.id.toString()"
+              :value="option.id"
+            >
+              {{ formatNpcOption(option) }}
+            </option>
+          </select>
         </label>
       </form>
 
@@ -831,7 +891,8 @@ fieldset {
     width: auto;
 }
 
-.equipment-slot-grid {
+.equipment-slot-grid,
+.manual-npc-grid {
     display: grid;
     gap: 12px;
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -910,7 +971,8 @@ td {
         grid-template-columns: 1fr;
     }
 
-    .equipment-slot-grid {
+    .equipment-slot-grid,
+    .manual-npc-grid {
         grid-template-columns: 1fr;
     }
 }

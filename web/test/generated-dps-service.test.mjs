@@ -21,9 +21,14 @@ await build({
     logLevel: "silent",
 });
 
-const { calculateDpsScenarioResults, createFixedDpsScenarios } = await import(
-    pathToFileURL(outfile)
-);
+const {
+    buildNpcDpsRequest,
+    calculateDpsScenarioResults,
+    createDefaultCalculatorState,
+    createFixedDpsScenarios,
+    getNpcDefenceOptions,
+    loadEquipmentDataset,
+} = await import(pathToFileURL(outfile));
 
 const wasmBinary = await readFile(
     resolve(root, "src/wasm/generated/EngineModule.wasm"),
@@ -78,6 +83,40 @@ assert.equal(
 const fileBackedNpcDefinitions = fileBackedNpcDatabase.GetAllNpcDefinitions();
 assert.equal(fileBackedNpcDefinitions.size(), 1);
 fileBackedNpcDefinitions.delete();
+
+const fileBackedDataset = loadEquipmentDataset(
+    module,
+    manifestJson,
+    fileBackedEquipmentJson,
+    fileBackedWeaponsJson,
+    fileBackedCombatCompositionsJson,
+    fileBackedNpcsJson,
+);
+assert.deepEqual(
+    getNpcDefenceOptions(fileBackedDataset).map((option) => [
+        option.id,
+        option.name,
+        option.combatLevel,
+    ]),
+    [[2000n, "Goblin", 2]],
+);
+
+const npcBackedState = createDefaultCalculatorState();
+npcBackedState.npcDefenceSetup.mode = "npc";
+npcBackedState.npcDefenceSetup.selectedNpcId = 2000n;
+npcBackedState.npcDefenceSetup.defence = 99;
+npcBackedState.npcDefenceSetup.slashDefence = 99;
+const npcBackedRequest = buildNpcDpsRequest(
+    module,
+    npcBackedState,
+    npcBackedState.activePlayerAttackSetupIndex,
+    fileBackedDataset,
+);
+assert.equal(npcBackedRequest.defenderKind, module.DefenderKind.Npc);
+assert.equal(npcBackedRequest.defenceComposition.stats.defence, 1);
+assert.equal(npcBackedRequest.defenceComposition.stats.hitpoints, 5);
+assert.equal(npcBackedRequest.defenceComposition.bonuses.slashDefence, 0);
+assert.equal(service.CalculateExpected(npcBackedRequest).defenceRoll, 640);
 
 const customDatabaseService = module.DatabaseService.LoadFromJsonDocuments(
     `{

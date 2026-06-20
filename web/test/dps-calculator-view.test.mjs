@@ -33,6 +33,7 @@ assert.match(
 );
 assert.match(playerFormSource, /equipmentModeSlotOptions/);
 assert.match(viewSource, /getEquipmentModeSlotOptions/);
+assert.match(viewSource, /getNpcDefenceOptions/);
 assert.match(viewSource, /loadEquipmentDataset/);
 assert.match(viewSource, /fetchTextAsset\("manifest\.json"\)/);
 assert.match(viewSource, /manifest\.documents\?\.equipment/);
@@ -61,6 +62,25 @@ assert.match(
     /v-if="activePlayerAttackSetup\.mode === 'equipment'"/,
 );
 
+assert.match(
+    npcFormSource,
+    /v-model="calculatorState\.npcDefenceSetup\.mode"/,
+);
+assert.match(npcFormSource, /value="manual"/);
+assert.match(npcFormSource, /value="npc"/);
+assert.match(
+    npcFormSource,
+    /v-model\.number="calculatorState\.npcDefenceSetup\.selectedNpcId"/,
+);
+assert.match(npcFormSource, /npcDefenceOptions/);
+assert.match(
+    npcFormSource,
+    /v-if="calculatorState\.npcDefenceSetup\.mode === 'manual'"/,
+);
+assert.match(
+    npcFormSource,
+    /v-if="calculatorState\.npcDefenceSetup\.mode === 'npc'"/,
+);
 assert.match(
     npcFormSource,
     /v-model\.number="calculatorState\.npcDefenceSetup\.defence"/,
@@ -98,7 +118,13 @@ assert.match(
     /v-model\.number="calculatorState\.npcDefenceSetup\.rangedDefenceHeavy"/,
 );
 assert.doesNotMatch(npcFormSource, /equipment/i);
-assert.doesNotMatch(npcFormSource, /<select\b/);
+assert.doesNotMatch(
+    npcFormSource.slice(
+        npcFormSource.indexOf('mode === \'manual\''),
+        npcFormSource.indexOf('mode === \'npc\''),
+    ),
+    /<select\b/,
+);
 
 const resultsTableSource = viewSource.slice(resultsTableStart);
 
