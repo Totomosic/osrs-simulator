@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref } from "vue";
+import { computed, onMounted, reactive, ref, shallowRef } from "vue";
 import {
     addPlayerAttackSetup,
     buildSetupResultRows,
@@ -31,8 +31,8 @@ import {
 } from "./wasm/EngineModule";
 
 const engineModuleStatus = ref<"loading" | "loaded" | "failed">("loading");
-const engineModule = ref<EngineModule | null>(null);
-const equipmentDataset = ref<EquipmentDataset | null>(null);
+const engineModule = shallowRef<EngineModule | null>(null);
+const equipmentDataset = shallowRef<EquipmentDataset | null>(null);
 const calculatorState = reactive(createDefaultCalculatorState());
 const activePlayerAttackSetup = computed(() =>
     getActivePlayerAttackSetup(calculatorState),

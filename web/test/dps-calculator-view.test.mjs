@@ -44,6 +44,18 @@ assert.match(viewSource, /getSavedCombatCompositionOptions/);
 assert.match(viewSource, /loadEquipmentDataset/);
 assert.match(viewSource, /loadSavedCombatCompositionsFromStorage/);
 assert.match(viewSource, /saveActivePlayerAttackSetupAsCombatComposition/);
+assert.match(
+    viewSource,
+    /import \{ computed, onMounted, reactive, ref, shallowRef \} from "vue";/,
+);
+assert.match(
+    viewSource,
+    /const engineModule = shallowRef<EngineModule \| null>\(null\);/,
+);
+assert.match(
+    viewSource,
+    /const equipmentDataset = shallowRef<EquipmentDataset \| null>\(null\);/,
+);
 assert.match(viewSource, /fetchTextAsset\("manifest\.json"\)/);
 assert.match(viewSource, /manifest\.documents\?\.equipment/);
 assert.match(viewSource, /manifest\.documents\?\.combatCompositions/);
