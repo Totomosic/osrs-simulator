@@ -73,6 +73,21 @@ export interface SnapshotTile {
     };
 }
 
+export interface ScenePosition {
+    x: number;
+    y: number;
+    plane: number;
+}
+
+export interface ProjectileSnapshot {
+    projectileId: number;
+    source: ScenePosition;
+    targetActorId: number;
+    lastKnownTargetCenter: ScenePosition;
+    elapsedTicks: number;
+    totalTicks: number;
+}
+
 export interface PlayerChaseScenarioSnapshot {
     name: "Player Chase";
     tick: number;
@@ -90,6 +105,7 @@ export interface PlayerChaseScenarioSnapshot {
     npcs: ActorSnapshot[];
     selectedNpcId: number | null;
     selectedNpc: ActorSnapshot | null;
+    projectiles: ProjectileSnapshot[];
     tiles: SnapshotTile[];
 }
 
@@ -423,9 +439,10 @@ class WebPlayerChaseScenario implements PlayerChaseScenario {
             1,
             2,
             createActorCombatComposition({
-                id: 0,
+                id: 2,
                 range: playerWeaponRange,
                 speed: 4,
+                projectileId: 61,
             }),
         );
         const npcId = this.m_World.CreateNpc(
@@ -493,6 +510,7 @@ class WebPlayerChaseScenario implements PlayerChaseScenario {
             npcs,
             selectedNpcId: selectedNpc?.id ?? null,
             selectedNpc: selectedNpc ?? null,
+            projectiles: this.readProjectileSnapshots(),
             tiles: this.readScenarioTiles(),
         };
     }
@@ -553,6 +571,7 @@ class WebPlayerChaseScenario implements PlayerChaseScenario {
                 id: 0,
                 range,
                 speed: 4,
+                projectileId: 0,
             }),
         );
     }
@@ -626,6 +645,12 @@ class WebPlayerChaseScenario implements PlayerChaseScenario {
         }
 
         return tiles;
+    }
+
+    private readProjectileSnapshots(): ProjectileSnapshot[] {
+        return JSON.parse(
+            this.m_World.GetProjectileSnapshotsJson(),
+        ) as ProjectileSnapshot[];
     }
 
     private isActorTile(actor: ActorSnapshot, coordinate: SceneCoordinate): boolean {
@@ -748,6 +773,11 @@ class WebPlayerChaseScenario implements PlayerChaseScenario {
 function createActorCombatComposition(
     weapon: WeaponDefinition,
 ): CombatComposition {
+    const normalizedWeapon = {
+        ...weapon,
+        projectileId: weapon.projectileId ?? 0,
+    };
+
     return {
         stats: {
             attack: 1,
@@ -776,6 +806,6 @@ function createActorCombatComposition(
         },
         attackType: "Slash",
         magicBaseMaximumHit: 0,
-        weapon,
+        weapon: normalizedWeapon,
     };
 }

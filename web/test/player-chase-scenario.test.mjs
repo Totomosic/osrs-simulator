@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdir, writeFile } from "node:fs/promises";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { build } from "esbuild";
@@ -149,6 +149,19 @@ class FakeWorld {
         return JSON.stringify(actor);
     }
 
+    GetProjectileSnapshotsJson() {
+        return JSON.stringify([
+            {
+                projectileId: 61,
+                source: { x: 8.5, y: 11.5, plane: 0 },
+                targetActorId: 2,
+                lastKnownTargetCenter: { x: 20, y: 22, plane: 0 },
+                elapsedTicks: 0,
+                totalTicks: 2,
+            },
+        ]);
+    }
+
     createActor(kind, size, speed, combatComposition) {
         const id = this.nextActorId;
         this.nextActorId += 1;
@@ -244,6 +257,10 @@ class FakeScene {
 }
 
 const module = createFakeEngineModule();
+const playerChaseViewSource = await readFile(
+    resolve(root, "src/PlayerChaseView.vue"),
+    "utf8",
+);
 
 {
     const scenario = createPlayerChaseScenario(module);
@@ -256,6 +273,16 @@ const module = createFakeEngineModule();
     assert.equal(snapshot.selectedNpcId, snapshot.npcs[0].id);
     assert.deepEqual(snapshot.selectedNpc, snapshot.npcs[0]);
     assert.deepEqual(snapshot.npc, snapshot.selectedNpc);
+    assert.deepEqual(snapshot.projectiles, [
+        {
+            projectileId: 61,
+            source: { x: 8.5, y: 11.5, plane: 0 },
+            targetActorId: 2,
+            lastKnownTargetCenter: { x: 20, y: 22, plane: 0 },
+            elapsedTicks: 0,
+            totalTicks: 2,
+        },
+    ]);
 }
 
 {
@@ -325,4 +352,11 @@ const module = createFakeEngineModule();
         ),
         true,
     );
+}
+
+{
+    assert.match(playerChaseViewSource, /v-for="\(projectile, index\) in snapshot\.projectiles"/);
+    assert.match(playerChaseViewSource, /:cx="getProjectileX\(projectile\)"/);
+    assert.match(playerChaseViewSource, /:cy="getProjectileY\(projectile\)"/);
+    assert.match(playerChaseViewSource, /class="projectile"/);
 }

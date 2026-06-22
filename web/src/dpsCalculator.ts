@@ -1361,5 +1361,6 @@ function createWeaponDefinition(speed: number): WeaponDefinition {
         id: 0,
         range: 1,
         speed,
+        projectileId: 0,
     };
 }

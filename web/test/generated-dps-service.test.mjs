@@ -75,7 +75,7 @@ function createCombatComposition(overrides = {}) {
         bonuses: createEquipmentBonuses(overrides.bonuses),
         attackType: module.AttackType.Slash,
         magicBaseMaximumHit: 0,
-        weapon: { id: 0n, range: 1, speed: 4 },
+        weapon: { id: 0n, range: 1, speed: 4, projectileId: 0 },
         ...overrides,
     };
 }
@@ -509,6 +509,7 @@ const meleeDpsRequest = {
             id: 0,
             range: 1,
             speed: 4,
+            projectileId: 0,
         },
     },
     defenceComposition: {
@@ -646,6 +647,7 @@ const magicDpsRequest = {
             id: 0,
             range: 1,
             speed: 5,
+            projectileId: 0,
         },
     },
     defenceComposition: {
@@ -879,7 +881,7 @@ const attackerComposition = createCombatComposition({
         slashDefence: 80,
         meleeStrength: 118,
     }),
-    weapon: { id: 42n, range: 1, speed: 1 },
+    weapon: { id: 42n, range: 1, speed: 1, projectileId: 0 },
 });
 const defenderComposition = createCombatComposition({
     stats: createCombatStats({

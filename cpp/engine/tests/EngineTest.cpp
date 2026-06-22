@@ -374,7 +374,7 @@ int main()
     {
         osrssim::Engine engine;
         osrssim::World& world = engine.GetWorld();
-        const osrssim::WeaponDefinition weapon{42, 8, 5};
+        const osrssim::WeaponDefinition weapon{42, 8, 5, 321};
         const osrssim::CombatComposition attackerComposition =
             StandardMeleeComposition(weapon, 99);
         const osrssim::CombatComposition defenderComposition =
@@ -407,12 +407,32 @@ int main()
 
         assert(world.GetActorAttackTimer(attackerId) == weapon.speed);
         assert(world.GetActorCombatQueue(targetId)->GetEventCount() == 1);
+        {
+            const std::vector<osrssim::ProjectileSnapshot> projectiles =
+                world.GetProjectileSnapshots();
+            assert(projectiles.size() == 1);
+            assert(projectiles[0].projectileId == 321);
+            assert(projectiles[0].source == (osrssim::ScenePosition{10.5, 10.5, 0}));
+            assert(projectiles[0].targetActorId == targetId);
+            assert(projectiles[0].lastKnownTargetCenter ==
+                   (osrssim::ScenePosition{13.5, 10.5, 0}));
+            assert(projectiles[0].elapsedTicks == 0);
+            assert(projectiles[0].totalTicks == 2);
+        }
         assert(
             world.GetActorCombatComposition(targetId)->stats.hitpoints ==
             defenderComposition.stats.hitpoints);
 
         engine.Step();
 
+        {
+            const std::vector<osrssim::ProjectileSnapshot> projectiles =
+                world.GetProjectileSnapshots();
+            assert(projectiles.size() == 1);
+            assert(projectiles[0].source == (osrssim::ScenePosition{10.5, 10.5, 0}));
+            assert(projectiles[0].elapsedTicks == 1);
+            assert(projectiles[0].totalTicks == 2);
+        }
         assert(
             world.GetActorCombatComposition(targetId)->stats.hitpoints ==
             defenderComposition.stats.hitpoints);
@@ -423,6 +443,39 @@ int main()
             world.GetActorCombatComposition(targetId)->stats.hitpoints ==
             defenderComposition.stats.hitpoints - expectedSample.sampledDamage);
         assert(world.GetActorCombatQueue(targetId)->GetEventCount() == 0);
+        assert(world.GetProjectileSnapshots().empty());
+    }
+
+    {
+        osrssim::Engine engine;
+        osrssim::World& world = engine.GetWorld();
+        const osrssim::WeaponDefinition weapon{42, 8, 5, 0};
+        const osrssim::CombatComposition attackerComposition =
+            StandardMeleeComposition(weapon, 99);
+        const osrssim::CombatComposition defenderComposition =
+            StandardMeleeComposition({0, 1, 4}, 99);
+        const osrssim::ActorId attackerId =
+            world.CreatePlayer(1, 1, attackerComposition);
+        const osrssim::ActorId targetId =
+            world.CreateNpc(1, 1, defenderComposition);
+
+        assert(world.PlaceActor(
+            attackerId,
+            world.GetDefaultSceneId(),
+            {10, 10, 0}));
+        assert(world.PlaceActor(
+            targetId,
+            world.GetDefaultSceneId(),
+            {13, 10, 0}));
+
+        assert(engine.GetCombatService().DispatchAttack(
+            world,
+            attackerId,
+            targetId,
+            1));
+
+        assert(world.GetActorCombatQueue(targetId)->GetEventCount() == 1);
+        assert(world.GetProjectileSnapshots().empty());
     }
 
     {

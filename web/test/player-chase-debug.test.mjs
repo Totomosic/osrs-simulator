@@ -51,7 +51,7 @@ class FakePlayerChaseScenario {
             plane: 0,
             size: 1,
             speed: 2,
-            weapon: { id: 0, range: 5, speed: 4 },
+            weapon: { id: 2, range: 5, speed: 4, projectileId: 61 },
         };
         this.npc = {
             id: 2,
@@ -60,7 +60,7 @@ class FakePlayerChaseScenario {
             plane: 0,
             size: 4,
             speed: 1,
-            weapon: { id: 0, range: 8, speed: 4 },
+            weapon: { id: 0, range: 8, speed: 4, projectileId: 0 },
         };
         this.secondNpc = {
             id: 3,
@@ -69,8 +69,18 @@ class FakePlayerChaseScenario {
             plane: 0,
             size: 1,
             speed: 1,
-            weapon: { id: 0, range: 8, speed: 4 },
+            weapon: { id: 0, range: 8, speed: 4, projectileId: 0 },
         };
+        this.projectiles = [
+            {
+                projectileId: 61,
+                source: { x: 8.5, y: 11.5, plane: 0 },
+                targetActorId: 2,
+                lastKnownTargetCenter: { x: 20, y: 22, plane: 0 },
+                elapsedTicks: 1,
+                totalTicks: 2,
+            },
+        ];
         this.width = 104;
         this.height = 104;
     }
@@ -165,6 +175,7 @@ class FakePlayerChaseScenario {
             npcs,
             selectedNpcId: npc?.id ?? null,
             selectedNpc: npc,
+            projectiles: this.projectiles,
             tiles,
         };
     }
@@ -221,6 +232,16 @@ class FakePlayerChaseScenario {
     });
     assert.equal(snapshot.npcs.length, 2);
     assert.equal(snapshot.selectedNpc.id, 2);
+    assert.deepEqual(snapshot.projectiles, [
+        {
+            projectileId: 61,
+            source: { x: 8.5, y: 11.5, plane: 0 },
+            targetActorId: 2,
+            lastKnownTargetCenter: { x: 20, y: 22, plane: 0 },
+            elapsedTicks: 1,
+            totalTicks: 2,
+        },
+    ]);
     assert.equal(
         snapshot.tiles.filter((tile) =>
             tile.flags.includes("BlockMovementObject"),

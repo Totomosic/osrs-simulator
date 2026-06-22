@@ -90,6 +90,8 @@ public:
     const CombatComposition* GetActorCombatComposition(ActorId actorId) const;
     CombatQueue* GetActorCombatQueue(ActorId actorId);
     const CombatQueue* GetActorCombatQueue(ActorId actorId) const;
+    std::vector<ProjectileSnapshot> GetProjectileSnapshots() const;
+    ScenePosition GetActorFootprintCenter(ActorId actorId) const;
     bool SetActorCombatComposition(
         ActorId actorId,
         CombatComposition combatComposition);

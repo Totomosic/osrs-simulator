@@ -25,6 +25,21 @@ export interface SceneCoordinate {
     plane: number;
 }
 
+export interface ScenePosition {
+    x: number;
+    y: number;
+    plane: number;
+}
+
+export interface ProjectileSnapshot {
+    projectileId: number;
+    source: ScenePosition;
+    targetActorId: number;
+    lastKnownTargetCenter: ScenePosition;
+    elapsedTicks: number;
+    totalTicks: number;
+}
+
 export interface MovementTargetSnapshot {
     kind: "SceneCoordinate" | "Actor";
     coordinate?: SceneCoordinate;
@@ -70,6 +85,7 @@ export interface EnginePlayerChaseSnapshot {
     npcs?: ActorSnapshot[];
     selectedNpcId?: number | null;
     selectedNpc?: ActorSnapshot | null;
+    projectiles?: ProjectileSnapshot[];
     tiles: SnapshotTile[];
 }
 
@@ -81,6 +97,7 @@ export interface PlayerChaseDebugSnapshot extends EnginePlayerChaseSnapshot {
     fieldOfView: number;
     noPathfindingNote: string;
     selectedNpc: ActorSnapshot | null;
+    projectiles: ProjectileSnapshot[];
 }
 
 export interface DebugTile {
@@ -130,6 +147,7 @@ export function readPlayerChaseDebugSnapshot(
         npcs,
         selectedNpcId: selectedNpc?.id ?? null,
         selectedNpc,
+        projectiles: engineSnapshot.projectiles ?? [],
         cameraMode,
         fieldOfView,
         noPathfindingNote:

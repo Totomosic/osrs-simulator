@@ -393,7 +393,7 @@ const fakeNpcComposition = {
         rangedDefenceLight: 3,
     }),
     magicBaseMaximumHit: 0,
-    weapon: { id: 0, range: 1, speed: 4 },
+    weapon: { id: 0, range: 1, speed: 4, projectileId: 0 },
 };
 
 const fakeCombatCompositionRecords = [
@@ -419,17 +419,17 @@ const fakeNpcDefinitions = [
 
 const fakeWeaponRecords = [
     {
-        weapon: { id: 0, range: 1, speed: 4 },
+        weapon: { id: 0, range: 1, speed: 4, projectileId: 0 },
         name: "Unarmed",
         attackCallbackName: "standard_attack",
     },
     {
-        weapon: { id: 1, range: 1, speed: 4 },
+        weapon: { id: 1, range: 1, speed: 4, projectileId: 0 },
         name: "Bronze scimitar",
         attackCallbackName: "standard_attack",
     },
     {
-        weapon: { id: 2, range: 7, speed: 4 },
+        weapon: { id: 2, range: 7, speed: 4, projectileId: 61 },
         name: "Maple shortbow",
         attackCallbackName: "standard_attack",
     },

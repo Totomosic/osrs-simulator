@@ -67,6 +67,22 @@ int GetRequiredPositiveInt(const Json& value, const std::string& key)
     return result;
 }
 
+int GetOptionalNonNegativeInt(const Json& value, const std::string& key)
+{
+    if (!value.contains(key))
+    {
+        return 0;
+    }
+
+    const int result = GetRequiredInt(value, key);
+    if (result < 0)
+    {
+        throw std::invalid_argument(key + " must be non-negative");
+    }
+
+    return result;
+}
+
 WeaponId GetRequiredWeaponId(const Json& value, const std::string& key)
 {
     if (!value.contains(key) || !value.at(key).is_number_integer())
@@ -105,7 +121,14 @@ WeaponRecord ParseWeaponRecord(const Json& value)
 
     if (!HasOnlyKeys(
             value,
-            {"id", "name", "range", "speed", "attackCallbackName"}))
+            {
+                "id",
+                "name",
+                "range",
+                "speed",
+                "projectileId",
+                "attackCallbackName",
+            }))
     {
         throw std::invalid_argument("weapon record contains an unknown field");
     }
@@ -114,6 +137,8 @@ WeaponRecord ParseWeaponRecord(const Json& value)
     record.weapon.id = GetRequiredWeaponId(value, "id");
     record.weapon.range = GetRequiredPositiveInt(value, "range");
     record.weapon.speed = GetRequiredPositiveInt(value, "speed");
+    record.weapon.projectileId =
+        GetOptionalNonNegativeInt(value, "projectileId");
     record.name = GetRequiredString(value, "name");
     record.attackCallbackName =
         GetRequiredString(value, "attackCallbackName");

@@ -172,7 +172,16 @@ void AppendWeaponDefinitionJson(
 {
     output << "{\"id\":" << weaponDefinition.id
            << ",\"range\":" << weaponDefinition.range
-           << ",\"speed\":" << weaponDefinition.speed << "}";
+           << ",\"speed\":" << weaponDefinition.speed
+           << ",\"projectileId\":" << weaponDefinition.projectileId << "}";
+}
+
+void AppendScenePositionJson(
+    std::ostringstream& output,
+    osrssim::ScenePosition position)
+{
+    output << "{\"x\":" << position.x << ",\"y\":" << position.y
+           << ",\"plane\":" << position.plane << "}";
 }
 
 std::string GetActorSnapshotJson(
@@ -233,6 +242,37 @@ emscripten::val GetActorSnapshot(
     return emscripten::val(snapshot);
 }
 
+std::string GetProjectileSnapshotsJson(const osrssim::World& world)
+{
+    const std::vector<osrssim::ProjectileSnapshot> snapshots =
+        world.GetProjectileSnapshots();
+    std::ostringstream output;
+
+    output << "[";
+
+    for (std::size_t index = 0; index < snapshots.size(); ++index)
+    {
+        const osrssim::ProjectileSnapshot& snapshot = snapshots[index];
+
+        if (index > 0)
+        {
+            output << ",";
+        }
+
+        output << "{\"projectileId\":" << snapshot.projectileId
+               << ",\"source\":";
+        AppendScenePositionJson(output, snapshot.source);
+        output << ",\"targetActorId\":" << snapshot.targetActorId
+               << ",\"lastKnownTargetCenter\":";
+        AppendScenePositionJson(output, snapshot.lastKnownTargetCenter);
+        output << ",\"elapsedTicks\":" << snapshot.elapsedTicks
+               << ",\"totalTicks\":" << snapshot.totalTicks << "}";
+    }
+
+    output << "]";
+    return output.str();
+}
+
 osrssim::EquipmentDatabase GetDatabaseServiceEquipmentDatabase(
     const osrssim::DatabaseService& service)
 {
@@ -282,7 +322,8 @@ EMSCRIPTEN_BINDINGS(osrssim_engine)
     emscripten::value_object<osrssim::WeaponDefinition>("WeaponDefinition")
         .field("id", &osrssim::WeaponDefinition::id)
         .field("range", &osrssim::WeaponDefinition::range)
-        .field("speed", &osrssim::WeaponDefinition::speed);
+        .field("speed", &osrssim::WeaponDefinition::speed)
+        .field("projectileId", &osrssim::WeaponDefinition::projectileId);
     emscripten::value_object<osrssim::WeaponRecord>("WeaponRecord")
         .field("weapon", &osrssim::WeaponRecord::weapon)
         .field("name", &osrssim::WeaponRecord::name)
@@ -676,7 +717,8 @@ EMSCRIPTEN_BINDINGS(osrssim_engine)
         .function(
             "CanPlayerUseSceneCoordinateMovementTarget",
             &osrssim::World::CanPlayerUseSceneCoordinateMovementTarget)
-        .function("GetActorSnapshot", &GetActorSnapshot);
+        .function("GetActorSnapshot", &GetActorSnapshot)
+        .function("GetProjectileSnapshotsJson", &GetProjectileSnapshotsJson);
 
     emscripten::class_<osrssim::Engine>("Engine")
         .constructor<>()

@@ -1,5 +1,7 @@
 #include "World.h"
 
+#include <algorithm>
+
 namespace osrssim
 {
 namespace
@@ -269,6 +271,66 @@ const CombatQueue* World::GetActorCombatQueue(ActorId actorId) const
 {
     const ActorCore* actor = TryGetActorCore(actorId);
     return actor == nullptr ? nullptr : &actor->combatQueue;
+}
+
+std::vector<ProjectileSnapshot> World::GetProjectileSnapshots() const
+{
+    std::vector<ProjectileSnapshot> snapshots;
+
+    auto appendActorProjectiles = [&snapshots](const ActorCore& actor)
+    {
+        std::vector<ProjectileSnapshot> actorProjectiles =
+            actor.combatQueue.GetProjectileSnapshots();
+        snapshots.insert(
+            snapshots.end(),
+            actorProjectiles.begin(),
+            actorProjectiles.end());
+    };
+
+    std::vector<ActorId> actorIds;
+    actorIds.reserve(m_Players.size() + m_Npcs.size());
+
+    for (const auto& [actorId, player] : m_Players)
+    {
+        actorIds.push_back(actorId);
+    }
+
+    for (const auto& [actorId, npc] : m_Npcs)
+    {
+        actorIds.push_back(actorId);
+    }
+
+    std::sort(actorIds.begin(), actorIds.end());
+
+    for (ActorId actorId : actorIds)
+    {
+        const ActorCore* actor = TryGetActorCore(actorId);
+
+        if (actor != nullptr)
+        {
+            appendActorProjectiles(*actor);
+        }
+    }
+
+
+    return snapshots;
+}
+
+ScenePosition World::GetActorFootprintCenter(ActorId actorId) const
+{
+    const ActorCore* actor = TryGetActorCore(actorId);
+    const SceneMembership* membership = GetSceneMembership(actorId);
+
+    if (actor == nullptr || membership == nullptr)
+    {
+        return {};
+    }
+
+    const double halfSize = static_cast<double>(actor->size) / 2.0;
+    return ScenePosition{
+        static_cast<double>(membership->coordinate.x) + halfSize,
+        static_cast<double>(membership->coordinate.y) + halfSize,
+        membership->coordinate.plane};
 }
 
 bool World::SetActorCombatComposition(

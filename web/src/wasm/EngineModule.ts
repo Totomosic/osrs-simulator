@@ -27,6 +27,7 @@ export interface WeaponDefinition {
     id: number | bigint;
     range: number;
     speed: number;
+    projectileId?: number;
 }
 
 export interface CombatStats {
@@ -368,6 +369,7 @@ export interface World {
         coordinate: SceneCoordinate,
     ): boolean;
     GetActorSnapshot(actorId: number): string | null;
+    GetProjectileSnapshotsJson(): string;
 }
 
 export type CardinalDirection = number | "North" | "East" | "South" | "West";

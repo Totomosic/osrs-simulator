@@ -62,6 +62,7 @@ const std::string WeaponsJson = R"({
             "name": "Bronze scimitar",
             "range": 2,
             "speed": 5,
+            "projectileId": 44,
             "attackCallbackName": "standard_attack"
         }
     ]
@@ -154,6 +155,8 @@ int main()
     assert(weaponDatabase.GetWeaponRecord(0).weapon.speed == 4);
     assert(weaponDatabase.GetWeaponRecord(300).attackCallbackName ==
            "standard_attack");
+    assert(weaponDatabase.GetWeaponRecord(300).weapon.projectileId == 0);
+    assert(weaponDatabase.GetWeaponRecord(301).weapon.projectileId == 44);
     assert(weaponDatabase.GetAllWeaponRecords().size() == 3);
 
     const osrssim::CombatCompositionDatabase& combatCompositionDatabase =

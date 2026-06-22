@@ -21,6 +21,8 @@ import {
     type MovementTargetSnapshot,
     type PlayerChaseDebugSnapshot,
     type PlayerChaseTool,
+    type ProjectileSnapshot,
+    type ScenePosition,
 } from "./playerChaseDebug";
 import { loadEngineModule } from "./wasm/EngineModule";
 import {
@@ -389,6 +391,52 @@ function getTileY(tile: DebugTile): number {
     return getSceneScreenCoordinate(tile.coordinate, renderTiles.value).y;
 }
 
+function getScenePositionX(position: ScenePosition): number {
+    if (renderTiles.value.length === 0) {
+        return 0;
+    }
+
+    const minX = Math.min(...renderTiles.value.map((tile) => tile.coordinate.x));
+    return (position.x - minX) * tileSize;
+}
+
+function getScenePositionY(position: ScenePosition): number {
+    if (renderTiles.value.length === 0) {
+        return 0;
+    }
+
+    const maxY = Math.max(...renderTiles.value.map((tile) => tile.coordinate.y));
+    return (maxY + 1 - position.y) * tileSize;
+}
+
+function getProjectileX(projectile: ProjectileSnapshot): number {
+    return interpolate(
+        getScenePositionX(projectile.source),
+        getScenePositionX(projectile.lastKnownTargetCenter),
+        getProjectileProgress(projectile),
+    );
+}
+
+function getProjectileY(projectile: ProjectileSnapshot): number {
+    return interpolate(
+        getScenePositionY(projectile.source),
+        getScenePositionY(projectile.lastKnownTargetCenter),
+        getProjectileProgress(projectile),
+    );
+}
+
+function getProjectileProgress(projectile: ProjectileSnapshot): number {
+    if (projectile.totalTicks <= 0) {
+        return 1;
+    }
+
+    return Math.min(1, Math.max(0, projectile.elapsedTicks / projectile.totalTicks));
+}
+
+function interpolate(start: number, end: number, progress: number): number {
+    return start + (end - start) * progress;
+}
+
 function getColumnCount(tiles: DebugTile[]): number {
     return new Set(tiles.map((tile) => tile.coordinate.x)).size;
 }
@@ -632,6 +680,14 @@ function ensureLineOfSightSource(nextSnapshot: PlayerChaseDebugSnapshot): void {
           >
             M
           </text>
+          <circle
+            v-for="(projectile, index) in snapshot.projectiles"
+            :key="`${projectile.projectileId}:${projectile.targetActorId}:${index}`"
+            :cx="getProjectileX(projectile)"
+            :cy="getProjectileY(projectile)"
+            :r="tileSize * 0.18"
+            class="projectile"
+          />
         </svg>
       </div>
 
@@ -680,6 +736,10 @@ function ensureLineOfSightSource(nextSnapshot: PlayerChaseDebugSnapshot): void {
           <div>
             <dt>NPC count</dt>
             <dd>{{ snapshot.npcs.length }}</dd>
+          </div>
+          <div>
+            <dt>Projectiles</dt>
+            <dd>{{ snapshot.projectiles.length }}</dd>
           </div>
           <div>
             <dt>Selected NPC</dt>
@@ -1001,6 +1061,13 @@ button:hover {
     font-weight: 900;
     pointer-events: none;
     text-anchor: middle;
+}
+
+.projectile {
+    fill: #c8422d;
+    pointer-events: none;
+    stroke: #ffffff;
+    stroke-width: 2;
 }
 
 .details,

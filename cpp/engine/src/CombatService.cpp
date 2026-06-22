@@ -216,6 +216,25 @@ bool CombatService::DefaultStandardAttack(
         targetId,
         attackWeapon);
     const DpsSampleResult damageRoll = m_DpsService.SampleSingleAttack(request);
+    const ScenePosition source = world.GetActorFootprintCenter(attackerId);
+    const ScenePosition targetCenter = world.GetActorFootprintCenter(targetId);
+    const ProjectileMetadata projectile{
+        attackWeapon.projectileId,
+        source,
+        targetId,
+        targetCenter,
+        applyDamageDelay};
+
+    if (attackWeapon.projectileId > 0)
+    {
+        return targetQueue->AddEvent(
+            applyDamageDelay,
+            [&world, targetId, damage = damageRoll.sampledDamage]()
+            {
+                CombatService::ApplyDamage(world, targetId, damage);
+            },
+            projectile);
+    }
 
     return targetQueue->AddEvent(
         applyDamageDelay,

@@ -12,7 +12,24 @@ bool CombatQueue::AddEvent(int ticksRemaining, std::function<void()> callback)
         return false;
     }
 
-    m_Events.push_back({ticksRemaining, std::move(callback)});
+    m_Events.push_back({ticksRemaining, ticksRemaining, std::move(callback)});
+
+    return true;
+}
+
+bool CombatQueue::AddEvent(
+    int ticksRemaining,
+    std::function<void()> callback,
+    ProjectileMetadata projectile)
+{
+    if (!callback || projectile.projectileId <= 0 || ticksRemaining <= 0)
+    {
+        return false;
+    }
+
+    projectile.totalTicks = ticksRemaining;
+    m_Events.push_back(
+        {ticksRemaining, ticksRemaining, std::move(callback), projectile});
 
     return true;
 }
@@ -50,6 +67,31 @@ void CombatQueue::Process()
 std::size_t CombatQueue::GetEventCount() const
 {
     return m_Events.size();
+}
+
+std::vector<ProjectileSnapshot> CombatQueue::GetProjectileSnapshots() const
+{
+    std::vector<ProjectileSnapshot> snapshots;
+
+    for (const CombatEvent& event : m_Events)
+    {
+        if (!event.projectile.has_value())
+        {
+            continue;
+        }
+
+        ProjectileSnapshot snapshot;
+        snapshot.projectileId = event.projectile->projectileId;
+        snapshot.source = event.projectile->source;
+        snapshot.targetActorId = event.projectile->targetActorId;
+        snapshot.lastKnownTargetCenter =
+            event.projectile->lastKnownTargetCenter;
+        snapshot.elapsedTicks = event.totalTicks - event.ticksRemaining;
+        snapshot.totalTicks = event.totalTicks;
+        snapshots.push_back(snapshot);
+    }
+
+    return snapshots;
 }
 
 }  // namespace osrssim
