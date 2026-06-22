@@ -389,6 +389,37 @@ bool World::RemoveActor(ActorId actorId)
     return true;
 }
 
+bool World::QueueActorRemoval(ActorId actorId)
+{
+    if (!HasActor(actorId))
+    {
+        return false;
+    }
+
+    for (ActorId queuedActorId : m_QueuedActorRemovals)
+    {
+        if (queuedActorId == actorId)
+        {
+            return true;
+        }
+    }
+
+    m_QueuedActorRemovals.push_back(actorId);
+
+    return true;
+}
+
+void World::FlushQueuedActorRemovals()
+{
+    std::vector<ActorId> queuedActorRemovals;
+    queuedActorRemovals.swap(m_QueuedActorRemovals);
+
+    for (ActorId actorId : queuedActorRemovals)
+    {
+        RemoveActor(actorId);
+    }
+}
+
 bool World::MoveActorByDelta(ActorId actorId, int dx, int dy)
 {
     ActorCore* actor = TryGetActorCore(actorId);

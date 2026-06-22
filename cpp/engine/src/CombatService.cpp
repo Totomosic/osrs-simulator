@@ -102,10 +102,13 @@ bool CombatService::CanAttackActorTarget(
         world.GetSceneMembership(targetId);
     const CombatComposition* combatComposition =
         world.GetActorCombatComposition(attackerId);
+    const CombatComposition* targetCombatComposition =
+        world.GetActorCombatComposition(targetId);
 
     if (attacker == nullptr || target == nullptr ||
         attackerMembership == nullptr || targetMembership == nullptr ||
-        combatComposition == nullptr ||
+        combatComposition == nullptr || targetCombatComposition == nullptr ||
+        targetCombatComposition->stats.hitpoints <= 0 ||
         attackerMembership->sceneId != targetMembership->sceneId ||
         attackerMembership->coordinate.plane !=
             targetMembership->coordinate.plane)
@@ -318,6 +321,30 @@ void CombatService::ApplyDamage(
         currentHitpoints,
         positiveDamage);
     world.SetActorCombatComposition(targetId, updatedComposition);
+
+    if (currentHitpoints > 0 && updatedComposition.stats.hitpoints <= 0)
+    {
+        QueueDeath(world, targetId);
+    }
+}
+
+void CombatService::QueueDeath(
+    World& world,
+    ActorId targetId)
+{
+    CombatQueue* targetQueue = world.GetActorCombatQueue(targetId);
+
+    if (targetQueue == nullptr)
+    {
+        return;
+    }
+
+    targetQueue->AddEvent(
+        0,
+        [&world, targetId]()
+        {
+            world.QueueActorRemoval(targetId);
+        });
 }
 
 }  // namespace osrssim

@@ -1,3 +1,12 @@
+2026-06-22 #90 Death event removes actors
+- Selected issue: #90, unblocked because #87 and #89 are closed. Parent PRD: #86.
+- Docs read: CONTEXT.md, docs/architecture/simulation-model.md, docs/adr/0005-world-owns-scenes-and-actors.md, docs/adr/0009-actor-owned-combat-queues.md, PRD #86, feature #90, blockers #87/#89.
+- Plan: TDD Engine/CombatService public behavior for lethal ApplyDamage queuing Death, next actor queue pass removal, duplicate Death prevention through existing zero-hitpoint state, target hitpoint rejection, and zero-hitpoint attacker allowed until Death fires. Scope guard: no public web/WASM CombatEvent inspection API and no UI visualization.
+- Completed: PRD #86 stories 11-14 and feature #90 acceptance for positive-to-zero Death queueing, no duplicate Death after already-zero damage, next queue pass actor removal, scene membership/occupancy cleanup, zero-hitpoint target rejection, and zero-hitpoint attacker validity.
+- Decisions: Death callback queues actor removal on World and Engine flushes removals after CombatQueue::Process returns, avoiding actor/queue destruction during its own queue callback; no web/WASM queue inspection API added.
+- Files changed: cpp/engine/src/CombatService.h, cpp/engine/src/CombatService.cpp, cpp/engine/src/Engine.cpp, cpp/engine/src/World.h, cpp/engine/src/World.cpp, cpp/engine/tests/EngineTest.cpp, progress.txt.
+- Validation: initial red engine test failed on missing Death removal; cmake --build build; ctest --test-dir build --output-on-failure; tools/build_wasm.sh; node web/test/generated-dps-service.test.mjs; yarn --cwd web typecheck; yarn --cwd web test; yarn --cwd web build; git diff --check passed. No blockers.
+
 2026-06-22 #89 Standard Attack queues delayed ApplyDamage
 - Selected issue: #89, unblocked because #87 and #88 are closed. Parent PRD: #86.
 - Docs read: CONTEXT.md, docs/architecture/simulation-model.md, docs/osrs/combat-rolls.md, docs/adr/0009-actor-owned-combat-queues.md, PRD #86, feature #89, blockers #87/#88.

@@ -66,6 +66,9 @@ private:
         World& world,
         ActorId targetId,
         int damage);
+    static void QueueDeath(
+        World& world,
+        ActorId targetId);
 };
 
 }  // namespace osrssim

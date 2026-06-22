@@ -8,6 +8,7 @@
 
 #include <optional>
 #include <unordered_map>
+#include <vector>
 
 namespace osrssim
 {
@@ -62,6 +63,7 @@ private:
     std::unordered_map<ActorId, Player> m_Players;
     std::unordered_map<ActorId, Npc> m_Npcs;
     std::unordered_map<ActorId, SceneMembership> m_SceneMemberships;
+    std::vector<ActorId> m_QueuedActorRemovals;
 
 public:
     SceneId GetDefaultSceneId() const;
@@ -97,6 +99,8 @@ public:
     bool PlaceActor(ActorId actorId, SceneId sceneId, SceneCoordinate coordinate);
     bool RemoveActorSceneMembership(ActorId actorId);
     bool RemoveActor(ActorId actorId);
+    bool QueueActorRemoval(ActorId actorId);
+    void FlushQueuedActorRemovals();
     bool MoveActorByDelta(ActorId actorId, int dx, int dy);
     bool CanActorUseSceneCoordinateMovementTarget(
         ActorId actorId,

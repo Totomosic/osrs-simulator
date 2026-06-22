@@ -110,6 +110,7 @@ void Engine::ProcessActorCombatQueue(ActorId actorId)
     if (combatQueue != nullptr)
     {
         combatQueue->Process();
+        m_World.FlushQueuedActorRemovals();
     }
 }
 
