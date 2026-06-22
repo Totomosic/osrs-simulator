@@ -164,6 +164,18 @@ _Avoid_: Attack rate, cooldown
 A weapon-driven interaction from one actor toward another actor. An attack can occur when the attacker has line of sight to the target within weapon range.
 _Avoid_: Hit, damage roll
 
+**Projectile**:
+A visible combat effect launched from a fixed source position toward a target actor's live footprint center. A projectile is visual feedback for combat timing, not a separate combat outcome.
+_Avoid_: Missile, combat event
+
+**Actor Footprint Center**:
+The continuous midpoint of an actor footprint in scene tile space. For even-sized actor footprints, the center can fall between tiles.
+_Avoid_: Center tile, actor anchor
+
+**Projectile ID**:
+A stable numeric identifier for a projectile's visual appearance or animation. Projectile ID identifies how the projectile should look, not what combat outcome it produces.
+_Avoid_: Sprite ID, animation ID
+
 **Attack Type**:
 The offensive category used to choose matching attack and defence bonuses for a combat roll, such as stab, slash, crush, magic, or a ranged defence subtype.
 _Avoid_: Damage style, weapon type
@@ -173,8 +185,12 @@ The selected attack mode that contributes small effective-level bonuses to comba
 _Avoid_: Style bonus, attack type
 
 **Combat Stats**:
-An actor's current combat skill values used by combat calculations, separate from equipment.
+An actor's current combat skill values used by combat calculations, separate from equipment. Current hitpoints can change during combat and are distinct from base hitpoints.
 _Avoid_: Skill levels, base stats
+
+**Base Combat Stats**:
+An actor's reference combat skill values before temporary combat changes. Base hitpoints define the actor's maximum hitpoints for viewer health display and combat state.
+_Avoid_: Current stats, skill levels
 
 **Equipment Bonuses**:
 The offensive, defensive, and damage bonuses contributed by equipment.
