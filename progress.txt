@@ -1,3 +1,12 @@
+2026-06-22 #89 Standard Attack queues delayed ApplyDamage
+- Selected issue: #89, unblocked because #87 and #88 are closed. Parent PRD: #86.
+- Docs read: CONTEXT.md, docs/architecture/simulation-model.md, docs/osrs/combat-rolls.md, docs/adr/0009-actor-owned-combat-queues.md, PRD #86, feature #89, blockers #87/#88.
+- Plan: TDD standard attack through Engine/CombatService public behavior; add CombatService-owned DpsService seed hook; build neutral DpsRequest from attacker/defender compositions; queue delayed ApplyDamage on defender queue; mutate/clamp defender hitpoints on event fire; calculate delay from footprint Tile Distance. Scope guard: no Death/removal and no public web/WASM queue inspection API.
+- Completed: PRD #86 stories 1, 7-10, 15, 18-19 and feature #89 acceptance for default standard attack DPS sampling, delayed ApplyDamage queueing, hitpoints mutation, clamping, deterministic seed coverage, and Tile Distance delay.
+- Decisions: CombatService owns a mutable DpsService with SetDpsSeed for deterministic tests/callers; built-in named standard_attack and no-override generic fallback both route to the same default standard attack; failed standard attack prerequisites do not consume attack timer or advance DPS RNG.
+- Files changed: cpp/engine/src/CombatService.h, cpp/engine/src/CombatService.cpp, cpp/engine/tests/EngineTest.cpp, progress.txt.
+- Validation: initial red engine test failed on missing SetDpsSeed; cmake --build build; ctest --test-dir build --output-on-failure; tools/build_wasm.sh; node web/test/generated-dps-service.test.mjs; yarn --cwd web typecheck; yarn --cwd web test; git diff --check passed. No blockers.
+
 2026-06-22 #88 Attack callback success controls attack timer
 - Selected issue: #88, unblocked ready-for-agent. Parent PRD: #86.
 - Docs read: CONTEXT.md, docs/architecture/simulation-model.md, docs/osrs/combat-rolls.md, docs/adr/0009-actor-owned-combat-queues.md, PRD #86, feature #88.

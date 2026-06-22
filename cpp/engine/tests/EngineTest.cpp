@@ -40,6 +40,40 @@ osrssim::CombatComposition CombatCompositionWithWeapon(
     combatComposition.weapon = weapon;
     return combatComposition;
 }
+
+osrssim::CombatComposition StandardMeleeComposition(
+    osrssim::WeaponDefinition weapon,
+    int hitpoints)
+{
+    osrssim::CombatComposition combatComposition;
+    combatComposition.stats.attack = 99;
+    combatComposition.stats.strength = 99;
+    combatComposition.stats.defence = 80;
+    combatComposition.stats.hitpoints = hitpoints;
+    combatComposition.bonuses.slashAttack = 132;
+    combatComposition.bonuses.slashDefence = 80;
+    combatComposition.bonuses.meleeStrength = 118;
+    combatComposition.attackType = osrssim::AttackType::Slash;
+    combatComposition.weapon = weapon;
+    return combatComposition;
+}
+
+osrssim::DpsRequest StandardMeleeRequest(
+    const osrssim::CombatComposition& attacker,
+    const osrssim::CombatComposition& defender,
+    osrssim::DefenderKind defenderKind)
+{
+    osrssim::DpsRequest request;
+    request.attackComposition.attackType = attacker.attackType;
+    request.attackComposition.stats = attacker.stats;
+    request.attackComposition.bonuses = attacker.bonuses;
+    request.attackComposition.weapon = attacker.weapon;
+    request.defenceComposition.stats = defender.stats;
+    request.defenceComposition.bonuses = defender.bonuses;
+    request.defenderKind = defenderKind;
+    request.magicBaseMaximumHit = attacker.magicBaseMaximumHit;
+    return request;
+}
 }  // namespace
 
 int main()
@@ -299,6 +333,14 @@ int main()
         osrssim::ActorId targetId = world.CreateNpc(1, 1, osrssim::CombatComposition{});
 
         assert(world.SetActorCombatComposition(attackerId, CombatCompositionWithWeapon({7, 3, 2})));
+        assert(world.PlaceActor(
+            attackerId,
+            world.GetDefaultSceneId(),
+            {10, 10, 0}));
+        assert(world.PlaceActor(
+            targetId,
+            world.GetDefaultSceneId(),
+            {11, 10, 0}));
 
         assert(engine.GetCombatService().DispatchAttack(
             world,
@@ -309,6 +351,7 @@ int main()
         assert(world.GetActorAttackTimer(attackerId) == 2);
 
         assert(world.SetActorCombatComposition(attackerId, CombatCompositionWithWeapon({8, 3, 4})));
+        assert(world.SetActorCombatComposition(targetId, osrssim::CombatComposition{}));
         assert(world.SetActorAttackTimer(attackerId, 0));
         engine.GetCombatService().BindWeaponAttackCallbackName(
             8,
@@ -326,6 +369,106 @@ int main()
             attackerId,
             999,
             1));
+    }
+
+    {
+        osrssim::Engine engine;
+        osrssim::World& world = engine.GetWorld();
+        const osrssim::WeaponDefinition weapon{42, 8, 5};
+        const osrssim::CombatComposition attackerComposition =
+            StandardMeleeComposition(weapon, 99);
+        const osrssim::CombatComposition defenderComposition =
+            StandardMeleeComposition({0, 1, 4}, 99);
+        const osrssim::ActorId attackerId =
+            world.CreatePlayer(1, 1, attackerComposition);
+        const osrssim::ActorId targetId =
+            world.CreateNpc(1, 1, defenderComposition);
+        osrssim::DpsService expectedDpsService;
+
+        engine.GetCombatService().SetDpsSeed(12345);
+        expectedDpsService.SetSeed(12345);
+        const osrssim::DpsSampleResult expectedSample =
+            expectedDpsService.SampleSingleAttack(StandardMeleeRequest(
+                attackerComposition,
+                defenderComposition,
+                osrssim::DefenderKind::Npc));
+
+        assert(world.PlaceActor(
+            attackerId,
+            world.GetDefaultSceneId(),
+            {10, 10, 0}));
+        assert(world.PlaceActor(
+            targetId,
+            world.GetDefaultSceneId(),
+            {13, 10, 0}));
+        assert(engine.QueuePlayerMoveToActor(attackerId, targetId));
+
+        engine.Step();
+
+        assert(world.GetActorAttackTimer(attackerId) == weapon.speed);
+        assert(world.GetActorCombatQueue(targetId)->GetEventCount() == 1);
+        assert(
+            world.GetActorCombatComposition(targetId)->stats.hitpoints ==
+            defenderComposition.stats.hitpoints);
+
+        engine.Step();
+
+        assert(
+            world.GetActorCombatComposition(targetId)->stats.hitpoints ==
+            defenderComposition.stats.hitpoints);
+
+        engine.Step();
+
+        assert(
+            world.GetActorCombatComposition(targetId)->stats.hitpoints ==
+            defenderComposition.stats.hitpoints - expectedSample.sampledDamage);
+        assert(world.GetActorCombatQueue(targetId)->GetEventCount() == 0);
+    }
+
+    {
+        osrssim::Engine engine;
+        osrssim::World& world = engine.GetWorld();
+        const osrssim::WeaponDefinition weapon{42, 8, 5};
+        const osrssim::CombatComposition attackerComposition =
+            StandardMeleeComposition(weapon, 99);
+        osrssim::CombatComposition defenderComposition =
+            StandardMeleeComposition({0, 1, 4}, 99);
+        osrssim::DpsService expectedDpsService;
+
+        engine.GetCombatService().SetDpsSeed(12345);
+        expectedDpsService.SetSeed(12345);
+        const osrssim::DpsSampleResult expectedSample =
+            expectedDpsService.SampleSingleAttack(StandardMeleeRequest(
+                attackerComposition,
+                defenderComposition,
+                osrssim::DefenderKind::Npc));
+
+        assert(expectedSample.sampledDamage > 1);
+        defenderComposition.stats.hitpoints = expectedSample.sampledDamage - 1;
+
+        const osrssim::ActorId attackerId =
+            world.CreatePlayer(1, 1, attackerComposition);
+        const osrssim::ActorId targetId =
+            world.CreateNpc(1, 1, defenderComposition);
+
+        assert(world.PlaceActor(
+            attackerId,
+            world.GetDefaultSceneId(),
+            {10, 10, 0}));
+        assert(world.PlaceActor(
+            targetId,
+            world.GetDefaultSceneId(),
+            {11, 10, 0}));
+
+        assert(engine.GetCombatService().DispatchAttack(
+            world,
+            attackerId,
+            targetId,
+            1));
+
+        engine.Step();
+
+        assert(world.GetActorCombatComposition(targetId)->stats.hitpoints == 0);
     }
 
     {
