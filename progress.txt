@@ -1,3 +1,12 @@
+2026-06-22 #88 Attack callback success controls attack timer
+- Selected issue: #88, unblocked ready-for-agent. Parent PRD: #86.
+- Docs read: CONTEXT.md, docs/architecture/simulation-model.md, docs/osrs/combat-rolls.md, docs/adr/0009-actor-owned-combat-queues.md, PRD #86, feature #88.
+- Plan: TDD CombatService callback success contract through DispatchAttack; make callbacks return bool; set attack timer only on success; preserve generic, named, and weapon callback dispatch. Scope guard: no ApplyDamage, Death, default DPS sampling, or web/WASM queue API.
+- Completed: PRD #86 stories 16-18 and feature #88 acceptance for callback success/failure returns, DispatchAttack false on failed callbacks, attack timer consumption only after success, custom and weapon callback binding compatibility, and named standard/generic fallback success consistency.
+- Decisions: callbacks run before timer consumption so failed callbacks do not need timer rollback; default no-override fallback remains successful for current standard behavior; built-in named standard_attack returns success until #89 adds delayed ApplyDamage queueing.
+- Files changed: cpp/engine/src/CombatService.h, cpp/engine/src/CombatService.cpp, cpp/engine/tests/EngineTest.cpp, cpp/engine/tests/DatabaseServiceTest.cpp, progress.txt.
+- Validation: initial red ./build/cpp/engine/osrssim_engine_engine_test failed on failed-callback DispatchAttack; cmake --build build; ctest --test-dir build --output-on-failure; tools/build_wasm.sh; yarn --cwd web typecheck; yarn --cwd web test; node web/test/generated-dps-service.test.mjs; git diff --check passed. No blockers.
+
 2026-06-22 #87 Actor-owned CombatQueue processing
 - Selected issue: #87, unblocked ready-for-agent. Parent PRD: #86.
 - Docs read: CONTEXT.md, docs/agents/domain.md, docs/architecture/simulation-model.md, docs/architecture/repo-structure.md, docs/adr/0009-actor-owned-combat-queues.md, PRD #86, feature #87.

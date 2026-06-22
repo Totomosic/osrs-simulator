@@ -29,6 +29,7 @@ void RegisterAttackObservation(
             observation.attackerId = attacker;
             observation.targetId = target;
             observation.tick = currentTick;
+            return true;
         });
 }
 
@@ -198,6 +199,7 @@ int main()
                 callbackWeapon = weapon;
                 callbackAttackTimer =
                     callbackWorld.GetActorAttackTimer(attacker);
+                return true;
             });
 
         assert(engine.GetCombatService().DispatchAttack(
@@ -211,7 +213,7 @@ int main()
         assert(callbackTargetId == targetId);
         assert(callbackTick == 9);
         assert(callbackWeapon == (osrssim::WeaponDefinition{42, 7, 5}));
-        assert(callbackAttackTimer == 5);
+        assert(callbackAttackTimer == 0);
         assert(world.GetActorAttackTimer(attackerId) == 5);
     }
 
@@ -233,6 +235,7 @@ int main()
                 const osrssim::WeaponDefinition&)
             {
                 ++genericAttackCount;
+                return true;
             });
         engine.GetCombatService().RegisterWeaponAttackCallback(
             42,
@@ -244,6 +247,7 @@ int main()
                 const osrssim::WeaponDefinition&)
             {
                 ++weaponAttackCount;
+                return true;
             });
 
         assert(engine.GetCombatService().DispatchAttack(
@@ -262,6 +266,37 @@ int main()
         osrssim::World& world = engine.GetWorld();
         osrssim::ActorId attackerId = world.CreatePlayer(1, 1, osrssim::CombatComposition{});
         osrssim::ActorId targetId = world.CreateNpc(1, 1, osrssim::CombatComposition{});
+        int failedAttackCount = 0;
+
+        assert(world.SetActorCombatComposition(attackerId, CombatCompositionWithWeapon({42, 7, 5})));
+        assert(world.SetActorAttackTimer(attackerId, -2));
+        engine.GetCombatService().RegisterGenericAttackCallback(
+            [&failedAttackCount](
+                osrssim::World&,
+                osrssim::ActorId,
+                osrssim::ActorId,
+                osrssim::Tick,
+                const osrssim::WeaponDefinition&)
+            {
+                ++failedAttackCount;
+                return false;
+            });
+
+        assert(!engine.GetCombatService().DispatchAttack(
+            world,
+            attackerId,
+            targetId,
+            1));
+
+        assert(failedAttackCount == 1);
+        assert(world.GetActorAttackTimer(attackerId) == -2);
+    }
+
+    {
+        osrssim::Engine engine;
+        osrssim::World& world = engine.GetWorld();
+        osrssim::ActorId attackerId = world.CreatePlayer(1, 1, osrssim::CombatComposition{});
+        osrssim::ActorId targetId = world.CreateNpc(1, 1, osrssim::CombatComposition{});
 
         assert(world.SetActorCombatComposition(attackerId, CombatCompositionWithWeapon({7, 3, 2})));
 
@@ -272,6 +307,20 @@ int main()
             1));
 
         assert(world.GetActorAttackTimer(attackerId) == 2);
+
+        assert(world.SetActorCombatComposition(attackerId, CombatCompositionWithWeapon({8, 3, 4})));
+        assert(world.SetActorAttackTimer(attackerId, 0));
+        engine.GetCombatService().BindWeaponAttackCallbackName(
+            8,
+            "standard_attack");
+
+        assert(engine.GetCombatService().DispatchAttack(
+            world,
+            attackerId,
+            targetId,
+            2));
+
+        assert(world.GetActorAttackTimer(attackerId) == 4);
         assert(!engine.GetCombatService().DispatchAttack(
             world,
             attackerId,
@@ -969,6 +1018,7 @@ int main()
                 const osrssim::WeaponDefinition&)
             {
                 attackOrder.push_back(attacker);
+                return true;
             });
 
         engine.Step();

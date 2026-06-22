@@ -435,6 +435,7 @@ int main()
                 osrssim::Tick,
                 const osrssim::WeaponDefinition&)
             {
+                return true;
             });
 
         const osrssim::DatabaseService serviceWithCustomCallback =
@@ -496,6 +497,7 @@ int main()
             {
                 ++attackCount;
                 callbackWeapon = weapon;
+                return true;
             });
 
         const osrssim::DatabaseService serviceWithCustomCallback =

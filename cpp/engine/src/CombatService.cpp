@@ -19,6 +19,7 @@ CombatService::CombatService()
             Tick,
             const WeaponDefinition&)
         {
+            return true;
         });
 }
 
@@ -134,25 +135,22 @@ bool CombatService::DispatchAttack(
 
     const WeaponDefinition attackWeapon = combatComposition->weapon;
 
-    world.SetActorAttackTimer(attackerId, attackWeapon.speed);
-
     const auto weaponCallback =
         m_WeaponAttackCallbacks.find(attackWeapon.id);
+    bool attackSucceeded = true;
 
     if (weaponCallback != m_WeaponAttackCallbacks.end())
     {
-        weaponCallback->second(
+        attackSucceeded = weaponCallback->second(
             world,
             attackerId,
             targetId,
             currentTick,
             attackWeapon);
-        return true;
     }
-
-    if (m_GenericAttackCallback)
+    else if (m_GenericAttackCallback)
     {
-        m_GenericAttackCallback(
+        attackSucceeded = m_GenericAttackCallback(
             world,
             attackerId,
             targetId,
@@ -160,7 +158,12 @@ bool CombatService::DispatchAttack(
             attackWeapon);
     }
 
-    return true;
+    if (attackSucceeded)
+    {
+        world.SetActorAttackTimer(attackerId, attackWeapon.speed);
+    }
+
+    return attackSucceeded;
 }
 
 }  // namespace osrssim

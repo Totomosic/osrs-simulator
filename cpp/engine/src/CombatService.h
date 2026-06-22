@@ -14,7 +14,7 @@ class CombatService
 {
 private:
     using AttackCallback =
-        std::function<void(World&, ActorId, ActorId, Tick, const WeaponDefinition&)>;
+        std::function<bool(World&, ActorId, ActorId, Tick, const WeaponDefinition&)>;
 
     AttackCallback m_GenericAttackCallback;
     std::unordered_map<std::string, AttackCallback> m_AttackCallbacksByName;
