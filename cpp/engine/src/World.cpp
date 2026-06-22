@@ -259,6 +259,18 @@ const CombatComposition* World::GetActorCombatComposition(
     return actor == nullptr ? nullptr : &actor->combatComposition;
 }
 
+CombatQueue* World::GetActorCombatQueue(ActorId actorId)
+{
+    ActorCore* actor = TryGetActorCore(actorId);
+    return actor == nullptr ? nullptr : &actor->combatQueue;
+}
+
+const CombatQueue* World::GetActorCombatQueue(ActorId actorId) const
+{
+    const ActorCore* actor = TryGetActorCore(actorId);
+    return actor == nullptr ? nullptr : &actor->combatQueue;
+}
+
 bool World::SetActorCombatComposition(
     ActorId actorId,
     CombatComposition combatComposition)

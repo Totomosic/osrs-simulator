@@ -1,5 +1,6 @@
 #pragma once
 
+#include "CombatQueue.h"
 #include "DpsService.h"
 #include "Pathing.h"
 #include "Scene.h"
@@ -17,6 +18,7 @@ struct ActorCore
     int size = 1;
     int speed = 0;
     CombatComposition combatComposition;
+    CombatQueue combatQueue;
     int attackTimer = 0;
 };
 
@@ -84,6 +86,8 @@ public:
         ActorId firstActorId,
         ActorId secondActorId) const;
     const CombatComposition* GetActorCombatComposition(ActorId actorId) const;
+    CombatQueue* GetActorCombatQueue(ActorId actorId);
+    const CombatQueue* GetActorCombatQueue(ActorId actorId) const;
     bool SetActorCombatComposition(
         ActorId actorId,
         CombatComposition combatComposition);

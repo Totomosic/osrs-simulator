@@ -1,3 +1,12 @@
+2026-06-22 #87 Actor-owned CombatQueue processing
+- Selected issue: #87, unblocked ready-for-agent. Parent PRD: #86.
+- Docs read: CONTEXT.md, docs/agents/domain.md, docs/architecture/simulation-model.md, docs/architecture/repo-structure.md, docs/adr/0009-actor-owned-combat-queues.md, PRD #86, feature #87.
+- Plan: TDD CombatQueue queue-order semantics, then actor-owned queue on ActorCore and Engine Step processing before combat/movement. Scope guard: only queue ownership/processing; no default ApplyDamage, Death, callback success contract, or public web/WASM queue API.
+- Completed: PRD #86 stories 2-6, 19 and feature #87 acceptance for ActorCore-owned CombatQueue, start-of-actor-update processing, snapshot/decrement/ready callback behavior, deferred callback-added events, non-blocking shorter-delay events, and same-update queue order.
+- Decisions: keep CombatQueue as engine C++ concept with callback events and no web/WASM exposure; World exposes engine-facing queue access through ActorCore; Engine skips post-queue behavior if a callback removed the actor.
+- Files changed: cpp/engine CombatQueue, World, Engine, CMake, Engine/CombatQueue tests, progress.txt.
+- Validation: cmake --build build; ctest --test-dir build --output-on-failure; tools/build_wasm.sh; node web/test/generated-dps-service.test.mjs; yarn --cwd web typecheck; git diff --check passed. No blockers.
+
 2026-06-20 #80 Actors Store Required Combat Compositions
 - Selected issue: #80, unblocked because #79 is closed. Parent PRD: #76. #81 also unblocked but skipped to work exactly one feature.
 - Docs read: CONTEXT.md, docs/agents/domain.md, docs/architecture/simulation-model.md, docs/adr/0007-engine-owned-equipment-database.md, docs/adr/0008-file-backed-engine-dataset.md, PRD #76, feature #80, blocker #79.

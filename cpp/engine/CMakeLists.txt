@@ -1,4 +1,5 @@
 add_library(osrssim_engine
+  src/CombatQueue.cpp
   src/CombatService.cpp
   src/CombatCompositionDatabase.cpp
   src/DatabaseService.cpp
@@ -77,6 +78,10 @@ if(BUILD_TESTING)
     tests/EngineTest.cpp
   )
 
+  add_executable(osrssim_engine_combat_queue_test
+    tests/CombatQueueTest.cpp
+  )
+
   add_executable(osrssim_engine_dps_service_test
     tests/DpsServiceTest.cpp
   )
@@ -126,6 +131,11 @@ if(BUILD_TESTING)
       osrssim::engine
   )
 
+  target_link_libraries(osrssim_engine_combat_queue_test
+    PRIVATE
+      osrssim::engine
+  )
+
   target_link_libraries(osrssim_engine_dps_service_test
     PRIVATE
       osrssim::engine
@@ -161,6 +171,7 @@ if(BUILD_TESTING)
   add_test(NAME osrssim_engine_line_of_sight_test COMMAND osrssim_engine_line_of_sight_test)
   add_test(NAME osrssim_engine_world_test COMMAND osrssim_engine_world_test)
   add_test(NAME osrssim_engine_engine_test COMMAND osrssim_engine_engine_test)
+  add_test(NAME osrssim_engine_combat_queue_test COMMAND osrssim_engine_combat_queue_test)
   add_test(NAME osrssim_engine_dps_service_test COMMAND osrssim_engine_dps_service_test)
   add_test(NAME osrssim_engine_equipment_database_test COMMAND osrssim_engine_equipment_database_test)
   add_test(NAME osrssim_engine_combat_composition_database_test COMMAND osrssim_engine_combat_composition_database_test)

@@ -103,6 +103,16 @@ void Engine::DecrementAttackTimers()
     m_CombatService.DecrementAttackTimers(m_World);
 }
 
+void Engine::ProcessActorCombatQueue(ActorId actorId)
+{
+    CombatQueue* combatQueue = m_World.GetActorCombatQueue(actorId);
+
+    if (combatQueue != nullptr)
+    {
+        combatQueue->Process();
+    }
+}
+
 bool Engine::TryHandleActorTargetCombat(ActorId actorId)
 {
     const Player* player = m_World.GetPlayer(actorId);
@@ -176,6 +186,13 @@ void Engine::UpdateNpcs()
 
     for (ActorId actorId : npcIds)
     {
+        ProcessActorCombatQueue(actorId);
+
+        if (m_World.GetActorCore(actorId) == nullptr)
+        {
+            continue;
+        }
+
         if (!TryHandleActorTargetCombat(actorId))
         {
             const bool startedFromOverlap =
@@ -205,6 +222,13 @@ void Engine::UpdatePlayers()
 
     for (ActorId actorId : playerIds)
     {
+        ProcessActorCombatQueue(actorId);
+
+        if (m_World.GetActorCore(actorId) == nullptr)
+        {
+            continue;
+        }
+
         if (!TryHandleActorTargetCombat(actorId))
         {
             const bool startedFromOverlap =
