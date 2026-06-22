@@ -104,6 +104,10 @@ _Avoid_: Diagonal adjacency
 The relationship between two actor footprints on the same plane when they share at least one tile.
 _Avoid_: Underneath, covered by
 
+**Tile Distance**:
+The Chebyshev distance between the closest tiles in two same-plane actor footprints. Overlapping footprints have tile distance zero, and edge-adjacent footprints have tile distance one.
+_Avoid_: Anchor distance, Manhattan distance
+
 **Actor Speed**:
 The maximum number of per-tile movement steps an actor may take in one tick. A movement attempt may use less than the actor's speed.
 _Avoid_: Run energy, movement mode
@@ -211,6 +215,10 @@ _Avoid_: Average hit, deterministic damage
 **Damage Roll**:
 The sampled damage result for an attack after accuracy has been evaluated. A successful accuracy check can still produce a zero damage roll.
 _Avoid_: Expected damage, max hit
+
+**Death**:
+A combat outcome where an actor's hitpoints reach zero and the actor stops participating in the current simulation.
+_Avoid_: Despawn, deletion
 
 **Random Seed**:
 An explicit value used to initialize sampled combat outcomes so they are reproducible across simulation runs. Randomness inside the engine is deterministic when driven from the same random seed and inputs.

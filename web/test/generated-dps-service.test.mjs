@@ -36,6 +36,112 @@ const wasmBinary = await readFile(
 const module = await createGeneratedEngineModule({ wasmBinary });
 const service = new module.DpsService();
 
+function createCombatStats(overrides = {}) {
+    return {
+        attack: 1,
+        strength: 1,
+        defence: 1,
+        ranged: 1,
+        magic: 1,
+        hitpoints: 10,
+        ...overrides,
+    };
+}
+
+function createEquipmentBonuses(overrides = {}) {
+    return {
+        stabAttack: 0,
+        slashAttack: 0,
+        crushAttack: 0,
+        magicAttack: 0,
+        rangedAttack: 0,
+        stabDefence: 0,
+        slashDefence: 0,
+        crushDefence: 0,
+        magicDefence: 0,
+        rangedDefenceLight: 0,
+        rangedDefenceStandard: 0,
+        rangedDefenceHeavy: 0,
+        meleeStrength: 0,
+        rangedStrength: 0,
+        magicDamagePercent: 0,
+        ...overrides,
+    };
+}
+
+function createCombatComposition(overrides = {}) {
+    return {
+        stats: createCombatStats(overrides.stats),
+        bonuses: createEquipmentBonuses(overrides.bonuses),
+        attackType: module.AttackType.Slash,
+        magicBaseMaximumHit: 0,
+        weapon: { id: 0n, range: 1, speed: 4 },
+        ...overrides,
+    };
+}
+
+function createStyleBonus() {
+    return {
+        attack: 0,
+        strength: 0,
+        defence: 0,
+        ranged: 0,
+        magic: 0,
+    };
+}
+
+function createStandardDpsRequest(attacker, defender) {
+    return {
+        attackComposition: {
+            attackType: attacker.attackType,
+            stats: attacker.stats,
+            bonuses: attacker.bonuses,
+            weapon: attacker.weapon,
+        },
+        defenceComposition: {
+            stats: defender.stats,
+            bonuses: defender.bonuses,
+        },
+        attackerStyle: createStyleBonus(),
+        defenderStyle: createStyleBonus(),
+        defenderKind: module.DefenderKind.Npc,
+        attackPrayerMultiplier: 1,
+        strengthPrayerMultiplier: 1,
+        defencePrayerMultiplier: 1,
+        attackLevelMultiplier: 1,
+        strengthLevelMultiplier: 1,
+        defenceLevelMultiplier: 1,
+        finalAttackRollMultiplier: 1,
+        finalDefenceRollMultiplier: 1,
+        finalDamageMultiplier: 1,
+        magicBaseMaximumHit: attacker.magicBaseMaximumHit,
+    };
+}
+
+function sampleDefaultDamageUntilPositive(request) {
+    const seededService = new module.DpsService();
+    const sampledDamages = [];
+
+    for (let index = 0; index < 10; index += 1) {
+        const sampledDamage =
+            seededService.SampleSingleAttack(request).sampledDamage;
+
+        sampledDamages.push(sampledDamage);
+
+        if (sampledDamage > 0) {
+            return sampledDamages;
+        }
+    }
+
+    throw new Error("expected a positive sampled damage in first 10 attacks");
+}
+
+function parseSnapshot(world, actorId) {
+    const snapshot = world.GetActorSnapshot(actorId);
+
+    return snapshot === null ? null : JSON.parse(snapshot);
+}
+
 const manifestJson = await readFile(resolve(root, "../data/manifest.json"), "utf8");
 const fileBackedEquipmentJson = await readFile(
     resolve(root, "../data/equipment.json"),
@@ -755,3 +861,67 @@ for (const [index, expectation] of fixedScenarioExpectations.entries()) {
         expectation.sampledDps,
     );
 }
+
+assert.equal(module.CombatQueue, undefined);
+assert.equal(module.CombatEvent, undefined);
+
+const engine = new module.Engine();
+const world = engine.GetWorld();
+const attackerComposition = createCombatComposition({
+    stats: createCombatStats({
+        attack: 99,
+        strength: 99,
+        defence: 80,
+        hitpoints: 99,
+    }),
+    bonuses: createEquipmentBonuses({
+        slashAttack: 132,
+        slashDefence: 80,
+        meleeStrength: 118,
+    }),
+    weapon: { id: 42n, range: 1, speed: 1 },
+});
+const defenderComposition = createCombatComposition({
+    stats: createCombatStats({
+        defence: 80,
+        hitpoints: 99,
+    }),
+    bonuses: createEquipmentBonuses({
+        slashDefence: 80,
+    }),
+});
+const sampledDamages = sampleDefaultDamageUntilPositive(
+    createStandardDpsRequest(attackerComposition, defenderComposition),
+);
+const expectedDamage = sampledDamages.reduce((sum, damage) => sum + damage, 0);
+const stepsUntilExpectedDamageLands = sampledDamages.length + 1;
+
+const attackerId = world.CreatePlayer(1, 1, attackerComposition);
+const defenderId = world.CreateNpc(1, 1, defenderComposition);
+const sceneId = world.GetDefaultSceneId();
+
+assert.equal(
+    world.PlaceActor(attackerId, sceneId, { x: 10, y: 10, plane: 0 }),
+    true,
+);
+assert.equal(
+    world.PlaceActor(defenderId, sceneId, { x: 11, y: 10, plane: 0 }),
+    true,
+);
+assert.equal(world.SetActorMovementTarget(attackerId, defenderId), true);
+assert.equal(parseSnapshot(world, defenderId).hitpoints, 99);
+
+for (let step = 0; step < stepsUntilExpectedDamageLands; step += 1) {
+    engine.Step();
+}
+
+const attackerAfterAttack = parseSnapshot(world, attackerId);
+const defenderAfterAttack = parseSnapshot(world, defenderId);
+
+assert.equal(Number(engine.GetCurrentTick()), stepsUntilExpectedDamageLands);
+assert.equal(attackerAfterAttack.attackTimer, 1);
+assert.equal(defenderAfterAttack.hitpoints, 99 - expectedDamage);
+assert.equal(parseSnapshot(world, attackerId).id, Number(attackerId));
+
+assert.equal(world.RemoveActor(defenderId), true);
+assert.equal(parseSnapshot(world, defenderId), null);

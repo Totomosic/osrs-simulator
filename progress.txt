@@ -1,3 +1,12 @@
+2026-06-22 #91 Keep CombatQueues engine-internal
+- Selected issue: #91, unblocked because #87/#89/#90 are closed. Parent PRD: #86.
+- Docs read: CONTEXT.md, docs/agents/domain.md, docs/architecture/simulation-model.md, docs/architecture/repo-structure.md, docs/adr/0006-web-development-viewer.md, docs/adr/0009-actor-owned-combat-queues.md, PRD #86, feature #91.
+- Plan: TDD WASM binding regression that proves no CombatQueue/CombatEvent public constructors while existing engine-facing state observes delayed combat through Step/GetCurrentTick/GetActorSnapshot hitpoints/attackTimer/removal. Scope guard: no pending CombatEvent inspection API and no UI visualization.
+- Completed: PRD #86 story 20 and feature #91 acceptance for engine-internal CombatQueue/CombatEvent, web/WASM compile coverage, observable delayed combat through actor snapshot hitpoints/attackTimer/removal/tick progression, and no pending event visualization API.
+- Decisions: expose current hitpoints on existing actor snapshot instead of adding any queue/event inspection API; keep pending combat event visualization out of scope and documented by regression assertions.
+- Files changed: CONTEXT.md, docs/adr/0009-actor-owned-combat-queues.md, cpp/engine/src/EngineBindings.cpp, web/src/scenarios.ts, web/test/generated-dps-service.test.mjs, progress.txt.
+- Validation: initial red node web/test/generated-dps-service.test.mjs failed on missing snapshot hitpoints; tools/build_wasm.sh; node web/test/generated-dps-service.test.mjs; cmake --build build; ctest --test-dir build --output-on-failure; yarn --cwd web typecheck; yarn --cwd web test; yarn --cwd web build; git diff --check passed. No blockers.
+
 2026-06-22 #90 Death event removes actors
 - Selected issue: #90, unblocked because #87 and #89 are closed. Parent PRD: #86.
 - Docs read: CONTEXT.md, docs/architecture/simulation-model.md, docs/adr/0005-world-owns-scenes-and-actors.md, docs/adr/0009-actor-owned-combat-queues.md, PRD #86, feature #90, blockers #87/#89.

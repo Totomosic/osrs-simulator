@@ -26,6 +26,7 @@ export interface ActorSnapshot {
     speed: number;
     weapon: WeaponDefinition;
     attackTimer: number;
+    hitpoints: number;
     movementTarget: MovementTargetSnapshot | null;
 }
 
@@ -37,6 +38,7 @@ interface EngineActorSnapshot {
     speed: number;
     weapon: WeaponDefinition;
     attackTimer: number;
+    hitpoints: number;
     movementTarget:
         | null
         | {

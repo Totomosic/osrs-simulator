@@ -199,6 +199,7 @@ std::string GetActorSnapshotJson(
            << ",\"weapon\":";
     AppendWeaponDefinitionJson(output, actor->combatComposition.weapon);
     output << ",\"attackTimer\":" << actor->attackTimer
+           << ",\"hitpoints\":" << actor->combatComposition.stats.hitpoints
            << ",\"movementTarget\":";
 
     if (player != nullptr)
