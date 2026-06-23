@@ -454,6 +454,7 @@ class WebPlayerChaseScenario implements PlayerChaseScenario {
                 id: 0,
                 range: npcWeaponRange,
                 speed: 4,
+                projectileId: 1,
             }),
         );
         this.m_NpcIds = [npcId];

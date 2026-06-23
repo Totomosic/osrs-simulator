@@ -5,14 +5,22 @@
 namespace osrssim
 {
 
-bool CombatQueue::AddEvent(int ticksRemaining, std::function<void()> callback)
+bool CombatQueue::AddEvent(
+    int ticksRemaining,
+    std::function<void()> callback,
+    std::optional<Tick> createdTick)
 {
     if (!callback)
     {
         return false;
     }
 
-    m_Events.push_back({ticksRemaining, ticksRemaining, std::move(callback)});
+    m_Events.push_back(
+        {ticksRemaining,
+         ticksRemaining,
+         std::move(callback),
+         std::nullopt,
+         createdTick});
 
     return true;
 }
@@ -20,7 +28,8 @@ bool CombatQueue::AddEvent(int ticksRemaining, std::function<void()> callback)
 bool CombatQueue::AddEvent(
     int ticksRemaining,
     std::function<void()> callback,
-    ProjectileMetadata projectile)
+    ProjectileMetadata projectile,
+    std::optional<Tick> createdTick)
 {
     if (!callback || projectile.projectileId <= 0 || ticksRemaining <= 0)
     {
@@ -29,12 +38,16 @@ bool CombatQueue::AddEvent(
 
     projectile.totalTicks = ticksRemaining;
     m_Events.push_back(
-        {ticksRemaining, ticksRemaining, std::move(callback), projectile});
+        {ticksRemaining,
+         ticksRemaining,
+         std::move(callback),
+         projectile,
+         createdTick});
 
     return true;
 }
 
-void CombatQueue::Process()
+void CombatQueue::Process(std::optional<Tick> currentTick)
 {
     std::vector<CombatEvent> eventsToProcess;
     eventsToProcess.swap(m_Events);
@@ -44,6 +57,13 @@ void CombatQueue::Process()
 
     for (CombatEvent& event : eventsToProcess)
     {
+        if (currentTick.has_value() && event.createdTick == currentTick &&
+            event.ticksRemaining > 0)
+        {
+            retainedEvents.push_back(std::move(event));
+            continue;
+        }
+
         --event.ticksRemaining;
 
         if (event.ticksRemaining <= 0)

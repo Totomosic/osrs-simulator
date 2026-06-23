@@ -45,6 +45,7 @@ bool Engine::QueuePlayerMoveToActor(ActorId actorId, ActorId targetActorId)
 void Engine::Step()
 {
     ++m_CurrentTick;
+    m_World.SetCurrentTick(m_CurrentTick);
     ProcessQueuedPlayerMovementActions();
     DecrementAttackTimers();
     UpdateNpcs();
@@ -109,7 +110,7 @@ void Engine::ProcessActorCombatQueue(ActorId actorId)
 
     if (combatQueue != nullptr)
     {
-        combatQueue->Process();
+        combatQueue->Process(m_World.GetCurrentTick());
         m_World.FlushQueuedActorRemovals();
     }
 }

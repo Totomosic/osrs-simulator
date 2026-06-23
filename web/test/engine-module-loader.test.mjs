@@ -308,7 +308,7 @@ assert.deepEqual(initialSnapshot.npcs[0].weapon, {
     id: 0,
     range: 8,
     speed: 4,
-    projectileId: 0,
+    projectileId: 1,
 });
 assert.equal(
     module.Engine.lastCreated.world.SetActorCombatComposition(

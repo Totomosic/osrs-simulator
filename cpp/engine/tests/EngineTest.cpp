@@ -453,6 +453,102 @@ int main()
     {
         osrssim::Engine engine;
         osrssim::World& world = engine.GetWorld();
+        const osrssim::WeaponDefinition weapon{42, 8, 5, 321};
+        const osrssim::CombatComposition attackerComposition =
+            StandardMeleeComposition(weapon, 99);
+        const osrssim::CombatComposition defenderComposition =
+            StandardMeleeComposition({0, 1, 4}, 99);
+        const osrssim::ActorId targetId =
+            world.CreatePlayer(1, 1, defenderComposition);
+        const osrssim::ActorId attackerId =
+            world.CreateNpc(1, 1, attackerComposition);
+
+        assert(world.PlaceActor(
+            targetId,
+            world.GetDefaultSceneId(),
+            {10, 10, 0}));
+        assert(world.PlaceActor(
+            attackerId,
+            world.GetDefaultSceneId(),
+            {13, 10, 0}));
+        assert(world.SetActorMovementTarget(attackerId, targetId));
+
+        engine.Step();
+
+        {
+            const std::vector<osrssim::ProjectileSnapshot> projectiles =
+                world.GetProjectileSnapshots();
+            assert(projectiles.size() == 1);
+            assert(projectiles[0].projectileId == 321);
+            assert(projectiles[0].source == (osrssim::ScenePosition{13.5, 10.5, 0}));
+            assert(projectiles[0].targetActorId == targetId);
+            assert(projectiles[0].lastKnownTargetCenter ==
+                   (osrssim::ScenePosition{10.5, 10.5, 0}));
+            assert(projectiles[0].elapsedTicks == 0);
+            assert(projectiles[0].totalTicks == 2);
+        }
+    }
+
+    {
+        osrssim::Engine engine;
+        osrssim::World& world = engine.GetWorld();
+        const osrssim::WeaponDefinition weapon{79, 8, 5, 0};
+        const osrssim::CombatComposition attackerComposition =
+            StandardMeleeComposition(weapon, 99);
+        const osrssim::CombatComposition defenderComposition =
+            StandardMeleeComposition({0, 1, 4}, 99);
+        const osrssim::ActorId targetId =
+            world.CreatePlayer(1, 1, defenderComposition);
+        const osrssim::ActorId attackerId =
+            world.CreateNpc(1, 1, attackerComposition);
+
+        engine.GetCombatService().RegisterAttackCallbackName(
+            "custom_immediate_attack",
+            [](
+                osrssim::World& callbackWorld,
+                osrssim::ActorId,
+                osrssim::ActorId target,
+                osrssim::Tick,
+                const osrssim::WeaponDefinition&)
+            {
+                return callbackWorld.QueueActorCombatEvent(
+                    target,
+                    0,
+                    [&callbackWorld, target]()
+                    {
+                        osrssim::CombatComposition combatComposition =
+                            *callbackWorld.GetActorCombatComposition(target);
+                        combatComposition.stats.hitpoints -= 5;
+                        callbackWorld.SetActorCombatComposition(
+                            target,
+                            combatComposition);
+                    });
+            });
+        engine.GetCombatService().BindWeaponAttackCallbackName(
+            weapon.id,
+            "custom_immediate_attack");
+
+        assert(world.PlaceActor(
+            targetId,
+            world.GetDefaultSceneId(),
+            {10, 10, 0}));
+        assert(world.PlaceActor(
+            attackerId,
+            world.GetDefaultSceneId(),
+            {13, 10, 0}));
+        assert(world.SetActorMovementTarget(attackerId, targetId));
+
+        engine.Step();
+
+        assert(
+            world.GetActorCombatComposition(targetId)->stats.hitpoints ==
+            defenderComposition.stats.hitpoints - 5);
+        assert(world.GetActorCombatQueue(targetId)->GetEventCount() == 0);
+    }
+
+    {
+        osrssim::Engine engine;
+        osrssim::World& world = engine.GetWorld();
         const osrssim::WeaponDefinition weapon{42, 8, 5, 0};
         const osrssim::CombatComposition attackerComposition =
             StandardMeleeComposition(weapon, 99);

@@ -65,8 +65,11 @@ private:
     std::unordered_map<ActorId, Npc> m_Npcs;
     std::unordered_map<ActorId, SceneMembership> m_SceneMemberships;
     std::vector<ActorId> m_QueuedActorRemovals;
+    std::optional<Tick> m_CurrentTick;
 
 public:
+    void SetCurrentTick(Tick currentTick);
+    std::optional<Tick> GetCurrentTick() const;
     SceneId GetDefaultSceneId() const;
     Scene* TryGetScene(SceneId sceneId);
     const Scene* TryGetScene(SceneId sceneId) const;

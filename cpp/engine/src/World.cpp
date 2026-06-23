@@ -145,6 +145,16 @@ bool IsBetterResolvedDelta(
 
 }  // namespace
 
+void World::SetCurrentTick(Tick currentTick)
+{
+    m_CurrentTick = currentTick;
+}
+
+std::optional<Tick> World::GetCurrentTick() const
+{
+    return m_CurrentTick;
+}
+
 SceneId World::GetDefaultSceneId() const
 {
     return m_DefaultSceneId;
@@ -287,7 +297,7 @@ bool World::QueueActorCombatEvent(
         return false;
     }
 
-    return queue->AddEvent(ticksRemaining, std::move(callback));
+    return queue->AddEvent(ticksRemaining, std::move(callback), m_CurrentTick);
 }
 
 bool World::QueueActorCombatEvent(
@@ -306,7 +316,8 @@ bool World::QueueActorCombatEvent(
     return queue->AddEvent(
         ticksRemaining,
         std::move(callback),
-        projectile);
+        projectile,
+        m_CurrentTick);
 }
 
 std::vector<ProjectileSnapshot> World::GetProjectileSnapshots() const
