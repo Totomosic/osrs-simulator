@@ -73,6 +73,7 @@ struct AttackComposition
 struct CombatComposition
 {
     CombatStats stats;
+    CombatStats baseStats;
     EquipmentBonuses bonuses;
     AttackType attackType = AttackType::Slash;
     int magicBaseMaximumHit = 0;

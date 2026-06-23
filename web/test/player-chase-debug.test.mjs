@@ -52,6 +52,8 @@ class FakePlayerChaseScenario {
             size: 1,
             speed: 2,
             weapon: { id: 2, range: 5, speed: 4, projectileId: 61 },
+            hitpoints: 10,
+            baseHitpoints: 10,
         };
         this.npc = {
             id: 2,
@@ -61,6 +63,8 @@ class FakePlayerChaseScenario {
             size: 4,
             speed: 1,
             weapon: { id: 0, range: 8, speed: 4, projectileId: 0 },
+            hitpoints: 6,
+            baseHitpoints: 10,
         };
         this.secondNpc = {
             id: 3,
@@ -70,6 +74,8 @@ class FakePlayerChaseScenario {
             size: 1,
             speed: 1,
             weapon: { id: 0, range: 8, speed: 4, projectileId: 0 },
+            hitpoints: 10,
+            baseHitpoints: 10,
         };
         this.projectiles = [
             {
@@ -101,6 +107,8 @@ class FakePlayerChaseScenario {
                       size: this.npc.size,
                       speed: this.npc.speed,
                       weapon: this.npc.weapon,
+                      hitpoints: this.npc.hitpoints,
+                      baseHitpoints: this.npc.baseHitpoints,
                       movementTarget: {
                           kind: "Actor",
                           actorId: this.player.id,
@@ -121,6 +129,8 @@ class FakePlayerChaseScenario {
                       size: this.secondNpc.size,
                       speed: this.secondNpc.speed,
                       weapon: this.secondNpc.weapon,
+                      hitpoints: this.secondNpc.hitpoints,
+                      baseHitpoints: this.secondNpc.baseHitpoints,
                       movementTarget: null,
                   };
         const npcs = [npc, secondNpc].filter((candidate) => candidate !== null);
@@ -163,6 +173,8 @@ class FakePlayerChaseScenario {
                 size: this.player.size,
                 speed: this.player.speed,
                 weapon: this.player.weapon,
+                hitpoints: this.player.hitpoints,
+                baseHitpoints: this.player.baseHitpoints,
                 movementTarget:
                     this.playerTarget === null
                         ? null
@@ -220,11 +232,15 @@ class FakePlayerChaseScenario {
     assert.equal(snapshot.player.size, 1);
     assert.equal(snapshot.player.speed, 2);
     assert.equal(snapshot.player.weapon.range, 5);
+    assert.equal(snapshot.player.hitpoints, 10);
+    assert.equal(snapshot.player.baseHitpoints, 10);
     assert.equal(snapshot.player.movementTarget, null);
     assert.deepEqual(snapshot.npc.coordinate, { x: 18, y: 20, plane: 0 });
     assert.equal(snapshot.npc.size, 4);
     assert.equal(snapshot.npc.speed, 1);
     assert.equal(snapshot.npc.weapon.range, 8);
+    assert.equal(snapshot.npc.hitpoints, 6);
+    assert.equal(snapshot.npc.baseHitpoints, 10);
     assert.deepEqual(snapshot.npc.movementTarget, {
         kind: "Actor",
         actorId: 1,

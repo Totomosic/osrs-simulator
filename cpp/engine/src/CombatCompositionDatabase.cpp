@@ -305,6 +305,7 @@ CombatCompositionRecord ParseCombatCompositionRecord(
                 "id",
                 "name",
                 "stats",
+                "baseStats",
                 "bonuses",
                 "attackType",
                 "magicBaseMaximumHit",
@@ -338,6 +339,9 @@ CombatCompositionRecord ParseCombatCompositionRecord(
     record.name = GetRequiredString(value, "name");
     record.source = source;
     record.composition.stats = ParseCombatStats(value.at("stats"));
+    record.composition.baseStats = value.contains("baseStats")
+        ? ParseCombatStats(value.at("baseStats"))
+        : record.composition.stats;
     record.composition.bonuses = ParseEquipmentBonuses(value.at("bonuses"));
     record.composition.attackType =
         ParseAttackType(GetRequiredString(value, "attackType"));
@@ -399,6 +403,7 @@ Json CombatCompositionRecordToJson(const CombatCompositionRecord& record)
         {"id", record.id},
         {"name", record.name},
         {"stats", CombatStatsToJson(record.composition.stats)},
+        {"baseStats", CombatStatsToJson(record.composition.baseStats)},
         {"bonuses", EquipmentBonusesToJson(record.composition.bonuses)},
         {"attackType", AttackTypeToString(record.composition.attackType)},
         {"magicBaseMaximumHit", record.composition.magicBaseMaximumHit},

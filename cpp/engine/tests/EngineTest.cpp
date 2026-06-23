@@ -50,6 +50,7 @@ osrssim::CombatComposition StandardMeleeComposition(
     combatComposition.stats.strength = 99;
     combatComposition.stats.defence = 80;
     combatComposition.stats.hitpoints = hitpoints;
+    combatComposition.baseStats = combatComposition.stats;
     combatComposition.bonuses.slashAttack = 132;
     combatComposition.bonuses.slashDefence = 80;
     combatComposition.bonuses.meleeStrength = 118;
@@ -442,6 +443,9 @@ int main()
         assert(
             world.GetActorCombatComposition(targetId)->stats.hitpoints ==
             defenderComposition.stats.hitpoints - expectedSample.sampledDamage);
+        assert(
+            world.GetActorCombatComposition(targetId)->baseStats.hitpoints ==
+            defenderComposition.stats.hitpoints);
         assert(world.GetActorCombatQueue(targetId)->GetEventCount() == 0);
         assert(world.GetProjectileSnapshots().empty());
     }

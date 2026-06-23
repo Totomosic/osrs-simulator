@@ -315,6 +315,7 @@ assert.equal(
         initialSnapshot.player.id,
         {
             stats: {},
+            baseStats: {},
             bonuses: {},
             attackType: "Slash",
             magicBaseMaximumHit: 0,

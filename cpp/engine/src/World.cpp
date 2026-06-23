@@ -141,6 +141,7 @@ bool IsBetterResolvedDelta(
 
     return Abs(candidateDx) + Abs(candidateDy) > Abs(bestDx) + Abs(bestDy);
 }
+
 }  // namespace
 
 SceneId World::GetDefaultSceneId() const

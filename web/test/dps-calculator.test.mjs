@@ -313,6 +313,7 @@ class FakeEquipmentSet {
         return {
             attackType,
             stats,
+            baseStats: stats,
             bonuses,
             magicBaseMaximumHit,
             weapon,

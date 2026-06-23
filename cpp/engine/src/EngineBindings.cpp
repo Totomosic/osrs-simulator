@@ -209,6 +209,8 @@ std::string GetActorSnapshotJson(
     AppendWeaponDefinitionJson(output, actor->combatComposition.weapon);
     output << ",\"attackTimer\":" << actor->attackTimer
            << ",\"hitpoints\":" << actor->combatComposition.stats.hitpoints
+           << ",\"baseHitpoints\":"
+           << actor->combatComposition.baseStats.hitpoints
            << ",\"movementTarget\":";
 
     if (player != nullptr)
@@ -417,6 +419,7 @@ EMSCRIPTEN_BINDINGS(osrssim_engine)
     emscripten::value_object<osrssim::CombatComposition>(
         "CombatComposition")
         .field("stats", &osrssim::CombatComposition::stats)
+        .field("baseStats", &osrssim::CombatComposition::baseStats)
         .field("bonuses", &osrssim::CombatComposition::bonuses)
         .field("attackType", &osrssim::CombatComposition::attackType)
         .field(

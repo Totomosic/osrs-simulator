@@ -14,6 +14,7 @@ import {
     setCameraFieldOfView,
     setCameraMode as setDebugCameraMode,
     tileSize,
+    type ActorSnapshot,
     type CameraPanDirection,
     type CameraState,
     type CameraMode,
@@ -166,6 +167,13 @@ const actorLineOfSightDetails = computed(() => {
             snapshot.value.selectedNpc.weapon.range,
         ),
     };
+});
+const healthBarActors = computed<ActorSnapshot[]>(() => {
+    if (snapshot.value === null) {
+        return [];
+    }
+
+    return [snapshot.value.player, ...snapshot.value.npcs];
 });
 const viewBox = computed(() => {
     const width = getColumnCount(renderTiles.value) * tileSize;
@@ -433,6 +441,40 @@ function getProjectileProgress(projectile: ProjectileSnapshot): number {
     return Math.min(1, Math.max(0, projectile.elapsedTicks / projectile.totalTicks));
 }
 
+function getActorHealthBarX(actor: ActorSnapshot): number {
+    return getScenePositionX({
+        x: actor.coordinate.x,
+        y: actor.coordinate.y,
+        plane: actor.coordinate.plane,
+    });
+}
+
+function getActorHealthBarY(actor: ActorSnapshot): number {
+    return (
+        getScenePositionY({
+            x: actor.coordinate.x,
+            y: actor.coordinate.y + actor.size,
+            plane: actor.coordinate.plane,
+        }) - 8
+    );
+}
+
+function getHealthBarWidth(actor: ActorSnapshot): number {
+    return actor.size * tileSize;
+}
+
+function getHealthBarFillWidth(actor: ActorSnapshot): number {
+    return getHealthBarWidth(actor) * getHealthRatio(actor);
+}
+
+function getHealthRatio(actor: ActorSnapshot): number {
+    if (actor.baseHitpoints <= 0) {
+        return 0;
+    }
+
+    return Math.min(1, Math.max(0, actor.hitpoints / actor.baseHitpoints));
+}
+
 function interpolate(start: number, end: number, progress: number): number {
     return start + (end - start) * progress;
 }
@@ -680,6 +722,25 @@ function ensureLineOfSightSource(nextSnapshot: PlayerChaseDebugSnapshot): void {
           >
             M
           </text>
+          <g
+            v-for="actor in healthBarActors"
+            :key="`${actor.kind}:${actor.id}:health`"
+          >
+            <rect
+              :x="getActorHealthBarX(actor)"
+              :y="getActorHealthBarY(actor)"
+              :width="getHealthBarWidth(actor)"
+              height="5"
+              class="health-bar-track"
+            />
+            <rect
+              :x="getActorHealthBarX(actor)"
+              :y="getActorHealthBarY(actor)"
+              :width="getHealthBarFillWidth(actor)"
+              height="5"
+              class="health-bar-fill"
+            />
+          </g>
           <circle
             v-for="(projectile, index) in snapshot.projectiles"
             :key="`${projectile.projectileId}:${projectile.targetActorId}:${index}`"
@@ -1061,6 +1122,18 @@ button:hover {
     font-weight: 900;
     pointer-events: none;
     text-anchor: middle;
+}
+
+.health-bar-track {
+    fill: #281516;
+    pointer-events: none;
+    stroke: #ffffff;
+    stroke-width: 1;
+}
+
+.health-bar-fill {
+    fill: #d72638;
+    pointer-events: none;
 }
 
 .projectile {

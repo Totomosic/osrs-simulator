@@ -54,6 +54,8 @@ export interface ActorSnapshot {
     size: number;
     speed: number;
     weapon: WeaponDefinition;
+    hitpoints: number;
+    baseHitpoints: number;
     movementTarget: MovementTargetSnapshot | null;
 }
 

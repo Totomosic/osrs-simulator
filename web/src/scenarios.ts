@@ -27,6 +27,7 @@ export interface ActorSnapshot {
     weapon: WeaponDefinition;
     attackTimer: number;
     hitpoints: number;
+    baseHitpoints: number;
     movementTarget: MovementTargetSnapshot | null;
 }
 
@@ -39,6 +40,7 @@ interface EngineActorSnapshot {
     weapon: WeaponDefinition;
     attackTimer: number;
     hitpoints: number;
+    baseHitpoints: number;
     movementTarget:
         | null
         | {
@@ -780,6 +782,14 @@ function createActorCombatComposition(
 
     return {
         stats: {
+            attack: 1,
+            strength: 1,
+            defence: 1,
+            ranged: 1,
+            magic: 1,
+            hitpoints: 10,
+        },
+        baseStats: {
             attack: 1,
             strength: 1,
             defence: 1,

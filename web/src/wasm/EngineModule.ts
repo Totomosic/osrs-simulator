@@ -74,6 +74,7 @@ export interface AttackComposition {
 
 export interface CombatComposition {
     stats: CombatStats;
+    baseStats: CombatStats;
     bonuses: EquipmentBonuses;
     attackType: AttackType;
     magicBaseMaximumHit: number;

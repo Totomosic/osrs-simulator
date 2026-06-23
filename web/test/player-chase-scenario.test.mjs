@@ -172,6 +172,8 @@ class FakeWorld {
             size,
             speed,
             weapon: combatComposition.weapon,
+            hitpoints: combatComposition.stats.hitpoints,
+            baseHitpoints: combatComposition.baseStats.hitpoints,
             movementTarget: null,
         });
         return id;
@@ -268,8 +270,12 @@ const playerChaseViewSource = await readFile(
 
     assert.equal(snapshot.name, "Player Chase");
     assert.equal(snapshot.player.weapon.range, 5);
+    assert.equal(snapshot.player.hitpoints, 10);
+    assert.equal(snapshot.player.baseHitpoints, 10);
     assert.equal(snapshot.npcs.length, 1);
     assert.equal(snapshot.npcs[0].weapon.range, 8);
+    assert.equal(snapshot.npcs[0].hitpoints, 10);
+    assert.equal(snapshot.npcs[0].baseHitpoints, 10);
     assert.equal(snapshot.selectedNpcId, snapshot.npcs[0].id);
     assert.deepEqual(snapshot.selectedNpc, snapshot.npcs[0]);
     assert.deepEqual(snapshot.npc, snapshot.selectedNpc);
@@ -359,4 +365,10 @@ const playerChaseViewSource = await readFile(
     assert.match(playerChaseViewSource, /:cx="getProjectileX\(projectile\)"/);
     assert.match(playerChaseViewSource, /:cy="getProjectileY\(projectile\)"/);
     assert.match(playerChaseViewSource, /class="projectile"/);
+}
+
+{
+    assert.match(playerChaseViewSource, /v-for="actor in healthBarActors"/);
+    assert.match(playerChaseViewSource, /:width="getHealthBarFillWidth\(actor\)"/);
+    assert.match(playerChaseViewSource, /class="health-bar-fill"/);
 }

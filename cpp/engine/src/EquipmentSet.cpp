@@ -98,6 +98,7 @@ CombatComposition EquipmentSet::BuildCombatComposition(
     CombatComposition composition;
 
     composition.stats = stats;
+    composition.baseStats = stats;
     composition.bonuses = GetEquipmentBonuses();
     composition.attackType = attackType;
     composition.magicBaseMaximumHit = magicBaseMaximumHit;

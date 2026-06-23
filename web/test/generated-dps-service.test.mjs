@@ -70,8 +70,11 @@ function createEquipmentBonuses(overrides = {}) {
 }
 
 function createCombatComposition(overrides = {}) {
+    const stats = createCombatStats(overrides.stats);
+
     return {
-        stats: createCombatStats(overrides.stats),
+        stats,
+        baseStats: createCombatStats(overrides.baseStats ?? stats),
         bonuses: createEquipmentBonuses(overrides.bonuses),
         attackType: module.AttackType.Slash,
         magicBaseMaximumHit: 0,
@@ -912,6 +915,7 @@ assert.equal(
 );
 assert.equal(world.SetActorMovementTarget(attackerId, defenderId), true);
 assert.equal(parseSnapshot(world, defenderId).hitpoints, 99);
+assert.equal(parseSnapshot(world, defenderId).baseHitpoints, 99);
 
 for (let step = 0; step < stepsUntilExpectedDamageLands; step += 1) {
     engine.Step();
@@ -923,6 +927,7 @@ const defenderAfterAttack = parseSnapshot(world, defenderId);
 assert.equal(Number(engine.GetCurrentTick()), stepsUntilExpectedDamageLands);
 assert.equal(attackerAfterAttack.attackTimer, 1);
 assert.equal(defenderAfterAttack.hitpoints, 99 - expectedDamage);
+assert.equal(defenderAfterAttack.baseHitpoints, 99);
 assert.equal(parseSnapshot(world, attackerId).id, Number(attackerId));
 
 assert.equal(world.RemoveActor(defenderId), true);

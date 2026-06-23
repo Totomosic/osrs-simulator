@@ -820,6 +820,7 @@ function buildPlayerCombatComposition(
     );
     return {
         ...attackComposition,
+        baseStats: attackComposition.stats,
         magicBaseMaximumHit: sanitizeWholeNumber(
             setup.magicBaseMaximumHit,
             0,
