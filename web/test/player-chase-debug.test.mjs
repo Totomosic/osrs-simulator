@@ -48,6 +48,7 @@ class FakePlayerChaseScenario {
         this.playerTarget = null;
         this.player = {
             id: 1,
+            playerIndex: 0,
             x: 8,
             y: 11,
             plane: 0,
@@ -59,6 +60,7 @@ class FakePlayerChaseScenario {
         };
         this.npc = {
             id: 2,
+            npcIndex: 0,
             x: 18,
             y: 20,
             plane: 0,
@@ -70,6 +72,7 @@ class FakePlayerChaseScenario {
         };
         this.secondNpc = {
             id: 3,
+            npcIndex: 1,
             x: 6,
             y: 7,
             plane: 0,
@@ -101,6 +104,7 @@ class FakePlayerChaseScenario {
                 : {
                       id: this.npc.id,
                       kind: "NPC",
+                      npcIndex: this.npc.npcIndex,
                       coordinate: {
                           x: this.npc.x,
                           y: this.npc.y,
@@ -123,6 +127,7 @@ class FakePlayerChaseScenario {
                 : {
                       id: this.secondNpc.id,
                       kind: "NPC",
+                      npcIndex: this.secondNpc.npcIndex,
                       coordinate: {
                           x: this.secondNpc.x,
                           y: this.secondNpc.y,
@@ -167,6 +172,7 @@ class FakePlayerChaseScenario {
             player: {
                 id: this.player.id,
                 kind: "Player",
+                playerIndex: this.player.playerIndex,
                 coordinate: {
                     x: this.player.x,
                     y: this.player.y,
@@ -269,6 +275,7 @@ class FakePlayerChaseScenario {
     assert.equal(snapshot.cameraMode, "Follow Player");
     assert.deepEqual(snapshot.player.coordinate, { x: 8, y: 11, plane: 0 });
     assert.equal(snapshot.player.size, 1);
+    assert.equal(snapshot.player.playerIndex, 0);
     assert.equal(snapshot.player.speed, 2);
     assert.equal(snapshot.player.weapon.range, 5);
     assert.equal(snapshot.player.hitpoints, 10);
@@ -276,6 +283,7 @@ class FakePlayerChaseScenario {
     assert.equal(snapshot.player.movementTarget, null);
     assert.deepEqual(snapshot.npc.coordinate, { x: 18, y: 20, plane: 0 });
     assert.equal(snapshot.npc.size, 4);
+    assert.equal(snapshot.npc.npcIndex, 0);
     assert.equal(snapshot.npc.speed, 1);
     assert.equal(snapshot.npc.weapon.range, 8);
     assert.equal(snapshot.npc.hitpoints, 6);
@@ -287,6 +295,7 @@ class FakePlayerChaseScenario {
     });
     assert.equal(snapshot.npcs.length, 2);
     assert.equal(snapshot.selectedNpc.id, 2);
+    assert.equal(snapshot.npcs[1].npcIndex, 1);
     assert.deepEqual(snapshot.projectiles, [
         {
             projectileId: 61,

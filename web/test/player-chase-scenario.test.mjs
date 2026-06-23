@@ -168,6 +168,8 @@ class FakeWorld {
         this.actors.set(id, {
             id,
             kind,
+            playerIndex: kind === "Player" ? id - 1 : undefined,
+            npcIndex: kind === "NPC" ? id - 2 : undefined,
             coordinate: null,
             size,
             speed,
@@ -270,9 +272,11 @@ const playerChaseViewSource = await readFile(
 
     assert.equal(snapshot.name, "Player Chase");
     assert.equal(snapshot.player.weapon.range, 5);
+    assert.equal(snapshot.player.playerIndex, 0);
     assert.equal(snapshot.player.hitpoints, 10);
     assert.equal(snapshot.player.baseHitpoints, 10);
     assert.equal(snapshot.npcs.length, 1);
+    assert.equal(snapshot.npcs[0].npcIndex, 0);
     assert.equal(snapshot.npcs[0].weapon.range, 8);
     assert.equal(snapshot.npcs[0].hitpoints, 10);
     assert.equal(snapshot.npcs[0].baseHitpoints, 10);
@@ -300,6 +304,7 @@ const playerChaseViewSource = await readFile(
 
     assert.equal(snapshot.npcs.length, 2);
     assert.equal(snapshot.selectedNpcId, snapshot.npcs[1].id);
+    assert.equal(snapshot.npcs[1].npcIndex, 1);
     assert.equal(snapshot.npcs[1].weapon.range, 8);
     assert.deepEqual(snapshot.selectedNpc, snapshot.npcs[1]);
     assert.deepEqual(snapshot.npc, snapshot.selectedNpc);

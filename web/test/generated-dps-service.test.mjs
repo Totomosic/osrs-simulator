@@ -145,6 +145,39 @@ function parseSnapshot(world, actorId) {
     return snapshot === null ? null : JSON.parse(snapshot);
 }
 
+{
+    const world = new module.World();
+    const playerId = world.CreatePlayer(1, 1, createCombatComposition());
+    const npcId = world.CreateNpc(1, 1, createCombatComposition());
+
+    assert.equal(
+        world.PlaceActor(playerId, world.GetDefaultSceneId(), {
+            x: 1,
+            y: 2,
+            plane: 0,
+        }),
+        true,
+    );
+    assert.equal(
+        world.PlaceActor(npcId, world.GetDefaultSceneId(), {
+            x: 3,
+            y: 4,
+            plane: 0,
+        }),
+        true,
+    );
+
+    const playerSnapshot = parseSnapshot(world, playerId);
+    const npcSnapshot = parseSnapshot(world, npcId);
+
+    assert.equal(playerSnapshot.kind, "Player");
+    assert.equal(playerSnapshot.playerIndex, 0);
+    assert.equal("npcIndex" in playerSnapshot, false);
+    assert.equal(npcSnapshot.kind, "NPC");
+    assert.equal(npcSnapshot.npcIndex, 0);
+    assert.equal("playerIndex" in npcSnapshot, false);
+}
+
 const manifestJson = await readFile(resolve(root, "../data/manifest.json"), "utf8");
 const fileBackedEquipmentJson = await readFile(
     resolve(root, "../data/equipment.json"),

@@ -18,9 +18,8 @@ export interface MovementTargetSnapshot {
     label?: string;
 }
 
-export interface ActorSnapshot {
+interface BaseActorSnapshot {
     id: number;
-    kind: "Player" | "NPC";
     coordinate: SceneCoordinate;
     size: number;
     speed: number;
@@ -31,9 +30,20 @@ export interface ActorSnapshot {
     movementTarget: MovementTargetSnapshot | null;
 }
 
-interface EngineActorSnapshot {
+export interface PlayerActorSnapshot extends BaseActorSnapshot {
+    kind: "Player";
+    playerIndex: number;
+}
+
+export interface NpcActorSnapshot extends BaseActorSnapshot {
+    kind: "NPC";
+    npcIndex: number;
+}
+
+export type ActorSnapshot = PlayerActorSnapshot | NpcActorSnapshot;
+
+interface BaseEngineActorSnapshot {
     id: number;
-    kind: "Player" | "NPC";
     coordinate: SceneCoordinate;
     size: number;
     speed: number;
@@ -54,6 +64,18 @@ interface EngineActorSnapshot {
               actorId?: number;
           };
 }
+
+interface EnginePlayerActorSnapshot extends BaseEngineActorSnapshot {
+    kind: "Player";
+    playerIndex: number;
+}
+
+interface EngineNpcActorSnapshot extends BaseEngineActorSnapshot {
+    kind: "NPC";
+    npcIndex: number;
+}
+
+type EngineActorSnapshot = EnginePlayerActorSnapshot | EngineNpcActorSnapshot;
 
 interface GameObjectSnapshot {
     id: number;

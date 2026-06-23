@@ -220,7 +220,18 @@ std::string GetActorSnapshotJson(
     std::ostringstream output;
 
     output << "{\"id\":" << actorId << ",\"kind\":\""
-           << (player != nullptr ? "Player" : "NPC") << "\",\"coordinate\":";
+           << (player != nullptr ? "Player" : "NPC") << "\"";
+
+    if (player != nullptr)
+    {
+        output << ",\"playerIndex\":" << player->playerIndex;
+    }
+    else if (npc != nullptr)
+    {
+        output << ",\"npcIndex\":" << npc->npcIndex;
+    }
+
+    output << ",\"coordinate\":";
     AppendCoordinateJson(output, membership->coordinate);
     output << ",\"size\":" << actor->size << ",\"speed\":" << actor->speed
            << ",\"weapon\":";

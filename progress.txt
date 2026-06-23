@@ -372,3 +372,12 @@
 - Decisions: keep World::FlushQueuedActorRemovals as low-level immediate state API, add World::TakeQueuedActorRemovals for Engine handoff, and make Engine drain queued IDs via strict RemoveNpc/RemovePlayer so NPC behavior assignments release normally.
 - Files changed: cpp/engine/src/World.h, cpp/engine/src/World.cpp, cpp/engine/src/Engine.h, cpp/engine/src/Engine.cpp, cpp/engine/tests/EngineTest.cpp, progress.txt.
 - Validation: initial red osrssim_engine_engine_test failed on retained dedicated behavior after queued death; cmake --build build --target osrssim_engine_engine_test && ./build/cpp/engine/osrssim_engine_engine_test; cmake --build build; ctest --test-dir build --output-on-failure; tools/build_wasm.sh; yarn --cwd web typecheck; yarn --cwd web test; yarn --cwd web build; git diff --check passed.
+
+2026-06-23 #105 Expose Player Index And NPC Index In Debug Snapshots
+- Selected issue: #105, unblocked because #99 is closed. Parent PRD #98.
+- Docs read: CONTEXT.md, docs/architecture/simulation-model.md, docs/adr/0005-world-owns-scenes-and-actors.md, docs/adr/0006-web-development-viewer.md, docs/adr/0010-engine-owned-npc-behaviors.md, docs/adr/0011-encounter-runner-orchestrates-active-encounters.md, PRD #98, feature #105, blocker #99.
+- Plan: TDD debug actor snapshot fields from World/EngineBindings JSON through TypeScript scenario/debug snapshots and web tests. Scope guard: only #105; no web-facing behavior registration/assignment API, no Encounter Runner, no Player Chase migration.
+- Completed: PRD #98 story 41 and feature #105 acceptance for Player Index/NPC Index in debug actor snapshots, TypeScript scenario/debug snapshot types, and web/WASM tests.
+- Decisions: emit playerIndex only for player snapshots and npcIndex only for NPC snapshots from existing World actor snapshot JSON; keep Player Chase behavior unchanged and add no behavior registration APIs.
+- Files changed: cpp/engine/src/EngineBindings.cpp, web/src/scenarios.ts, web/test/generated-dps-service.test.mjs, web/test/player-chase-debug.test.mjs, web/test/player-chase-scenario.test.mjs, progress.txt.
+- Validation: initial red node web/test/generated-dps-service.test.mjs failed on missing playerIndex; node web/test/player-chase-scenario.test.mjs; node web/test/player-chase-debug.test.mjs; tools/build_wasm.sh; node web/test/generated-dps-service.test.mjs; cmake --build build; ctest --test-dir build --output-on-failure; yarn --cwd web typecheck; yarn --cwd web test; yarn --cwd web build; git diff --check passed. No blockers.
