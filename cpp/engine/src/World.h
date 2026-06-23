@@ -6,6 +6,7 @@
 #include "Scene.h"
 #include "Types.h"
 
+#include <functional>
 #include <optional>
 #include <unordered_map>
 #include <vector>
@@ -90,6 +91,15 @@ public:
     const CombatComposition* GetActorCombatComposition(ActorId actorId) const;
     CombatQueue* GetActorCombatQueue(ActorId actorId);
     const CombatQueue* GetActorCombatQueue(ActorId actorId) const;
+    bool QueueActorCombatEvent(
+        ActorId actorId,
+        int ticksRemaining,
+        std::function<void()> callback);
+    bool QueueActorCombatEvent(
+        ActorId actorId,
+        int ticksRemaining,
+        std::function<void()> callback,
+        ProjectileMetadata projectile);
     std::vector<ProjectileSnapshot> GetProjectileSnapshots() const;
     ScenePosition GetActorFootprintCenter(ActorId actorId) const;
     bool SetActorCombatComposition(

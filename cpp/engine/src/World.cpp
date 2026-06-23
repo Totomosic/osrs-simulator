@@ -1,6 +1,7 @@
 #include "World.h"
 
 #include <algorithm>
+#include <utility>
 
 namespace osrssim
 {
@@ -272,6 +273,40 @@ const CombatQueue* World::GetActorCombatQueue(ActorId actorId) const
 {
     const ActorCore* actor = TryGetActorCore(actorId);
     return actor == nullptr ? nullptr : &actor->combatQueue;
+}
+
+bool World::QueueActorCombatEvent(
+    ActorId actorId,
+    int ticksRemaining,
+    std::function<void()> callback)
+{
+    CombatQueue* queue = GetActorCombatQueue(actorId);
+
+    if (queue == nullptr)
+    {
+        return false;
+    }
+
+    return queue->AddEvent(ticksRemaining, std::move(callback));
+}
+
+bool World::QueueActorCombatEvent(
+    ActorId actorId,
+    int ticksRemaining,
+    std::function<void()> callback,
+    ProjectileMetadata projectile)
+{
+    CombatQueue* queue = GetActorCombatQueue(actorId);
+
+    if (queue == nullptr)
+    {
+        return false;
+    }
+
+    return queue->AddEvent(
+        ticksRemaining,
+        std::move(callback),
+        projectile);
 }
 
 std::vector<ProjectileSnapshot> World::GetProjectileSnapshots() const

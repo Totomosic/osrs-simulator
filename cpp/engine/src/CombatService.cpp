@@ -193,13 +193,6 @@ bool CombatService::DefaultStandardAttack(
     ActorId targetId,
     const WeaponDefinition& attackWeapon) const
 {
-    CombatQueue* targetQueue = world.GetActorCombatQueue(targetId);
-
-    if (targetQueue == nullptr)
-    {
-        return false;
-    }
-
     const int applyDamageDelay = CalculateApplyDamageDelay(
         world,
         attackerId,
@@ -227,7 +220,8 @@ bool CombatService::DefaultStandardAttack(
 
     if (attackWeapon.projectileId > 0)
     {
-        return targetQueue->AddEvent(
+        return world.QueueActorCombatEvent(
+            targetId,
             applyDamageDelay,
             [&world, targetId, damage = damageRoll.sampledDamage]()
             {
@@ -236,7 +230,8 @@ bool CombatService::DefaultStandardAttack(
             projectile);
     }
 
-    return targetQueue->AddEvent(
+    return world.QueueActorCombatEvent(
+        targetId,
         applyDamageDelay,
         [&world, targetId, damage = damageRoll.sampledDamage]()
         {

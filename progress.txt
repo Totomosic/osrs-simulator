@@ -294,6 +294,15 @@
 - Files changed: cpp/engine/src/EquipmentDatabase.h, cpp/engine/src/EquipmentDatabase.cpp, cpp/engine/src/EngineBindings.cpp, cpp/engine/tests/EquipmentDatabaseTest.cpp, web/src/wasm/EngineModule.ts, progress.txt.
 - Validation: cmake --build build; ctest --test-dir build --output-on-failure; source /home/jordan/dev/emsdk/emsdk_env.sh && yarn wasm:build; node web/test/generated-dps-service.test.mjs; node web/test/dps-calculator.test.mjs; node web/test/dps-calculator-view.test.mjs; yarn --cwd web typecheck; yarn --cwd web test; yarn --cwd web build; git diff --check passed. No blockers.
 
+2026-06-23 #95 Expose Projectile Metadata For Custom Attack Callbacks
+- Selected issue: #95, ready-for-agent. Blocker #94 is closed. Parent PRD: #92.
+- Docs read: CONTEXT.md; docs/agents/domain.md; docs/architecture/simulation-model.md; docs/adr/0003-osrs-scene-model.md; docs/adr/0005-world-owns-scenes-and-actors.md; docs/adr/0006-web-development-viewer.md; docs/adr/0009-actor-owned-combat-queues.md.
+- Plan: TDD named custom attack callback queues delayed combat event with optional ProjectileMetadata via explicit World API; verify same World/EngineBindings projectile snapshot seam as standard attacks; preserve no-metadata event behavior and pure visual semantics. Scope guard: only #95, no target tracking/removal fallback (#97), smooth interpolation (#96), or hitpoint bars.
+- Completed: PRD #92 stories 14, 21, 25, 29 and feature #95 acceptance for custom callbacks queueing delayed events with optional projectile metadata, snapshots surfacing custom projectiles, and no-metadata custom events staying valid.
+- Decisions: added World::QueueActorCombatEvent overloads as the public callback-facing API over actor-owned CombatQueue; standard attack now uses same API; projectiles remain snapshot-only metadata and callbacks own damage behavior.
+- Files changed: cpp/engine/src/World.h, cpp/engine/src/World.cpp, cpp/engine/src/CombatService.cpp, cpp/engine/tests/EngineTest.cpp, progress.txt.
+- Validation: initial red osrssim_engine_engine_test build failed on missing World::QueueActorCombatEvent; cmake --build build; ctest --test-dir build --output-on-failure; tools/build_wasm.sh; yarn --cwd web typecheck; yarn --cwd web test; node web/test/generated-dps-service.test.mjs; yarn --cwd web build; git diff --check passed. No blockers.
+
 2026-06-22 #94 Render Standard-Attack Projectiles From Weapon Data
 - Selected issue: #94, unblocked ready-for-agent. Parent PRD: #92. Later projectile issues #95/#96/#97 are blocked by #94.
 - Docs read: CONTEXT.md, docs/agents/domain.md, docs/architecture/simulation-model.md, docs/adr/0002-deterministic-engine.md, docs/adr/0003-osrs-scene-model.md, docs/adr/0006-web-development-viewer.md, docs/adr/0007-engine-owned-equipment-database.md, docs/adr/0008-file-backed-engine-dataset.md, docs/adr/0009-actor-owned-combat-queues.md, PRD #92, feature #94.
