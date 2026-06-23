@@ -16,6 +16,14 @@ _Avoid_: Map ID
 The simulation container that owns loaded scenes, actors, and actor scene membership. A world is active simulation state, not the persistent world map.
 _Avoid_: Map, world map
 
+**Encounter**:
+A playable boss attempt or raid segment with encounter-specific rules, timing, phase state, and completion conditions. An encounter runs over one or more scenes but is not the physical loaded area itself.
+_Avoid_: Room, map
+
+**Active Encounter**:
+One live attempt of an encounter, including its current phase, timers, spawned actors, and completion state.
+_Avoid_: Room instance, encounter definition
+
 **Scene Coordinate**:
 A tile position inside the loaded scene, identified by plane, x, and y. Scene coordinates currently follow OSRS scene bounds, but they are distinct from persistent world coordinates.
 _Avoid_: Map coordinate
@@ -164,6 +172,10 @@ _Avoid_: Attack rate, cooldown
 A weapon-driven interaction from one actor toward another actor. An attack can occur when the attacker has line of sight to the target within weapon range.
 _Avoid_: Hit, damage roll
 
+**Encounter Effect**:
+An encounter-driven mechanic that can target tiles, areas, scene entities, or actors without necessarily using actor-to-actor combat rules.
+_Avoid_: Attack, spell
+
 **Projectile**:
 A visible combat effect launched from a fixed source position toward a target actor's live footprint center. A projectile is visual feedback for combat timing, not a separate combat outcome.
 _Avoid_: Missile, combat event
@@ -260,6 +272,10 @@ _Avoid_: Character collision
 An actor controlled as the user's character in the simulation.
 _Avoid_: Character
 
+**Player Index**:
+An OSRS-style live player ordering index used to process players in ascending order during a tick. Player indices are unique among live players, use the range 0 through 65535, and wrap to 0 after 65535.
+_Avoid_: Player ID, Actor ID
+
 **Player Attack Setup**:
 A user-facing calculator setup used to compare one player attack option against the same defender. A player attack setup produces an attack composition plus calculator-specific comparison metadata.
 _Avoid_: Attack composition, offensive stats, player stat block
@@ -280,9 +296,17 @@ _Avoid_: Combat composition name
 A stable simulator-local numeric identifier for an NPC definition. NPC ID is distinct from actor ID because an NPC definition is catalogue data, not a live actor.
 _Avoid_: Actor ID
 
+**NPC Index**:
+An OSRS-style live NPC ordering index used to process NPCs in ascending order during a tick. NPC indices are unique among live NPCs, use the range 0 through 65535, and wrap to 0 after 65535.
+_Avoid_: NPC ID, Actor ID
+
 **NPC Definition**:
 A reusable definition of an NPC's non-combat actor traits and associated combat composition identity.
 _Avoid_: NPC instance, NPC combat setup
+
+**NPC Behavior**:
+The simulation-controlled decision logic for an NPC's movement, attacks, and special actions during an active encounter.
+_Avoid_: NPC AI, script
 
 **NPC Defence Setup**:
 A user-facing calculator setup used as the shared NPC defender for one or more player attack setups. An NPC defence setup produces a defence composition plus calculator-specific defender metadata.
