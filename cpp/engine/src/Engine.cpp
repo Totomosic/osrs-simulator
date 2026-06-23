@@ -302,7 +302,22 @@ void Engine::ProcessActorCombatQueue(ActorId actorId)
     if (combatQueue != nullptr)
     {
         combatQueue->Process(m_World.GetCurrentTick());
-        m_World.FlushQueuedActorRemovals();
+        DrainQueuedActorRemovals();
+    }
+}
+
+void Engine::DrainQueuedActorRemovals()
+{
+    for (ActorId actorId : m_World.TakeQueuedActorRemovals())
+    {
+        if (m_World.GetNpc(actorId) != nullptr)
+        {
+            RemoveNpc(actorId);
+        }
+        else if (m_World.GetPlayer(actorId) != nullptr)
+        {
+            RemovePlayer(actorId);
+        }
     }
 }
 

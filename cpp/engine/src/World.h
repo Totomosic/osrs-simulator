@@ -127,6 +127,7 @@ public:
     bool RemoveActorSceneMembership(ActorId actorId);
     bool RemoveActor(ActorId actorId);
     bool QueueActorRemoval(ActorId actorId);
+    std::vector<ActorId> TakeQueuedActorRemovals();
     void FlushQueuedActorRemovals();
     bool MoveActorByDelta(ActorId actorId, int dx, int dy);
     bool CanActorUseSceneCoordinateMovementTarget(

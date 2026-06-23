@@ -938,6 +938,111 @@ int main()
     {
         osrssim::Engine engine;
         osrssim::World& world = engine.GetWorld();
+        const osrssim::WeaponDefinition weapon{42, 8, 5};
+        const osrssim::CombatComposition attackerComposition =
+            StandardMeleeComposition(weapon, 99);
+        osrssim::CombatComposition defenderComposition =
+            StandardMeleeComposition({0, 1, 4}, 99);
+        osrssim::DpsService expectedDpsService;
+        int destroyedCount = 0;
+
+        engine.GetCombatService().SetDpsSeed(12345);
+        expectedDpsService.SetSeed(12345);
+        const osrssim::DpsSampleResult expectedSample =
+            expectedDpsService.SampleSingleAttack(StandardMeleeRequest(
+                attackerComposition,
+                defenderComposition,
+                osrssim::DefenderKind::Npc));
+
+        assert(expectedSample.sampledDamage > 0);
+        defenderComposition.stats.hitpoints = expectedSample.sampledDamage;
+
+        const osrssim::ActorId attackerId =
+            world.CreatePlayer(1, 1, attackerComposition).value();
+        const osrssim::ActorId targetId =
+            engine.CreateNpc(
+                1,
+                1,
+                defenderComposition,
+                std::make_unique<CountingBehavior>(destroyedCount))
+                .value();
+        const osrssim::NpcBehaviorId behaviorId =
+            world.GetNpc(targetId)->behaviorId;
+
+        assert(world.PlaceActor(
+            attackerId,
+            world.GetDefaultSceneId(),
+            {10, 10, 0}));
+        assert(world.PlaceActor(
+            targetId,
+            world.GetDefaultSceneId(),
+            {11, 10, 0}));
+
+        assert(engine.GetCombatService().DispatchAttack(
+            world,
+            attackerId,
+            targetId,
+            1));
+
+        engine.Step();
+        engine.Step();
+
+        assert(world.GetNpc(targetId) == nullptr);
+        assert(engine.GetNpcBehavior(behaviorId) == nullptr);
+        assert(destroyedCount == 1);
+    }
+
+    {
+        osrssim::Engine engine;
+        osrssim::World& world = engine.GetWorld();
+        const osrssim::WeaponDefinition weapon{42, 8, 5};
+        const osrssim::CombatComposition attackerComposition =
+            StandardMeleeComposition(weapon, 99);
+        osrssim::CombatComposition defenderComposition =
+            StandardMeleeComposition({0, 1, 4}, 99);
+        osrssim::DpsService expectedDpsService;
+
+        engine.GetCombatService().SetDpsSeed(12345);
+        expectedDpsService.SetSeed(12345);
+        const osrssim::DpsSampleResult expectedSample =
+            expectedDpsService.SampleSingleAttack(StandardMeleeRequest(
+                attackerComposition,
+                defenderComposition,
+                osrssim::DefenderKind::Player));
+
+        assert(expectedSample.sampledDamage > 0);
+        defenderComposition.stats.hitpoints = expectedSample.sampledDamage;
+
+        const osrssim::ActorId attackerId =
+            world.CreateNpc(1, 1, attackerComposition).value();
+        const osrssim::ActorId targetId =
+            world.CreatePlayer(1, 1, defenderComposition).value();
+
+        assert(world.PlaceActor(
+            attackerId,
+            world.GetDefaultSceneId(),
+            {10, 10, 0}));
+        assert(world.PlaceActor(
+            targetId,
+            world.GetDefaultSceneId(),
+            {11, 10, 0}));
+
+        assert(engine.GetCombatService().DispatchAttack(
+            world,
+            attackerId,
+            targetId,
+            1));
+
+        engine.Step();
+        engine.Step();
+
+        assert(world.GetPlayer(targetId) == nullptr);
+        assert(world.GetActorCore(targetId) == nullptr);
+    }
+
+    {
+        osrssim::Engine engine;
+        osrssim::World& world = engine.GetWorld();
         osrssim::CombatComposition zeroHitpointsAttacker =
             StandardMeleeComposition({42, 8, 5}, 0);
         osrssim::CombatComposition zeroHitpointsTarget =

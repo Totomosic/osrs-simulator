@@ -616,12 +616,16 @@ bool World::QueueActorRemoval(ActorId actorId)
     return true;
 }
 
-void World::FlushQueuedActorRemovals()
+std::vector<ActorId> World::TakeQueuedActorRemovals()
 {
     std::vector<ActorId> queuedActorRemovals;
     queuedActorRemovals.swap(m_QueuedActorRemovals);
+    return queuedActorRemovals;
+}
 
-    for (ActorId actorId : queuedActorRemovals)
+void World::FlushQueuedActorRemovals()
+{
+    for (ActorId actorId : TakeQueuedActorRemovals())
     {
         RemoveActor(actorId);
     }

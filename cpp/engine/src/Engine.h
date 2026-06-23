@@ -84,6 +84,7 @@ private:
     void ProcessQueuedPlayerMovementActions();
     void DecrementAttackTimers();
     void ProcessActorCombatQueue(ActorId actorId);
+    void DrainQueuedActorRemovals();
     void ValidateNpcBehaviorForAssignment(NpcBehaviorId behaviorId) const;
     NpcBehaviorId AddNpcBehavior(
         std::unique_ptr<behavior::NpcBehavior> behavior,
