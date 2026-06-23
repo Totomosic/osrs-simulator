@@ -6,6 +6,8 @@ import {
     createDefaultCamera,
     defaultFieldOfView,
     getCameraCenter,
+    getInterpolatedProjectileProgress,
+    getProjectileColor,
     getSceneScreenCoordinate,
     maxFieldOfView,
     minFieldOfView,
@@ -32,6 +34,7 @@ import {
 } from "./scenarios";
 import {
     createPlayerChasePlayback,
+    playbackTickIntervalMs,
     type PlayerChasePlaybackControls,
 } from "./playerChasePlayback";
 
@@ -55,7 +58,10 @@ const gameObjectDirection = ref<"North" | "East" | "South" | "West">("North");
 const gameObjectBlocksMovement = ref(true);
 const gameObjectBlocksLineOfSight = ref(true);
 const lineOfSightSourceActorId = ref<number | null>(null);
+const projectileTickFraction = ref(0);
 let playback: PlayerChasePlaybackControls | null = null;
+let projectileFrameRequestId: number | null = null;
+let projectileFrameStartedAtMs = 0;
 
 const cameraCenter = computed(() => {
     if (snapshot.value === null || camera.value === null) {
@@ -209,6 +215,7 @@ onMounted(async () => {
 
 onUnmounted(() => {
     window.removeEventListener("keydown", handleCameraKeyDown);
+    stopProjectileFrameAnimation();
     playback?.stop();
 });
 
@@ -231,11 +238,13 @@ function refreshSnapshot(): void {
             camera.value.fieldOfView,
         );
         ensureLineOfSightSource(snapshot.value);
+        syncProjectileFrameAnimation(snapshot.value);
         return;
     }
 
     snapshot.value = nextSnapshot;
     ensureLineOfSightSource(snapshot.value);
+    syncProjectileFrameAnimation(snapshot.value);
 }
 
 function toggleRunning(): void {
@@ -434,11 +443,15 @@ function getProjectileY(projectile: ProjectileSnapshot): number {
 }
 
 function getProjectileProgress(projectile: ProjectileSnapshot): number {
-    if (projectile.totalTicks <= 0) {
-        return 1;
-    }
+    return getInterpolatedProjectileProgress(
+        projectile,
+        snapshot.value?.running ?? false,
+        projectileTickFraction.value,
+    );
+}
 
-    return Math.min(1, Math.max(0, projectile.elapsedTicks / projectile.totalTicks));
+function getProjectileFill(projectile: ProjectileSnapshot): string {
+    return getProjectileColor(projectile.projectileId);
 }
 
 function getActorHealthBarX(actor: ActorSnapshot): number {
@@ -477,6 +490,44 @@ function getHealthRatio(actor: ActorSnapshot): number {
 
 function interpolate(start: number, end: number, progress: number): number {
     return start + (end - start) * progress;
+}
+
+function syncProjectileFrameAnimation(nextSnapshot: PlayerChaseDebugSnapshot): void {
+    if (nextSnapshot.running) {
+        startProjectileFrameAnimation();
+        return;
+    }
+
+    stopProjectileFrameAnimation();
+}
+
+function startProjectileFrameAnimation(): void {
+    stopProjectileFrameAnimation();
+    projectileFrameStartedAtMs = window.performance.now();
+    projectileTickFraction.value = 0;
+    projectileFrameRequestId = window.requestAnimationFrame(updateProjectileFrame);
+}
+
+function stopProjectileFrameAnimation(): void {
+    if (projectileFrameRequestId !== null) {
+        window.cancelAnimationFrame(projectileFrameRequestId);
+        projectileFrameRequestId = null;
+    }
+
+    projectileTickFraction.value = 0;
+}
+
+function updateProjectileFrame(nowMs: number): void {
+    if (snapshot.value === null || !snapshot.value.running) {
+        stopProjectileFrameAnimation();
+        return;
+    }
+
+    projectileTickFraction.value = Math.min(
+        1,
+        Math.max(0, (nowMs - projectileFrameStartedAtMs) / playbackTickIntervalMs),
+    );
+    projectileFrameRequestId = window.requestAnimationFrame(updateProjectileFrame);
 }
 
 function getColumnCount(tiles: DebugTile[]): number {
@@ -747,6 +798,7 @@ function ensureLineOfSightSource(nextSnapshot: PlayerChaseDebugSnapshot): void {
             :cx="getProjectileX(projectile)"
             :cy="getProjectileY(projectile)"
             :r="tileSize * 0.18"
+            :fill="getProjectileFill(projectile)"
             class="projectile"
           />
         </svg>
@@ -1137,7 +1189,6 @@ button:hover {
 }
 
 .projectile {
-    fill: #c8422d;
     pointer-events: none;
     stroke: #ffffff;
     stroke-width: 2;

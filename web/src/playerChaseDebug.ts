@@ -279,6 +279,29 @@ export function getSceneScreenCoordinate(
     };
 }
 
+export function getProjectileColor(projectileId: number): string {
+    const normalizedId = Math.max(0, Math.trunc(projectileId));
+    const hue = (normalizedId * 137) % 360;
+
+    return `hsl(${hue} 72% 42%)`;
+}
+
+export function getInterpolatedProjectileProgress(
+    projectile: ProjectileSnapshot,
+    running: boolean,
+    tickFraction: number,
+): number {
+    if (projectile.totalTicks <= 0) {
+        return 1;
+    }
+
+    const elapsedTicks = running
+        ? projectile.elapsedTicks + clampUnitInterval(tickFraction)
+        : projectile.elapsedTicks;
+
+    return clampUnitInterval(elapsedTicks / projectile.totalTicks);
+}
+
 export function clickDebugTile(
     scenario: PlayerChaseScenario,
     tile: DebugTile,
@@ -288,6 +311,14 @@ export function clickDebugTile(
         tile.coordinate.y,
         tile.coordinate.plane,
     );
+}
+
+function clampUnitInterval(value: number): number {
+    if (!Number.isFinite(value)) {
+        return 0;
+    }
+
+    return Math.min(1, Math.max(0, value));
 }
 
 function getTileKind(

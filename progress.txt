@@ -1,3 +1,12 @@
+2026-06-23 #96 Smooth Projectile Motion In Viewer Playback
+- Selected issue: #96, unblocked because #94 is closed. Parent PRD: #92.
+- Docs read: CONTEXT.md, docs/agents/domain.md, docs/architecture/simulation-model.md, docs/adr/0006-web-development-viewer.md, docs/adr/0009-actor-owned-combat-queues.md, PRD #92, feature #96, blocker #94.
+- Plan: TDD web helper seam for deterministic Projectile ID colors and running playback interpolation fraction; wire PlayerChaseView to drive a per-frame tick fraction only while running. Scope guard: only smooth viewer playback/color. Do not start target tracking/removal/multiple projectile engine work (#97).
+- Completed: PRD #92 stories 3-4, 11, 21-22 and feature #96 acceptance for deterministic Projectile ID circle colors, running playback interpolation between tick snapshots, paused exact tick progress, and tick-owned projectile lifetime.
+- Decisions: keep interpolation as viewer-only frame fraction layered over engine tick snapshots; reset fraction to zero when paused or after each refreshed tick snapshot; derive colors with stable hue hash from Projectile ID.
+- Files changed: web/src/playerChaseDebug.ts, web/src/PlayerChaseView.vue, web/test/player-chase-debug.test.mjs, web/test/player-chase-scenario.test.mjs, progress.txt.
+- Validation: initial red node web/test/player-chase-debug.test.mjs failed on missing helper; node web/test/player-chase-debug.test.mjs; node web/test/player-chase-scenario.test.mjs; yarn --cwd web typecheck; yarn --cwd web test; yarn --cwd web build; git diff --check passed. No blockers.
+
 2026-06-22 #91 Keep CombatQueues engine-internal
 - Selected issue: #91, unblocked because #87/#89/#90 are closed. Parent PRD: #86.
 - Docs read: CONTEXT.md, docs/agents/domain.md, docs/architecture/simulation-model.md, docs/architecture/repo-structure.md, docs/adr/0006-web-development-viewer.md, docs/adr/0009-actor-owned-combat-queues.md, PRD #86, feature #91.

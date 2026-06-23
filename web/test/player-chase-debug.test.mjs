@@ -27,6 +27,8 @@ const {
     createDefaultCamera,
     defaultFieldOfView,
     getCameraCenter,
+    getInterpolatedProjectileProgress,
+    getProjectileColor,
     getSceneScreenCoordinate,
     maxFieldOfView,
     minFieldOfView,
@@ -214,6 +216,43 @@ class FakePlayerChaseScenario {
         this.actionFeedback = { state: "removal-failure" };
         return false;
     }
+}
+
+{
+    assert.equal(getProjectileColor(61), getProjectileColor(61));
+    assert.notEqual(getProjectileColor(61), getProjectileColor(62));
+    assert.match(getProjectileColor(61), /^hsl\(\d+ 72% 42%\)$/);
+}
+
+{
+    const projectile = {
+        projectileId: 61,
+        source: { x: 8.5, y: 11.5, plane: 0 },
+        targetActorId: 2,
+        lastKnownTargetCenter: { x: 20, y: 22, plane: 0 },
+        elapsedTicks: 1,
+        totalTicks: 4,
+    };
+
+    assert.equal(getInterpolatedProjectileProgress(projectile, false, 0.75), 0.25);
+    assert.equal(getInterpolatedProjectileProgress(projectile, true, 0.5), 0.375);
+    assert.equal(getInterpolatedProjectileProgress(projectile, true, 10), 0.5);
+    assert.equal(
+        getInterpolatedProjectileProgress(
+            { ...projectile, elapsedTicks: 4 },
+            true,
+            0.5,
+        ),
+        1,
+    );
+    assert.equal(
+        getInterpolatedProjectileProgress(
+            { ...projectile, totalTicks: 0 },
+            true,
+            0.5,
+        ),
+        1,
+    );
 }
 
 {

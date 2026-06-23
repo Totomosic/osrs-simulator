@@ -364,6 +364,8 @@ const playerChaseViewSource = await readFile(
     assert.match(playerChaseViewSource, /v-for="\(projectile, index\) in snapshot\.projectiles"/);
     assert.match(playerChaseViewSource, /:cx="getProjectileX\(projectile\)"/);
     assert.match(playerChaseViewSource, /:cy="getProjectileY\(projectile\)"/);
+    assert.match(playerChaseViewSource, /:fill="getProjectileFill\(projectile\)"/);
+    assert.match(playerChaseViewSource, /getInterpolatedProjectileProgress\(/);
     assert.match(playerChaseViewSource, /class="projectile"/);
 }
 
