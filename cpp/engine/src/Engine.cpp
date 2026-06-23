@@ -1,6 +1,6 @@
 #include "Engine.h"
 
-#include <algorithm>
+#include <optional>
 
 namespace osrssim
 {
@@ -176,18 +176,27 @@ bool Engine::IsOverlappingActorMovementTarget(ActorId actorId) const
 
 void Engine::UpdateNpcs()
 {
-    std::vector<ActorId> npcIds;
-    npcIds.reserve(m_World.GetNpcs().size());
+    int npcIndex = -1;
 
-    for (const auto& [actorId, npc] : m_World.GetNpcs())
+    while (true)
     {
-        npcIds.push_back(actorId);
-    }
+        const std::optional<ActorId> nextActorId =
+            m_World.GetNextNpcActorIdAfterIndex(npcIndex);
 
-    std::sort(npcIds.begin(), npcIds.end());
+        if (!nextActorId.has_value())
+        {
+            break;
+        }
 
-    for (ActorId actorId : npcIds)
-    {
+        const ActorId actorId = nextActorId.value();
+        const Npc* npc = m_World.GetNpc(actorId);
+
+        if (npc == nullptr)
+        {
+            continue;
+        }
+
+        npcIndex = static_cast<int>(npc->npcIndex);
         ProcessActorCombatQueue(actorId);
 
         if (m_World.GetActorCore(actorId) == nullptr)
@@ -212,18 +221,27 @@ void Engine::UpdateNpcs()
 
 void Engine::UpdatePlayers()
 {
-    std::vector<ActorId> playerIds;
-    playerIds.reserve(m_World.GetPlayers().size());
+    int playerIndex = -1;
 
-    for (const auto& [actorId, player] : m_World.GetPlayers())
+    while (true)
     {
-        playerIds.push_back(actorId);
-    }
+        const std::optional<ActorId> nextActorId =
+            m_World.GetNextPlayerActorIdAfterIndex(playerIndex);
 
-    std::sort(playerIds.begin(), playerIds.end());
+        if (!nextActorId.has_value())
+        {
+            break;
+        }
 
-    for (ActorId actorId : playerIds)
-    {
+        const ActorId actorId = nextActorId.value();
+        const Player* player = m_World.GetPlayer(actorId);
+
+        if (player == nullptr)
+        {
+            continue;
+        }
+
+        playerIndex = static_cast<int>(player->playerIndex);
         ProcessActorCombatQueue(actorId);
 
         if (m_World.GetActorCore(actorId) == nullptr)

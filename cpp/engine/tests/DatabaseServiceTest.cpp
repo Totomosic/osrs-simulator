@@ -535,8 +535,8 @@ int main()
         serviceWithCustomCallback.ConfigureCombatService(combatService);
 
         osrssim::World world;
-        const osrssim::ActorId attackerId = world.CreatePlayer(1, 1, osrssim::CombatComposition{});
-        const osrssim::ActorId targetId = world.CreateNpc(1, 1, osrssim::CombatComposition{});
+        const osrssim::ActorId attackerId = world.CreatePlayer(1, 1, osrssim::CombatComposition{}).value();
+        const osrssim::ActorId targetId = world.CreateNpc(1, 1, osrssim::CombatComposition{}).value();
         assert(world.SetActorCombatComposition(attackerId, CombatCompositionWithWeapon({900, 8, 5})));
 
         assert(combatService.DispatchAttack(world, attackerId, targetId, 1));

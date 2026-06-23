@@ -9,6 +9,7 @@
 #include <functional>
 #include <optional>
 #include <unordered_map>
+#include <unordered_set>
 #include <vector>
 
 namespace osrssim
@@ -40,12 +41,14 @@ struct MovementTarget
 struct Player
 {
     ActorCore actor;
+    PlayerIndex playerIndex = 0;
     std::optional<MovementTarget> movementTarget;
 };
 
 struct Npc
 {
     ActorCore actor;
+    NpcIndex npcIndex = 0;
     std::optional<MovementTarget> movementTarget;
 };
 
@@ -60,9 +63,13 @@ class World
 private:
     SceneId m_DefaultSceneId = 1;
     ActorId m_NextActorId = 1;
+    int m_NextPlayerIndex = 0;
+    int m_NextNpcIndex = 0;
     Scene m_Scene;
     std::unordered_map<ActorId, Player> m_Players;
     std::unordered_map<ActorId, Npc> m_Npcs;
+    std::unordered_set<PlayerIndex> m_LivePlayerIndices;
+    std::unordered_set<NpcIndex> m_LiveNpcIndices;
     std::unordered_map<ActorId, SceneMembership> m_SceneMemberships;
     std::vector<ActorId> m_QueuedActorRemovals;
     std::optional<Tick> m_CurrentTick;
@@ -73,11 +80,11 @@ public:
     SceneId GetDefaultSceneId() const;
     Scene* TryGetScene(SceneId sceneId);
     const Scene* TryGetScene(SceneId sceneId) const;
-    ActorId CreatePlayer(
+    std::optional<ActorId> CreatePlayer(
         int size,
         int speed,
         CombatComposition combatComposition);
-    ActorId CreateNpc(
+    std::optional<ActorId> CreateNpc(
         int size,
         int speed,
         CombatComposition combatComposition);
@@ -86,6 +93,9 @@ public:
     const std::unordered_map<ActorId, SceneMembership>& GetSceneMemberships() const;
     const Player* GetPlayer(ActorId actorId) const;
     const Npc* GetNpc(ActorId actorId) const;
+    std::optional<ActorId> GetNextPlayerActorIdAfterIndex(
+        int playerIndex) const;
+    std::optional<ActorId> GetNextNpcActorIdAfterIndex(int npcIndex) const;
     const ActorCore* GetActorCore(ActorId actorId) const;
     const SceneMembership* GetSceneMembership(ActorId actorId) const;
     bool AreActorFootprintsOverlapping(
@@ -154,6 +164,8 @@ private:
 
     Player* TryGetPlayer(ActorId actorId);
     const Player* TryGetPlayer(ActorId actorId) const;
+    std::optional<PlayerIndex> AllocatePlayerIndex();
+    std::optional<NpcIndex> AllocateNpcIndex();
     ActorCore* TryGetActorCore(ActorId actorId);
     const ActorCore* TryGetActorCore(ActorId actorId) const;
     std::optional<MovementTarget>* TryGetMovementTarget(ActorId actorId);

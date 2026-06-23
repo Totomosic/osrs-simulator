@@ -7,6 +7,8 @@ namespace osrssim
 {
 namespace
 {
+constexpr int MaxLiveActorIndex = 65535;
+
 int Abs(int value)
 {
     return value < 0 ? -value : value;
@@ -180,30 +182,46 @@ const Scene* World::TryGetScene(SceneId sceneId) const
     return &m_Scene;
 }
 
-ActorId World::CreatePlayer(
+std::optional<ActorId> World::CreatePlayer(
     int size,
     int speed,
     CombatComposition combatComposition)
 {
+    std::optional<PlayerIndex> playerIndex = AllocatePlayerIndex();
+
+    if (!playerIndex.has_value())
+    {
+        return std::nullopt;
+    }
+
     const ActorId actorId = m_NextActorId++;
     m_Players.emplace(
         actorId,
         Player{
             {actorId, ClampSize(size), ClampSpeed(speed), combatComposition},
+            playerIndex.value(),
             std::nullopt});
     return actorId;
 }
 
-ActorId World::CreateNpc(
+std::optional<ActorId> World::CreateNpc(
     int size,
     int speed,
     CombatComposition combatComposition)
 {
+    std::optional<NpcIndex> npcIndex = AllocateNpcIndex();
+
+    if (!npcIndex.has_value())
+    {
+        return std::nullopt;
+    }
+
     const ActorId actorId = m_NextActorId++;
     m_Npcs.emplace(
         actorId,
         Npc{
             {actorId, ClampSize(size), ClampSpeed(speed), combatComposition},
+            npcIndex.value(),
             std::nullopt});
     return actorId;
 }
@@ -234,6 +252,45 @@ const Npc* World::GetNpc(ActorId actorId) const
 {
     const auto found = m_Npcs.find(actorId);
     return found == m_Npcs.end() ? nullptr : &found->second;
+}
+
+std::optional<ActorId> World::GetNextPlayerActorIdAfterIndex(
+    int playerIndex) const
+{
+    std::optional<ActorId> nextActorId;
+    int nextPlayerIndex = MaxLiveActorIndex + 1;
+
+    for (const auto& [actorId, player] : m_Players)
+    {
+        const int candidateIndex = static_cast<int>(player.playerIndex);
+
+        if (candidateIndex > playerIndex && candidateIndex < nextPlayerIndex)
+        {
+            nextActorId = actorId;
+            nextPlayerIndex = candidateIndex;
+        }
+    }
+
+    return nextActorId;
+}
+
+std::optional<ActorId> World::GetNextNpcActorIdAfterIndex(int npcIndex) const
+{
+    std::optional<ActorId> nextActorId;
+    int nextNpcIndex = MaxLiveActorIndex + 1;
+
+    for (const auto& [actorId, npc] : m_Npcs)
+    {
+        const int candidateIndex = static_cast<int>(npc.npcIndex);
+
+        if (candidateIndex > npcIndex && candidateIndex < nextNpcIndex)
+        {
+            nextActorId = actorId;
+            nextNpcIndex = candidateIndex;
+        }
+    }
+
+    return nextActorId;
 }
 
 const ActorCore* World::GetActorCore(ActorId actorId) const
@@ -504,8 +561,22 @@ bool World::RemoveActor(ActorId actorId)
     }
 
     RemoveActorSceneMembership(actorId);
-    m_Players.erase(actorId);
-    m_Npcs.erase(actorId);
+
+    const auto player = m_Players.find(actorId);
+
+    if (player != m_Players.end())
+    {
+        m_LivePlayerIndices.erase(player->second.playerIndex);
+        m_Players.erase(player);
+    }
+
+    const auto npc = m_Npcs.find(actorId);
+
+    if (npc != m_Npcs.end())
+    {
+        m_LiveNpcIndices.erase(npc->second.npcIndex);
+        m_Npcs.erase(npc);
+    }
 
     return true;
 }
@@ -963,6 +1034,63 @@ const Player* World::TryGetPlayer(ActorId actorId) const
 {
     const auto player = m_Players.find(actorId);
     return player == m_Players.end() ? nullptr : &player->second;
+}
+
+std::optional<PlayerIndex> World::AllocatePlayerIndex()
+{
+    if (m_LivePlayerIndices.size() > MaxLiveActorIndex)
+    {
+        return std::nullopt;
+    }
+
+    for (int attempt = 0; attempt <= MaxLiveActorIndex; ++attempt)
+    {
+        const PlayerIndex playerIndex =
+            static_cast<PlayerIndex>(m_NextPlayerIndex);
+
+        ++m_NextPlayerIndex;
+
+        if (m_NextPlayerIndex > MaxLiveActorIndex)
+        {
+            m_NextPlayerIndex = 0;
+        }
+
+        if (!m_LivePlayerIndices.contains(playerIndex))
+        {
+            m_LivePlayerIndices.insert(playerIndex);
+            return playerIndex;
+        }
+    }
+
+    return std::nullopt;
+}
+
+std::optional<NpcIndex> World::AllocateNpcIndex()
+{
+    if (m_LiveNpcIndices.size() > MaxLiveActorIndex)
+    {
+        return std::nullopt;
+    }
+
+    for (int attempt = 0; attempt <= MaxLiveActorIndex; ++attempt)
+    {
+        const NpcIndex npcIndex = static_cast<NpcIndex>(m_NextNpcIndex);
+
+        ++m_NextNpcIndex;
+
+        if (m_NextNpcIndex > MaxLiveActorIndex)
+        {
+            m_NextNpcIndex = 0;
+        }
+
+        if (!m_LiveNpcIndices.contains(npcIndex))
+        {
+            m_LiveNpcIndices.insert(npcIndex);
+            return npcIndex;
+        }
+    }
+
+    return std::nullopt;
 }
 
 ActorCore* World::TryGetActorCore(ActorId actorId)

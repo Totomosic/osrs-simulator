@@ -2,6 +2,7 @@
 #include "World.h"
 
 #include <cassert>
+#include <unordered_set>
 #include <vector>
 
 namespace
@@ -19,6 +20,90 @@ int main()
 {
     {
         osrssim::World world;
+        const osrssim::ActorId firstPlayerId =
+            world.CreatePlayer(1, 1, osrssim::CombatComposition{}).value();
+        const osrssim::ActorId secondPlayerId =
+            world.CreatePlayer(1, 1, osrssim::CombatComposition{}).value();
+        const osrssim::ActorId firstNpcId =
+            world.CreateNpc(1, 1, osrssim::CombatComposition{}).value();
+        const osrssim::ActorId secondNpcId =
+            world.CreateNpc(1, 1, osrssim::CombatComposition{}).value();
+
+        assert(firstPlayerId != secondPlayerId);
+        assert(firstNpcId != secondNpcId);
+        assert(world.GetPlayer(firstPlayerId)->playerIndex == 0);
+        assert(world.GetPlayer(secondPlayerId)->playerIndex == 1);
+        assert(world.GetNpc(firstNpcId)->npcIndex == 0);
+        assert(world.GetNpc(secondNpcId)->npcIndex == 1);
+        assert(world.GetPlayer(firstPlayerId)->actor.id == firstPlayerId);
+        assert(world.GetNpc(firstNpcId)->actor.id == firstNpcId);
+    }
+
+    {
+        osrssim::World world;
+        std::vector<osrssim::ActorId> playerIds;
+        std::vector<osrssim::ActorId> npcIds;
+        playerIds.reserve(65536);
+        npcIds.reserve(65536);
+
+        for (int index = 0; index <= 65535; ++index)
+        {
+            playerIds.push_back(
+                world.CreatePlayer(1, 1, osrssim::CombatComposition{}).value());
+            npcIds.push_back(
+                world.CreateNpc(1, 1, osrssim::CombatComposition{}).value());
+        }
+
+        assert(!world.CreatePlayer(1, 1, osrssim::CombatComposition{}).has_value());
+        assert(!world.CreateNpc(1, 1, osrssim::CombatComposition{}).has_value());
+
+        std::unordered_set<osrssim::PlayerIndex> playerIndices;
+        std::unordered_set<osrssim::NpcIndex> npcIndices;
+
+        for (osrssim::ActorId actorId : playerIds)
+        {
+            playerIndices.insert(world.GetPlayer(actorId)->playerIndex);
+        }
+
+        for (osrssim::ActorId actorId : npcIds)
+        {
+            npcIndices.insert(world.GetNpc(actorId)->npcIndex);
+        }
+
+        assert(playerIndices.size() == 65536);
+        assert(npcIndices.size() == 65536);
+        assert(world.RemoveActor(playerIds[100]));
+        assert(world.RemoveActor(npcIds[100]));
+
+        const osrssim::ActorId wrappedPlayerId =
+            world.CreatePlayer(1, 1, osrssim::CombatComposition{}).value();
+        const osrssim::ActorId wrappedNpcId =
+            world.CreateNpc(1, 1, osrssim::CombatComposition{}).value();
+
+        assert(world.GetPlayer(wrappedPlayerId)->playerIndex == 100);
+        assert(world.GetNpc(wrappedNpcId)->npcIndex == 100);
+        assert(wrappedPlayerId > playerIds.back());
+        assert(wrappedNpcId > npcIds.back());
+    }
+
+    {
+        osrssim::World world;
+        const osrssim::ActorId firstPlayerId =
+            world.CreatePlayer(1, 1, osrssim::CombatComposition{}).value();
+        const osrssim::ActorId secondPlayerId =
+            world.CreatePlayer(1, 1, osrssim::CombatComposition{}).value();
+
+        assert(world.RemoveActor(firstPlayerId));
+
+        const osrssim::ActorId thirdPlayerId =
+            world.CreatePlayer(1, 1, osrssim::CombatComposition{}).value();
+
+        assert(world.GetPlayer(secondPlayerId)->playerIndex == 1);
+        assert(world.GetPlayer(thirdPlayerId)->playerIndex == 2);
+    }
+
+    {
+        osrssim::World world;
         osrssim::CombatComposition playerComposition =
             CombatCompositionWithWeapon({12, 4, 6});
         playerComposition.stats.attack = 70;
@@ -28,8 +113,8 @@ int main()
             CombatCompositionWithWeapon({13, 5, 7});
 
         osrssim::ActorId playerId =
-            world.CreatePlayer(0, -1, playerComposition);
-        osrssim::ActorId npcId = world.CreateNpc(2, 3, npcComposition);
+            world.CreatePlayer(0, -1, playerComposition).value();
+        osrssim::ActorId npcId = world.CreateNpc(2, 3, npcComposition).value();
 
         assert(playerId != npcId);
         assert(world.GetPlayer(playerId) != nullptr);
@@ -63,8 +148,8 @@ int main()
 
     {
         osrssim::World world;
-        osrssim::ActorId playerId = world.CreatePlayer(1, 1, osrssim::CombatComposition{});
-        osrssim::ActorId npcId = world.CreateNpc(1, 1, osrssim::CombatComposition{});
+        osrssim::ActorId playerId = world.CreatePlayer(1, 1, osrssim::CombatComposition{}).value();
+        osrssim::ActorId npcId = world.CreateNpc(1, 1, osrssim::CombatComposition{}).value();
 
         const osrssim::CombatComposition* playerComposition =
             world.GetActorCombatComposition(playerId);
@@ -105,8 +190,8 @@ int main()
 
     {
         osrssim::World world;
-        osrssim::ActorId playerId = world.CreatePlayer(1, 2, osrssim::CombatComposition{});
-        osrssim::ActorId npcId = world.CreateNpc(2, 1, osrssim::CombatComposition{});
+        osrssim::ActorId playerId = world.CreatePlayer(1, 2, osrssim::CombatComposition{}).value();
+        osrssim::ActorId npcId = world.CreateNpc(2, 1, osrssim::CombatComposition{}).value();
 
         assert(world.PlaceActor(
             playerId,
@@ -146,7 +231,7 @@ int main()
 
         assert(scene != nullptr);
 
-        osrssim::ActorId actorId = world.CreatePlayer(2, 1, osrssim::CombatComposition{});
+        osrssim::ActorId actorId = world.CreatePlayer(2, 1, osrssim::CombatComposition{}).value();
 
         assert(!world.PlaceActor(
             actorId,
@@ -190,7 +275,7 @@ int main()
     {
         osrssim::World world;
         osrssim::Scene* scene = world.TryGetScene(world.GetDefaultSceneId());
-        osrssim::ActorId actorId = world.CreatePlayer(1, 1, osrssim::CombatComposition{});
+        osrssim::ActorId actorId = world.CreatePlayer(1, 1, osrssim::CombatComposition{}).value();
 
         assert(scene != nullptr);
         assert(world.PlaceActor(actorId, world.GetDefaultSceneId(), {10, 10, 0}));
@@ -208,7 +293,7 @@ int main()
     {
         osrssim::World world;
         osrssim::Scene* scene = world.TryGetScene(world.GetDefaultSceneId());
-        osrssim::ActorId actorId = world.CreatePlayer(2, 1, osrssim::CombatComposition{});
+        osrssim::ActorId actorId = world.CreatePlayer(2, 1, osrssim::CombatComposition{}).value();
 
         assert(scene != nullptr);
         assert(!world.RemoveActorSceneMembership(actorId));
@@ -227,8 +312,8 @@ int main()
     {
         osrssim::World world;
         osrssim::Scene* scene = world.TryGetScene(world.GetDefaultSceneId());
-        osrssim::ActorId firstActorId = world.CreatePlayer(1, 1, osrssim::CombatComposition{});
-        osrssim::ActorId secondActorId = world.CreatePlayer(1, 1, osrssim::CombatComposition{});
+        osrssim::ActorId firstActorId = world.CreatePlayer(1, 1, osrssim::CombatComposition{}).value();
+        osrssim::ActorId secondActorId = world.CreatePlayer(1, 1, osrssim::CombatComposition{}).value();
 
         assert(scene != nullptr);
         assert(world.PlaceActor(firstActorId, world.GetDefaultSceneId(), {10, 10, 0}));
@@ -244,8 +329,8 @@ int main()
     {
         osrssim::World world;
         osrssim::Scene* scene = world.TryGetScene(world.GetDefaultSceneId());
-        osrssim::ActorId playerId = world.CreatePlayer(1, 1, osrssim::CombatComposition{});
-        osrssim::ActorId npcId = world.CreateNpc(1, 1, osrssim::CombatComposition{});
+        osrssim::ActorId playerId = world.CreatePlayer(1, 1, osrssim::CombatComposition{}).value();
+        osrssim::ActorId npcId = world.CreateNpc(1, 1, osrssim::CombatComposition{}).value();
 
         assert(scene != nullptr);
         assert(world.PlaceActor(playerId, world.GetDefaultSceneId(), {10, 10, 0}));
@@ -270,7 +355,7 @@ int main()
     {
         osrssim::World world;
         osrssim::Scene* scene = world.TryGetScene(world.GetDefaultSceneId());
-        osrssim::ActorId actorId = world.CreatePlayer(1, 2, osrssim::CombatComposition{});
+        osrssim::ActorId actorId = world.CreatePlayer(1, 2, osrssim::CombatComposition{}).value();
 
         assert(scene != nullptr);
         assert(world.PlaceActor(actorId, world.GetDefaultSceneId(), {10, 10, 0}));
@@ -306,7 +391,7 @@ int main()
     {
         osrssim::World world;
         osrssim::Scene* scene = world.TryGetScene(world.GetDefaultSceneId());
-        osrssim::ActorId actorId = world.CreatePlayer(1, 2, osrssim::CombatComposition{});
+        osrssim::ActorId actorId = world.CreatePlayer(1, 2, osrssim::CombatComposition{}).value();
 
         assert(scene != nullptr);
         assert(world.PlaceActor(actorId, world.GetDefaultSceneId(), {10, 10, 0}));
@@ -325,7 +410,7 @@ int main()
     {
         osrssim::World world;
         osrssim::Scene* scene = world.TryGetScene(world.GetDefaultSceneId());
-        osrssim::ActorId actorId = world.CreatePlayer(1, 1, osrssim::CombatComposition{});
+        osrssim::ActorId actorId = world.CreatePlayer(1, 1, osrssim::CombatComposition{}).value();
 
         assert(scene != nullptr);
         assert(world.PlaceActor(actorId, world.GetDefaultSceneId(), {10, 10, 0}));
@@ -341,7 +426,7 @@ int main()
     {
         osrssim::World world;
         osrssim::Scene* scene = world.TryGetScene(world.GetDefaultSceneId());
-        osrssim::ActorId actorId = world.CreatePlayer(1, 1, osrssim::CombatComposition{});
+        osrssim::ActorId actorId = world.CreatePlayer(1, 1, osrssim::CombatComposition{}).value();
 
         assert(scene != nullptr);
         assert(world.PlaceActor(actorId, world.GetDefaultSceneId(), {10, 10, 0}));
@@ -357,7 +442,7 @@ int main()
     {
         osrssim::World world;
         osrssim::Scene* scene = world.TryGetScene(world.GetDefaultSceneId());
-        osrssim::ActorId actorId = world.CreatePlayer(2, 1, osrssim::CombatComposition{});
+        osrssim::ActorId actorId = world.CreatePlayer(2, 1, osrssim::CombatComposition{}).value();
 
         assert(scene != nullptr);
         assert(world.PlaceActor(actorId, world.GetDefaultSceneId(), {10, 10, 0}));
@@ -379,7 +464,7 @@ int main()
     {
         osrssim::World world;
         osrssim::Scene* scene = world.TryGetScene(world.GetDefaultSceneId());
-        osrssim::ActorId actorId = world.CreatePlayer(2, 1, osrssim::CombatComposition{});
+        osrssim::ActorId actorId = world.CreatePlayer(2, 1, osrssim::CombatComposition{}).value();
 
         assert(scene != nullptr);
         assert(world.PlaceActor(actorId, world.GetDefaultSceneId(), {10, 10, 0}));
@@ -395,7 +480,7 @@ int main()
     {
         osrssim::World world;
         osrssim::Scene* scene = world.TryGetScene(world.GetDefaultSceneId());
-        osrssim::ActorId actorId = world.CreatePlayer(1, 2, osrssim::CombatComposition{});
+        osrssim::ActorId actorId = world.CreatePlayer(1, 2, osrssim::CombatComposition{}).value();
 
         assert(scene != nullptr);
         assert(world.PlaceActor(actorId, world.GetDefaultSceneId(), {10, 10, 0}));
@@ -407,8 +492,8 @@ int main()
     {
         osrssim::World world;
         osrssim::Scene* scene = world.TryGetScene(world.GetDefaultSceneId());
-        osrssim::ActorId unplacedActorId = world.CreatePlayer(1, 1, osrssim::CombatComposition{});
-        osrssim::ActorId placedActorId = world.CreatePlayer(1, 1, osrssim::CombatComposition{});
+        osrssim::ActorId unplacedActorId = world.CreatePlayer(1, 1, osrssim::CombatComposition{}).value();
+        osrssim::ActorId placedActorId = world.CreatePlayer(1, 1, osrssim::CombatComposition{}).value();
 
         assert(scene != nullptr);
         assert(!world.MoveActorByDelta(999, 1, 0));
@@ -427,8 +512,8 @@ int main()
     {
         osrssim::World world;
         osrssim::Scene* scene = world.TryGetScene(world.GetDefaultSceneId());
-        osrssim::ActorId stoppedActorId = world.CreatePlayer(1, 0, osrssim::CombatComposition{});
-        osrssim::ActorId slowActorId = world.CreatePlayer(1, 1, osrssim::CombatComposition{});
+        osrssim::ActorId stoppedActorId = world.CreatePlayer(1, 0, osrssim::CombatComposition{}).value();
+        osrssim::ActorId slowActorId = world.CreatePlayer(1, 1, osrssim::CombatComposition{}).value();
 
         assert(scene != nullptr);
         assert(world.PlaceActor(
@@ -454,7 +539,7 @@ int main()
 
     {
         osrssim::World world;
-        osrssim::ActorId actorId = world.CreatePlayer(1, 1, osrssim::CombatComposition{});
+        osrssim::ActorId actorId = world.CreatePlayer(1, 1, osrssim::CombatComposition{}).value();
 
         assert(world.SetActorSpeed(actorId, 3));
         assert(world.GetActorCore(actorId)->speed == 3);
@@ -467,7 +552,7 @@ int main()
 
     {
         osrssim::World world;
-        osrssim::ActorId actorId = world.CreatePlayer(1, 1, osrssim::CombatComposition{});
+        osrssim::ActorId actorId = world.CreatePlayer(1, 1, osrssim::CombatComposition{}).value();
 
         assert(world.PlaceActor(actorId, world.GetDefaultSceneId(), {10, 10, 0}));
         assert(world.SetPlayerSceneCoordinateMovementTarget(
@@ -481,8 +566,8 @@ int main()
 
     {
         osrssim::World world;
-        osrssim::ActorId playerId = world.CreatePlayer(1, 1, osrssim::CombatComposition{});
-        osrssim::ActorId npcId = world.CreateNpc(1, 2, osrssim::CombatComposition{});
+        osrssim::ActorId playerId = world.CreatePlayer(1, 1, osrssim::CombatComposition{}).value();
+        osrssim::ActorId npcId = world.CreateNpc(1, 2, osrssim::CombatComposition{}).value();
 
         assert(world.PlaceActor(playerId, world.GetDefaultSceneId(), {10, 10, 0}));
         assert(world.PlaceActor(npcId, world.GetDefaultSceneId(), {20, 20, 0}));
@@ -515,7 +600,7 @@ int main()
 
     {
         osrssim::World world;
-        osrssim::ActorId actorId = world.CreatePlayer(2, 1, osrssim::CombatComposition{});
+        osrssim::ActorId actorId = world.CreatePlayer(2, 1, osrssim::CombatComposition{}).value();
 
         assert(world.PlaceActor(actorId, world.GetDefaultSceneId(), {10, 10, 0}));
         assert(world.SetPlayerSceneCoordinateMovementTarget(
@@ -530,7 +615,7 @@ int main()
 
     {
         osrssim::World world;
-        osrssim::ActorId actorId = world.CreateNpc(2, 1, osrssim::CombatComposition{});
+        osrssim::ActorId actorId = world.CreateNpc(2, 1, osrssim::CombatComposition{}).value();
 
         assert(world.PlaceActor(actorId, world.GetDefaultSceneId(), {10, 10, 0}));
         assert(world.SetActorSceneCoordinateMovementTarget(
@@ -546,8 +631,8 @@ int main()
     {
         osrssim::World world;
         osrssim::Scene* scene = world.TryGetScene(world.GetDefaultSceneId());
-        osrssim::ActorId actorId = world.CreatePlayer(2, 1, osrssim::CombatComposition{});
-        osrssim::ActorId occupyingActorId = world.CreatePlayer(1, 1, osrssim::CombatComposition{});
+        osrssim::ActorId actorId = world.CreatePlayer(2, 1, osrssim::CombatComposition{}).value();
+        osrssim::ActorId occupyingActorId = world.CreatePlayer(1, 1, osrssim::CombatComposition{}).value();
 
         assert(scene != nullptr);
         assert(world.PlaceActor(actorId, world.GetDefaultSceneId(), {10, 10, 0}));
@@ -573,7 +658,7 @@ int main()
     {
         osrssim::World world;
         osrssim::Scene* scene = world.TryGetScene(world.GetDefaultSceneId());
-        osrssim::ActorId actorId = world.CreatePlayer(1, 1, osrssim::CombatComposition{});
+        osrssim::ActorId actorId = world.CreatePlayer(1, 1, osrssim::CombatComposition{}).value();
 
         assert(scene != nullptr);
         assert(world.PlaceActor(actorId, world.GetDefaultSceneId(), {10, 10, 0}));
@@ -593,7 +678,7 @@ int main()
     {
         osrssim::World world;
         osrssim::Scene* scene = world.TryGetScene(world.GetDefaultSceneId());
-        osrssim::ActorId actorId = world.CreatePlayer(1, 1, osrssim::CombatComposition{});
+        osrssim::ActorId actorId = world.CreatePlayer(1, 1, osrssim::CombatComposition{}).value();
 
         assert(scene != nullptr);
         assert(world.PlaceActor(actorId, world.GetDefaultSceneId(), {10, 10, 0}));
@@ -617,7 +702,7 @@ int main()
     {
         osrssim::World world;
         osrssim::Scene* scene = world.TryGetScene(world.GetDefaultSceneId());
-        osrssim::ActorId actorId = world.CreatePlayer(1, 2, osrssim::CombatComposition{});
+        osrssim::ActorId actorId = world.CreatePlayer(1, 2, osrssim::CombatComposition{}).value();
 
         assert(scene != nullptr);
         assert(world.PlaceActor(actorId, world.GetDefaultSceneId(), {10, 10, 0}));
@@ -644,8 +729,8 @@ int main()
 
     {
         osrssim::World world;
-        osrssim::ActorId moverId = world.CreatePlayer(1, 1, osrssim::CombatComposition{});
-        osrssim::ActorId targetId = world.CreateNpc(1, 1, osrssim::CombatComposition{});
+        osrssim::ActorId moverId = world.CreatePlayer(1, 1, osrssim::CombatComposition{}).value();
+        osrssim::ActorId targetId = world.CreateNpc(1, 1, osrssim::CombatComposition{}).value();
 
         assert(world.PlaceActor(moverId, world.GetDefaultSceneId(), {10, 10, 0}));
         assert(world.PlaceActor(targetId, world.GetDefaultSceneId(), {12, 10, 0}));
@@ -660,8 +745,8 @@ int main()
 
     {
         osrssim::World world;
-        osrssim::ActorId moverId = world.CreatePlayer(1, 1, osrssim::CombatComposition{});
-        osrssim::ActorId targetId = world.CreateNpc(1, 1, osrssim::CombatComposition{});
+        osrssim::ActorId moverId = world.CreatePlayer(1, 1, osrssim::CombatComposition{}).value();
+        osrssim::ActorId targetId = world.CreateNpc(1, 1, osrssim::CombatComposition{}).value();
 
         assert(world.PlaceActor(moverId, world.GetDefaultSceneId(), {10, 10, 0}));
         assert(world.SetActorMovementTarget(moverId, targetId));
@@ -674,8 +759,8 @@ int main()
 
     {
         osrssim::World world;
-        osrssim::ActorId moverId = world.CreatePlayer(1, 1, osrssim::CombatComposition{});
-        osrssim::ActorId targetId = world.CreateNpc(1, 1, osrssim::CombatComposition{});
+        osrssim::ActorId moverId = world.CreatePlayer(1, 1, osrssim::CombatComposition{}).value();
+        osrssim::ActorId targetId = world.CreateNpc(1, 1, osrssim::CombatComposition{}).value();
 
         assert(world.PlaceActor(moverId, world.GetDefaultSceneId(), {10, 10, 0}));
         assert(world.PlaceActor(targetId, world.GetDefaultSceneId(), {12, 10, 1}));
@@ -690,8 +775,8 @@ int main()
     {
         osrssim::World world;
         osrssim::Scene* scene = world.TryGetScene(world.GetDefaultSceneId());
-        osrssim::ActorId moverId = world.CreatePlayer(1, 1, osrssim::CombatComposition{});
-        osrssim::ActorId targetId = world.CreateNpc(1, 1, osrssim::CombatComposition{});
+        osrssim::ActorId moverId = world.CreatePlayer(1, 1, osrssim::CombatComposition{}).value();
+        osrssim::ActorId targetId = world.CreateNpc(1, 1, osrssim::CombatComposition{}).value();
 
         assert(scene != nullptr);
         assert(world.PlaceActor(moverId, world.GetDefaultSceneId(), {10, 10, 0}));
@@ -709,8 +794,8 @@ int main()
 
     {
         osrssim::World world;
-        osrssim::ActorId moverId = world.CreateNpc(1, 1, osrssim::CombatComposition{});
-        osrssim::ActorId targetId = world.CreatePlayer(1, 1, osrssim::CombatComposition{});
+        osrssim::ActorId moverId = world.CreateNpc(1, 1, osrssim::CombatComposition{}).value();
+        osrssim::ActorId targetId = world.CreatePlayer(1, 1, osrssim::CombatComposition{}).value();
 
         assert(world.PlaceActor(moverId, world.GetDefaultSceneId(), {10, 10, 0}));
         assert(world.PlaceActor(targetId, world.GetDefaultSceneId(), {11, 11, 0}));
@@ -725,8 +810,8 @@ int main()
     {
         osrssim::World world;
         osrssim::Scene* scene = world.TryGetScene(world.GetDefaultSceneId());
-        osrssim::ActorId moverId = world.CreateNpc(1, 1, osrssim::CombatComposition{});
-        osrssim::ActorId targetId = world.CreatePlayer(1, 1, osrssim::CombatComposition{});
+        osrssim::ActorId moverId = world.CreateNpc(1, 1, osrssim::CombatComposition{}).value();
+        osrssim::ActorId targetId = world.CreatePlayer(1, 1, osrssim::CombatComposition{}).value();
 
         assert(scene != nullptr);
         assert(world.PlaceActor(moverId, world.GetDefaultSceneId(), {10, 10, 0}));
@@ -747,9 +832,9 @@ int main()
     {
         osrssim::World world;
         osrssim::Scene* scene = world.TryGetScene(world.GetDefaultSceneId());
-        osrssim::ActorId moverId = world.CreateNpc(1, 2, osrssim::CombatComposition{});
-        osrssim::ActorId targetId = world.CreatePlayer(1, 1, osrssim::CombatComposition{});
-        osrssim::ActorId occupyingPlayerId = world.CreatePlayer(1, 1, osrssim::CombatComposition{});
+        osrssim::ActorId moverId = world.CreateNpc(1, 2, osrssim::CombatComposition{}).value();
+        osrssim::ActorId targetId = world.CreatePlayer(1, 1, osrssim::CombatComposition{}).value();
+        osrssim::ActorId occupyingPlayerId = world.CreatePlayer(1, 1, osrssim::CombatComposition{}).value();
 
         assert(scene != nullptr);
         assert(world.PlaceActor(moverId, world.GetDefaultSceneId(), {10, 10, 0}));
@@ -777,9 +862,9 @@ int main()
     {
         osrssim::World world;
         osrssim::Scene* scene = world.TryGetScene(world.GetDefaultSceneId());
-        osrssim::ActorId moverId = world.CreatePlayer(1, 2, osrssim::CombatComposition{});
-        osrssim::ActorId targetId = world.CreateNpc(1, 1, osrssim::CombatComposition{});
-        osrssim::ActorId occupyingPlayerId = world.CreatePlayer(1, 1, osrssim::CombatComposition{});
+        osrssim::ActorId moverId = world.CreatePlayer(1, 2, osrssim::CombatComposition{}).value();
+        osrssim::ActorId targetId = world.CreateNpc(1, 1, osrssim::CombatComposition{}).value();
+        osrssim::ActorId occupyingPlayerId = world.CreatePlayer(1, 1, osrssim::CombatComposition{}).value();
 
         assert(scene != nullptr);
         assert(world.PlaceActor(moverId, world.GetDefaultSceneId(), {10, 10, 0}));
@@ -805,8 +890,8 @@ int main()
 
     {
         osrssim::World world;
-        osrssim::ActorId moverId = world.CreateNpc(1, 1, osrssim::CombatComposition{});
-        osrssim::ActorId targetId = world.CreatePlayer(1, 1, osrssim::CombatComposition{});
+        osrssim::ActorId moverId = world.CreateNpc(1, 1, osrssim::CombatComposition{}).value();
+        osrssim::ActorId targetId = world.CreatePlayer(1, 1, osrssim::CombatComposition{}).value();
 
         assert(world.PlaceActor(moverId, world.GetDefaultSceneId(), {10, 10, 0}));
         assert(world.PlaceActor(targetId, world.GetDefaultSceneId(), {12, 10, 0}));
@@ -828,8 +913,8 @@ int main()
 
     {
         osrssim::World world;
-        osrssim::ActorId moverId = world.CreateNpc(1, 1, osrssim::CombatComposition{});
-        osrssim::ActorId targetId = world.CreatePlayer(2, 1, osrssim::CombatComposition{});
+        osrssim::ActorId moverId = world.CreateNpc(1, 1, osrssim::CombatComposition{}).value();
+        osrssim::ActorId targetId = world.CreatePlayer(2, 1, osrssim::CombatComposition{}).value();
 
         assert(world.PlaceActor(moverId, world.GetDefaultSceneId(), {10, 10, 0}));
         assert(world.PlaceActor(targetId, world.GetDefaultSceneId(), {7, 9, 0}));
@@ -845,8 +930,8 @@ int main()
 
     {
         osrssim::World world;
-        osrssim::ActorId moverId = world.CreateNpc(1, 1, osrssim::CombatComposition{});
-        osrssim::ActorId targetId = world.CreatePlayer(1, 1, osrssim::CombatComposition{});
+        osrssim::ActorId moverId = world.CreateNpc(1, 1, osrssim::CombatComposition{}).value();
+        osrssim::ActorId targetId = world.CreatePlayer(1, 1, osrssim::CombatComposition{}).value();
 
         assert(world.PlaceActor(moverId, world.GetDefaultSceneId(), {10, 10, 0}));
         assert(world.PlaceActor(targetId, world.GetDefaultSceneId(), {11, 10, 0}));
@@ -860,8 +945,8 @@ int main()
 
     {
         osrssim::World world;
-        osrssim::ActorId moverId = world.CreatePlayer(1, 3, osrssim::CombatComposition{});
-        osrssim::ActorId targetId = world.CreateNpc(1, 1, osrssim::CombatComposition{});
+        osrssim::ActorId moverId = world.CreatePlayer(1, 3, osrssim::CombatComposition{}).value();
+        osrssim::ActorId targetId = world.CreateNpc(1, 1, osrssim::CombatComposition{}).value();
 
         assert(world.PlaceActor(moverId, world.GetDefaultSceneId(), {10, 10, 0}));
         assert(world.PlaceActor(targetId, world.GetDefaultSceneId(), {13, 10, 0}));
@@ -877,8 +962,8 @@ int main()
 
     {
         osrssim::World world;
-        osrssim::ActorId moverId = world.CreateNpc(2, 2, osrssim::CombatComposition{});
-        osrssim::ActorId targetId = world.CreatePlayer(2, 1, osrssim::CombatComposition{});
+        osrssim::ActorId moverId = world.CreateNpc(2, 2, osrssim::CombatComposition{}).value();
+        osrssim::ActorId targetId = world.CreatePlayer(2, 1, osrssim::CombatComposition{}).value();
 
         assert(world.PlaceActor(moverId, world.GetDefaultSceneId(), {10, 10, 0}));
         assert(world.PlaceActor(targetId, world.GetDefaultSceneId(), {11, 10, 0}));
@@ -894,8 +979,8 @@ int main()
 
     {
         osrssim::World world;
-        osrssim::ActorId moverId = world.CreateNpc(1, 1, osrssim::CombatComposition{});
-        osrssim::ActorId targetId = world.CreatePlayer(1, 1, osrssim::CombatComposition{});
+        osrssim::ActorId moverId = world.CreateNpc(1, 1, osrssim::CombatComposition{}).value();
+        osrssim::ActorId targetId = world.CreatePlayer(1, 1, osrssim::CombatComposition{}).value();
 
         assert(world.PlaceActor(moverId, world.GetDefaultSceneId(), {10, 10, 0}));
         assert(world.PlaceActor(targetId, world.GetDefaultSceneId(), {12, 10, 0}));
@@ -908,7 +993,7 @@ int main()
 
     {
         osrssim::World world;
-        osrssim::ActorId actorId = world.CreatePlayer(1, 1, osrssim::CombatComposition{});
+        osrssim::ActorId actorId = world.CreatePlayer(1, 1, osrssim::CombatComposition{}).value();
 
         assert(world.PlaceActor(actorId, world.GetDefaultSceneId(), {10, 10, 0}));
         assert(world.SetPlayerSceneCoordinateMovementTarget(
@@ -924,7 +1009,7 @@ int main()
 
     {
         osrssim::World world;
-        osrssim::ActorId actorId = world.CreatePlayer(1, 1, osrssim::CombatComposition{});
+        osrssim::ActorId actorId = world.CreatePlayer(1, 1, osrssim::CombatComposition{}).value();
 
         assert(world.PlaceActor(actorId, world.GetDefaultSceneId(), {10, 10, 0}));
         assert(world.SetPlayerSceneCoordinateMovementTarget(
@@ -940,7 +1025,7 @@ int main()
     {
         osrssim::World world;
         osrssim::Scene* scene = world.TryGetScene(world.GetDefaultSceneId());
-        osrssim::ActorId actorId = world.CreatePlayer(2, 2, osrssim::CombatComposition{});
+        osrssim::ActorId actorId = world.CreatePlayer(2, 2, osrssim::CombatComposition{}).value();
 
         assert(scene != nullptr);
         assert(world.PlaceActor(actorId, world.GetDefaultSceneId(), {10, 10, 0}));
@@ -956,7 +1041,7 @@ int main()
     {
         osrssim::World world;
         osrssim::Scene* scene = world.TryGetScene(world.GetDefaultSceneId());
-        osrssim::ActorId actorId = world.CreatePlayer(2, 1, osrssim::CombatComposition{});
+        osrssim::ActorId actorId = world.CreatePlayer(2, 1, osrssim::CombatComposition{}).value();
 
         assert(scene != nullptr);
         assert(world.PlaceActor(actorId, world.GetDefaultSceneId(), {10, 10, 0}));
@@ -972,8 +1057,8 @@ int main()
     {
         osrssim::World world;
         osrssim::Scene* scene = world.TryGetScene(world.GetDefaultSceneId());
-        osrssim::ActorId movingPlayerId = world.CreatePlayer(1, 1, osrssim::CombatComposition{});
-        osrssim::ActorId occupyingPlayerId = world.CreatePlayer(1, 1, osrssim::CombatComposition{});
+        osrssim::ActorId movingPlayerId = world.CreatePlayer(1, 1, osrssim::CombatComposition{}).value();
+        osrssim::ActorId occupyingPlayerId = world.CreatePlayer(1, 1, osrssim::CombatComposition{}).value();
 
         assert(scene != nullptr);
         assert(world.PlaceActor(
@@ -997,8 +1082,8 @@ int main()
     {
         osrssim::World world;
         osrssim::Scene* scene = world.TryGetScene(world.GetDefaultSceneId());
-        osrssim::ActorId npcId = world.CreateNpc(1, 1, osrssim::CombatComposition{});
-        osrssim::ActorId occupyingPlayerId = world.CreatePlayer(1, 1, osrssim::CombatComposition{});
+        osrssim::ActorId npcId = world.CreateNpc(1, 1, osrssim::CombatComposition{}).value();
+        osrssim::ActorId occupyingPlayerId = world.CreatePlayer(1, 1, osrssim::CombatComposition{}).value();
 
         assert(scene != nullptr);
         assert(world.PlaceActor(npcId, world.GetDefaultSceneId(), {10, 10, 0}));
@@ -1019,8 +1104,8 @@ int main()
     {
         osrssim::World world;
         osrssim::Scene* scene = world.TryGetScene(world.GetDefaultSceneId());
-        osrssim::ActorId npcId = world.CreateNpc(1, 2, osrssim::CombatComposition{});
-        osrssim::ActorId occupyingPlayerId = world.CreatePlayer(1, 1, osrssim::CombatComposition{});
+        osrssim::ActorId npcId = world.CreateNpc(1, 2, osrssim::CombatComposition{}).value();
+        osrssim::ActorId occupyingPlayerId = world.CreatePlayer(1, 1, osrssim::CombatComposition{}).value();
 
         assert(scene != nullptr);
         assert(world.PlaceActor(npcId, world.GetDefaultSceneId(), {10, 10, 0}));
@@ -1040,8 +1125,8 @@ int main()
     {
         osrssim::World world;
         osrssim::Scene* scene = world.TryGetScene(world.GetDefaultSceneId());
-        osrssim::ActorId npcId = world.CreateNpc(1, 1, osrssim::CombatComposition{});
-        osrssim::ActorId occupyingPlayerId = world.CreatePlayer(1, 1, osrssim::CombatComposition{});
+        osrssim::ActorId npcId = world.CreateNpc(1, 1, osrssim::CombatComposition{}).value();
+        osrssim::ActorId occupyingPlayerId = world.CreatePlayer(1, 1, osrssim::CombatComposition{}).value();
 
         assert(scene != nullptr);
         assert(world.PlaceActor(npcId, world.GetDefaultSceneId(), {10, 10, 0}));
@@ -1062,8 +1147,8 @@ int main()
     {
         osrssim::World world;
         osrssim::Scene* scene = world.TryGetScene(world.GetDefaultSceneId());
-        osrssim::ActorId npcId = world.CreateNpc(1, 1, osrssim::CombatComposition{});
-        osrssim::ActorId occupyingPlayerId = world.CreatePlayer(1, 1, osrssim::CombatComposition{});
+        osrssim::ActorId npcId = world.CreateNpc(1, 1, osrssim::CombatComposition{}).value();
+        osrssim::ActorId occupyingPlayerId = world.CreatePlayer(1, 1, osrssim::CombatComposition{}).value();
 
         assert(scene != nullptr);
         assert(world.PlaceActor(npcId, world.GetDefaultSceneId(), {10, 10, 0}));
@@ -1084,7 +1169,7 @@ int main()
     {
         osrssim::World world;
         osrssim::Scene* scene = world.TryGetScene(world.GetDefaultSceneId());
-        osrssim::ActorId npcId = world.CreateNpc(1, 1, osrssim::CombatComposition{});
+        osrssim::ActorId npcId = world.CreateNpc(1, 1, osrssim::CombatComposition{}).value();
 
         assert(scene != nullptr);
         assert(world.PlaceActor(npcId, world.GetDefaultSceneId(), {10, 10, 0}));
@@ -1104,8 +1189,8 @@ int main()
     {
         osrssim::World world;
         osrssim::Scene* scene = world.TryGetScene(world.GetDefaultSceneId());
-        osrssim::ActorId npcId = world.CreateNpc(2, 1, osrssim::CombatComposition{});
-        osrssim::ActorId occupyingPlayerId = world.CreatePlayer(1, 1, osrssim::CombatComposition{});
+        osrssim::ActorId npcId = world.CreateNpc(2, 1, osrssim::CombatComposition{}).value();
+        osrssim::ActorId occupyingPlayerId = world.CreatePlayer(1, 1, osrssim::CombatComposition{}).value();
 
         assert(scene != nullptr);
         assert(world.PlaceActor(npcId, world.GetDefaultSceneId(), {10, 10, 0}));
@@ -1124,8 +1209,8 @@ int main()
     {
         osrssim::World world;
         osrssim::Scene* scene = world.TryGetScene(world.GetDefaultSceneId());
-        osrssim::ActorId npcId = world.CreateNpc(3, 1, osrssim::CombatComposition{});
-        osrssim::ActorId playerId = world.CreatePlayer(1, 1, osrssim::CombatComposition{});
+        osrssim::ActorId npcId = world.CreateNpc(3, 1, osrssim::CombatComposition{}).value();
+        osrssim::ActorId playerId = world.CreatePlayer(1, 1, osrssim::CombatComposition{}).value();
 
         assert(scene != nullptr);
 
@@ -1151,7 +1236,7 @@ int main()
     {
         osrssim::World world;
         osrssim::Scene* scene = world.TryGetScene(world.GetDefaultSceneId());
-        osrssim::ActorId npcId = world.CreateNpc(2, 2, osrssim::CombatComposition{});
+        osrssim::ActorId npcId = world.CreateNpc(2, 2, osrssim::CombatComposition{}).value();
 
         assert(scene != nullptr);
         assert(world.PlaceActor(npcId, world.GetDefaultSceneId(), {10, 10, 0}));
@@ -1169,7 +1254,7 @@ int main()
     {
         osrssim::World world;
         osrssim::Scene* scene = world.TryGetScene(world.GetDefaultSceneId());
-        osrssim::ActorId npcId = world.CreateNpc(3, 1, osrssim::CombatComposition{});
+        osrssim::ActorId npcId = world.CreateNpc(3, 1, osrssim::CombatComposition{}).value();
 
         assert(scene != nullptr);
 
@@ -1196,7 +1281,7 @@ int main()
     {
         osrssim::World world;
         osrssim::Scene* scene = world.TryGetScene(world.GetDefaultSceneId());
-        osrssim::ActorId npcId = world.CreateNpc(3, 1, osrssim::CombatComposition{});
+        osrssim::ActorId npcId = world.CreateNpc(3, 1, osrssim::CombatComposition{}).value();
 
         assert(scene != nullptr);
         assert(world.PlaceActor(npcId, world.GetDefaultSceneId(), {2, 4, 0}));
@@ -1212,8 +1297,8 @@ int main()
     {
         osrssim::World world;
         osrssim::Scene* scene = world.TryGetScene(world.GetDefaultSceneId());
-        osrssim::ActorId npcId = world.CreateNpc(1, 1, osrssim::CombatComposition{});
-        osrssim::ActorId playerId = world.CreatePlayer(1, 1, osrssim::CombatComposition{});
+        osrssim::ActorId npcId = world.CreateNpc(1, 1, osrssim::CombatComposition{}).value();
+        osrssim::ActorId playerId = world.CreatePlayer(1, 1, osrssim::CombatComposition{}).value();
 
         assert(scene != nullptr);
         assert(world.PlaceActor(npcId, world.GetDefaultSceneId(), {10, 10, 0}));
@@ -1231,8 +1316,8 @@ int main()
 
     {
         osrssim::World world;
-        osrssim::ActorId npcId = world.CreateNpc(4, 1, osrssim::CombatComposition{});
-        osrssim::ActorId playerId = world.CreatePlayer(1, 1, osrssim::CombatComposition{});
+        osrssim::ActorId npcId = world.CreateNpc(4, 1, osrssim::CombatComposition{}).value();
+        osrssim::ActorId playerId = world.CreatePlayer(1, 1, osrssim::CombatComposition{}).value();
 
         assert(world.PlaceActor(npcId, world.GetDefaultSceneId(), {10, 10, 0}));
         assert(world.PlaceActor(playerId, world.GetDefaultSceneId(), {12, 11, 0}));
@@ -1249,9 +1334,9 @@ int main()
     {
         osrssim::World world;
         osrssim::ActorId eventOwnerId =
-            world.CreatePlayer(1, 1, osrssim::CombatComposition{});
+            world.CreatePlayer(1, 1, osrssim::CombatComposition{}).value();
         osrssim::ActorId targetId =
-            world.CreateNpc(2, 1, osrssim::CombatComposition{});
+            world.CreateNpc(2, 1, osrssim::CombatComposition{}).value();
         int firstEventCount = 0;
         int secondEventCount = 0;
 

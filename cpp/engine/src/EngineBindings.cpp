@@ -30,6 +30,24 @@ osrssim::Scene* TryGetWorldScene(osrssim::World& world, osrssim::SceneId sceneId
     return world.TryGetScene(sceneId);
 }
 
+osrssim::ActorId CreateWorldPlayer(
+    osrssim::World& world,
+    int size,
+    int speed,
+    osrssim::CombatComposition combatComposition)
+{
+    return world.CreatePlayer(size, speed, combatComposition).value_or(0);
+}
+
+osrssim::ActorId CreateWorldNpc(
+    osrssim::World& world,
+    int size,
+    int speed,
+    osrssim::CombatComposition combatComposition)
+{
+    return world.CreateNpc(size, speed, combatComposition).value_or(0);
+}
+
 bool PlaceSceneGameObject(
     osrssim::Scene& scene,
     osrssim::SceneCoordinate coordinate,
@@ -704,8 +722,8 @@ EMSCRIPTEN_BINDINGS(osrssim_engine)
             &TryGetWorldScene,
             emscripten::return_value_policy::reference(),
             emscripten::allow_raw_pointers())
-        .function("CreatePlayer", &osrssim::World::CreatePlayer)
-        .function("CreateNpc", &osrssim::World::CreateNpc)
+        .function("CreatePlayer", &CreateWorldPlayer)
+        .function("CreateNpc", &CreateWorldNpc)
         .function("PlaceActor", &osrssim::World::PlaceActor)
         .function("RemoveActor", &osrssim::World::RemoveActor)
         .function(

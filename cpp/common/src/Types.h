@@ -8,6 +8,8 @@ namespace osrssim
 using Tick = std::uint64_t;
 using EntityId = std::uint64_t;
 using ActorId = std::uint64_t;
+using PlayerIndex = std::uint16_t;
+using NpcIndex = std::uint16_t;
 using SceneId = std::uint64_t;
 using Seed = std::uint64_t;
 using WeaponId = std::uint64_t;
