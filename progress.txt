@@ -1,3 +1,12 @@
+2026-06-23 #101 Add Engine actor lifecycle and NPC behavior assignment APIs
+- Selected issue: #101, ready-for-agent. Blocker #100 is closed. Parent PRD: #98.
+- Docs read: CONTEXT.md; docs/architecture/simulation-model.md; docs/adr/0002-deterministic-engine.md; docs/adr/0005-world-owns-scenes-and-actors.md; docs/adr/0010-engine-owned-npc-behaviors.md; docs/adr/0011-encounter-runner-orchestrates-active-encounters.md; PRD #98; feature #101; blockers #99/#100.
+- Plan: TDD Engine public lifecycle APIs for Create/Remove Player/NPC, behavior registration/assignment sharing validation, owned one-shot behavior assignment, atomic NPC creation rollback, and dedicated behavior cleanup on replacement/removal. Scope guard: only #101; no behavior-driven update mutation (#103), queued death routing (#102), Encounter Runner (#104), or Player Chase migration (#106).
+- Completed: PRD #98 stories 6-8, 10, 16-19, 33-36 and feature #101 acceptance for Engine Create/Remove Player/NPC, registered and owned NPC behavior assignment, sharing validation, custom-create rollback, and dedicated cleanup on replacement/removal.
+- Decisions: keep World behavior ID mutation as a narrow low-level state helper; Engine behavior table stores assignment counts plus dedicated-slot metadata; invalid IDs/null behaviors/non-shareable reuse throw programmer errors, while missing/wrong-kind actors return false.
+- Files changed: cpp/engine/src/Engine.h, cpp/engine/src/Engine.cpp, cpp/engine/src/World.h, cpp/engine/src/World.cpp, cpp/engine/tests/EngineTest.cpp, progress.txt.
+- Validation: initial red osrssim_engine_engine_test failed on missing Engine API; cmake --build build --target osrssim_engine_engine_test && ./build/cpp/engine/osrssim_engine_engine_test; cmake --build build; ctest --test-dir build --output-on-failure; tools/build_wasm.sh; yarn --cwd web typecheck; yarn --cwd web test; yarn --cwd web build; git diff --check passed. No blockers.
+
 2026-06-23 #97 Track Projectile Targets Across Movement And Removal
 - Selected issue: #97, ready-for-agent. Blocker #94 is closed. Parent PRD: #92.
 - Docs read: CONTEXT.md; docs/agents/domain.md; docs/architecture/simulation-model.md; docs/adr/0002-deterministic-engine.md; docs/adr/0003-osrs-scene-model.md; docs/adr/0006-web-development-viewer.md; docs/adr/0009-actor-owned-combat-queues.md.

@@ -499,6 +499,20 @@ bool World::SetActorSpeed(ActorId actorId, int speed)
     return true;
 }
 
+bool World::SetNpcBehaviorId(ActorId actorId, NpcBehaviorId behaviorId)
+{
+    auto npc = m_Npcs.find(actorId);
+
+    if (npc == m_Npcs.end())
+    {
+        return false;
+    }
+
+    npc->second.behaviorId = behaviorId;
+
+    return true;
+}
+
 bool World::PlaceActor(
     ActorId actorId,
     SceneId sceneId,

@@ -122,6 +122,7 @@ public:
     int GetActorAttackTimer(ActorId actorId) const;
     bool SetActorAttackTimer(ActorId actorId, int attackTimer);
     bool SetActorSpeed(ActorId actorId, int speed);
+    bool SetNpcBehaviorId(ActorId actorId, NpcBehaviorId behaviorId);
     bool PlaceActor(ActorId actorId, SceneId sceneId, SceneCoordinate coordinate);
     bool RemoveActorSceneMembership(ActorId actorId);
     bool RemoveActor(ActorId actorId);

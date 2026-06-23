@@ -1,6 +1,8 @@
 #include "Engine.h"
 
 #include <cassert>
+#include <memory>
+#include <stdexcept>
 #include <vector>
 
 namespace
@@ -75,6 +77,36 @@ osrssim::DpsRequest StandardMeleeRequest(
     request.magicBaseMaximumHit = attacker.magicBaseMaximumHit;
     return request;
 }
+
+class CountingBehavior : public osrssim::behavior::NpcBehavior
+{
+private:
+    int* m_DestroyedCount = nullptr;
+    bool m_CanBeShared = false;
+
+public:
+    CountingBehavior(int& destroyedCount, bool canBeShared = false)
+        : m_DestroyedCount(&destroyedCount),
+          m_CanBeShared(canBeShared)
+    {
+    }
+
+    ~CountingBehavior() override
+    {
+        ++*m_DestroyedCount;
+    }
+
+    bool CanBeShared() const override
+    {
+        return m_CanBeShared;
+    }
+
+    void Update(
+        osrssim::behavior::NpcBehaviorContext&,
+        osrssim::ActorId) override
+    {
+    }
+};
 }  // namespace
 
 int main()
@@ -1792,6 +1824,160 @@ int main()
 
         assert(world.GetPlayer(secondPlayerId) == nullptr);
         assert(world.GetSceneMembership(secondPlayerId) == nullptr);
+    }
+
+    {
+        osrssim::Engine engine;
+        osrssim::World& world = engine.GetWorld();
+
+        const osrssim::ActorId playerId =
+            engine.CreatePlayer(1, 1, osrssim::CombatComposition{}).value();
+        const osrssim::ActorId npcId =
+            engine.CreateNpc(1, 1, osrssim::CombatComposition{}).value();
+
+        assert(world.GetPlayer(playerId) != nullptr);
+        assert(world.GetNpc(npcId) != nullptr);
+        assert(world.GetNpc(npcId)->behaviorId == 0);
+        assert(!engine.RemoveNpc(playerId));
+        assert(!engine.RemovePlayer(npcId));
+        assert(engine.RemovePlayer(playerId));
+        assert(engine.RemoveNpc(npcId));
+        assert(!engine.RemovePlayer(playerId));
+        assert(!engine.RemoveNpc(npcId));
+    }
+
+    {
+        osrssim::Engine engine;
+        osrssim::World& world = engine.GetWorld();
+        int sharedDestroyedCount = 0;
+        int dedicatedDestroyedCount = 0;
+
+        const osrssim::NpcBehaviorId sharedBehaviorId =
+            engine.RegisterNpcBehavior(
+                std::make_unique<CountingBehavior>(
+                    sharedDestroyedCount,
+                    true));
+        const osrssim::ActorId firstNpcId =
+            engine.CreateNpc(
+                1,
+                1,
+                osrssim::CombatComposition{},
+                sharedBehaviorId)
+                .value();
+        const osrssim::ActorId secondNpcId =
+            engine.CreateNpc(
+                1,
+                1,
+                osrssim::CombatComposition{},
+                sharedBehaviorId)
+                .value();
+
+        assert(world.GetNpc(firstNpcId)->behaviorId == sharedBehaviorId);
+        assert(world.GetNpc(secondNpcId)->behaviorId == sharedBehaviorId);
+        assert(sharedDestroyedCount == 0);
+
+        assert(engine.SetNpcBehavior(
+            firstNpcId,
+            std::make_unique<CountingBehavior>(dedicatedDestroyedCount)));
+        const osrssim::NpcBehaviorId dedicatedBehaviorId =
+            world.GetNpc(firstNpcId)->behaviorId;
+
+        assert(dedicatedBehaviorId != 0);
+        assert(dedicatedBehaviorId != sharedBehaviorId);
+        assert(engine.GetNpcBehavior(dedicatedBehaviorId) != nullptr);
+        assert(engine.SetNpcBehavior(firstNpcId, sharedBehaviorId));
+        assert(dedicatedDestroyedCount == 1);
+        assert(engine.GetNpcBehavior(dedicatedBehaviorId) == nullptr);
+
+        assert(engine.RemoveNpc(secondNpcId));
+        assert(sharedDestroyedCount == 0);
+    }
+
+    {
+        osrssim::Engine engine;
+        osrssim::World& world = engine.GetWorld();
+        int destroyedCount = 0;
+
+        const osrssim::NpcBehaviorId behaviorId =
+            engine.RegisterNpcBehavior(
+                std::make_unique<CountingBehavior>(destroyedCount));
+        const osrssim::ActorId firstNpcId =
+            engine.CreateNpc(
+                1,
+                1,
+                osrssim::CombatComposition{},
+                behaviorId)
+                .value();
+
+        bool threw = false;
+
+        try
+        {
+            engine.CreateNpc(1, 1, osrssim::CombatComposition{}, behaviorId);
+        }
+        catch (const std::logic_error&)
+        {
+            threw = true;
+        }
+
+        assert(threw);
+        assert(world.GetNpcs().size() == 1);
+        assert(world.GetNpc(firstNpcId) != nullptr);
+        assert(world.GetNpc(firstNpcId)->behaviorId == behaviorId);
+        assert(destroyedCount == 0);
+        assert(engine.RemoveNpc(firstNpcId));
+        assert(destroyedCount == 0);
+    }
+
+    {
+        osrssim::Engine engine;
+        osrssim::World& world = engine.GetWorld();
+        int destroyedCount = 0;
+
+        const osrssim::ActorId playerId =
+            engine.CreatePlayer(1, 1, osrssim::CombatComposition{}).value();
+        const osrssim::ActorId npcId =
+            engine.CreateNpc(
+                1,
+                1,
+                osrssim::CombatComposition{},
+                std::make_unique<CountingBehavior>(destroyedCount))
+                .value();
+        const osrssim::NpcBehaviorId dedicatedBehaviorId =
+            world.GetNpc(npcId)->behaviorId;
+
+        assert(!engine.SetNpcBehavior(playerId, 0));
+
+        bool invalidIdThrew = false;
+
+        try
+        {
+            engine.SetNpcBehavior(npcId, 999);
+        }
+        catch (const std::logic_error&)
+        {
+            invalidIdThrew = true;
+        }
+
+        assert(invalidIdThrew);
+
+        bool nullBehaviorThrew = false;
+
+        try
+        {
+            engine.RegisterNpcBehavior(nullptr);
+        }
+        catch (const std::invalid_argument&)
+        {
+            nullBehaviorThrew = true;
+        }
+
+        assert(nullBehaviorThrew);
+        assert(dedicatedBehaviorId != 0);
+        assert(engine.GetNpcBehavior(dedicatedBehaviorId) != nullptr);
+        assert(engine.RemoveNpc(npcId));
+        assert(destroyedCount == 1);
+        assert(engine.GetNpcBehavior(dedicatedBehaviorId) == nullptr);
     }
 
     return 0;
