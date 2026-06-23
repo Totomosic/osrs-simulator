@@ -11,7 +11,7 @@ namespace osrssim
 Engine::Engine()
 {
     m_NpcBehaviors.push_back(
-        {std::make_unique<behavior::DefaultNpcBehavior>(), 0, false});
+        {std::make_unique<behavior::DefaultNpcBehavior>(), 0, false, false});
 }
 
 std::optional<ActorId> Engine::CreatePlayer(
@@ -348,7 +348,7 @@ NpcBehaviorId Engine::AddNpcBehavior(
 
     const NpcBehaviorId behaviorId =
         static_cast<NpcBehaviorId>(m_NpcBehaviors.size());
-    m_NpcBehaviors.push_back({std::move(behavior), 0, dedicated});
+    m_NpcBehaviors.push_back({std::move(behavior), 0, dedicated, false});
 
     return behaviorId;
 }
@@ -369,8 +369,23 @@ void Engine::ReleaseNpcBehaviorAssignment(NpcBehaviorId behaviorId)
 
     if (slot.dedicated && slot.assignmentCount == 0)
     {
-        slot.behavior.reset();
+        DestroyNpcBehaviorWhenSafe(behaviorId);
     }
+}
+
+void Engine::DestroyNpcBehaviorWhenSafe(NpcBehaviorId behaviorId)
+{
+    NpcBehaviorSlot& slot = m_NpcBehaviors[behaviorId];
+
+    if (m_UpdatingNpcBehaviorId.has_value() &&
+        m_UpdatingNpcBehaviorId.value() == behaviorId)
+    {
+        slot.destroyWhenSafe = true;
+        return;
+    }
+
+    slot.behavior.reset();
+    slot.destroyWhenSafe = false;
 }
 
 bool Engine::TryHandleActorTargetCombat(ActorId actorId)
@@ -467,9 +482,59 @@ void Engine::UpdateNpcBehavior(ActorId actorId)
         {
             return static_cast<Engine*>(owner)
                 ->IsOverlappingActorMovementTarget(callbackActorId);
+        },
+        [this](
+            int size,
+            int speed,
+            CombatComposition combatComposition)
+        {
+            return CreateNpc(size, speed, combatComposition);
+        },
+        [this](
+            int size,
+            int speed,
+            CombatComposition combatComposition,
+            NpcBehaviorId behaviorId)
+        {
+            return CreateNpc(size, speed, combatComposition, behaviorId);
+        },
+        [this](
+            int size,
+            int speed,
+            CombatComposition combatComposition,
+            std::unique_ptr<behavior::NpcBehavior> ownedBehavior)
+        {
+            return CreateNpc(
+                size,
+                speed,
+                combatComposition,
+                std::move(ownedBehavior));
+        },
+        [this](ActorId callbackActorId)
+        {
+            return RemoveNpc(callbackActorId);
+        },
+        [this](ActorId callbackActorId, NpcBehaviorId behaviorId)
+        {
+            return SetNpcBehavior(callbackActorId, behaviorId);
+        },
+        [this](
+            ActorId callbackActorId,
+            std::unique_ptr<behavior::NpcBehavior> ownedBehavior)
+        {
+            return SetNpcBehavior(callbackActorId, std::move(ownedBehavior));
         });
 
+    const NpcBehaviorId updatingBehaviorId = npc->behaviorId;
+    m_UpdatingNpcBehaviorId = updatingBehaviorId;
     behavior->Update(context, actorId);
+    m_UpdatingNpcBehaviorId = std::nullopt;
+
+    if (updatingBehaviorId < m_NpcBehaviors.size() &&
+        m_NpcBehaviors[updatingBehaviorId].destroyWhenSafe)
+    {
+        DestroyNpcBehaviorWhenSafe(updatingBehaviorId);
+    }
 }
 
 void Engine::UpdateNpcs()

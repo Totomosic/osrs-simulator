@@ -107,6 +107,140 @@ public:
     {
     }
 };
+
+class RecordingBehavior : public osrssim::behavior::NpcBehavior
+{
+private:
+    std::vector<osrssim::ActorId>* m_UpdatedActorIds = nullptr;
+
+public:
+    explicit RecordingBehavior(std::vector<osrssim::ActorId>& updatedActorIds)
+        : m_UpdatedActorIds(&updatedActorIds)
+    {
+    }
+
+    void Update(
+        osrssim::behavior::NpcBehaviorContext&,
+        osrssim::ActorId actorId) override
+    {
+        m_UpdatedActorIds->push_back(actorId);
+    }
+};
+
+class SpawningBehavior : public osrssim::behavior::NpcBehavior
+{
+private:
+    std::vector<osrssim::ActorId>* m_UpdatedActorIds = nullptr;
+    osrssim::ActorId* m_SpawnedActorId = nullptr;
+    osrssim::SceneCoordinate m_SpawnCoordinate;
+    bool m_HasSpawned = false;
+
+public:
+    SpawningBehavior(
+        std::vector<osrssim::ActorId>& updatedActorIds,
+        osrssim::ActorId& spawnedActorId,
+        osrssim::SceneCoordinate spawnCoordinate)
+        : m_UpdatedActorIds(&updatedActorIds),
+          m_SpawnedActorId(&spawnedActorId),
+          m_SpawnCoordinate(spawnCoordinate)
+    {
+    }
+
+    void Update(
+        osrssim::behavior::NpcBehaviorContext& context,
+        osrssim::ActorId actorId) override
+    {
+        m_UpdatedActorIds->push_back(actorId);
+
+        if (m_HasSpawned)
+        {
+            return;
+        }
+
+        m_HasSpawned = true;
+        const std::optional<osrssim::ActorId> spawnedActorId =
+            context.CreateNpc(
+                1,
+                1,
+                osrssim::CombatComposition{},
+                std::make_unique<RecordingBehavior>(*m_UpdatedActorIds));
+
+        assert(spawnedActorId.has_value());
+        *m_SpawnedActorId = spawnedActorId.value();
+        assert(context.GetWorld().PlaceActor(
+            *m_SpawnedActorId,
+            context.GetWorld().GetDefaultSceneId(),
+            m_SpawnCoordinate));
+    }
+};
+
+class RemovingBehavior : public osrssim::behavior::NpcBehavior
+{
+private:
+    std::vector<osrssim::ActorId>* m_UpdatedActorIds = nullptr;
+    osrssim::ActorId m_ActorIdToRemove = 0;
+    int* m_DestroyedCount = nullptr;
+
+public:
+    RemovingBehavior(
+        std::vector<osrssim::ActorId>& updatedActorIds,
+        osrssim::ActorId actorIdToRemove,
+        int* destroyedCount = nullptr)
+        : m_UpdatedActorIds(&updatedActorIds),
+          m_ActorIdToRemove(actorIdToRemove),
+          m_DestroyedCount(destroyedCount)
+    {
+    }
+
+    ~RemovingBehavior() override
+    {
+        if (m_DestroyedCount != nullptr)
+        {
+            ++*m_DestroyedCount;
+        }
+    }
+
+    void Update(
+        osrssim::behavior::NpcBehaviorContext& context,
+        osrssim::ActorId actorId) override
+    {
+        m_UpdatedActorIds->push_back(actorId);
+        assert(context.RemoveNpc(m_ActorIdToRemove));
+        assert(m_DestroyedCount == nullptr || *m_DestroyedCount == 0);
+    }
+};
+
+class SelfReplacingBehavior : public osrssim::behavior::NpcBehavior
+{
+private:
+    std::vector<osrssim::ActorId>* m_UpdatedActorIds = nullptr;
+    int* m_DestroyedCount = nullptr;
+
+public:
+    SelfReplacingBehavior(
+        std::vector<osrssim::ActorId>& updatedActorIds,
+        int& destroyedCount)
+        : m_UpdatedActorIds(&updatedActorIds),
+          m_DestroyedCount(&destroyedCount)
+    {
+    }
+
+    ~SelfReplacingBehavior() override
+    {
+        ++*m_DestroyedCount;
+    }
+
+    void Update(
+        osrssim::behavior::NpcBehaviorContext& context,
+        osrssim::ActorId actorId) override
+    {
+        m_UpdatedActorIds->push_back(actorId);
+        assert(context.SetNpcBehavior(
+            actorId,
+            std::make_unique<RecordingBehavior>(*m_UpdatedActorIds)));
+        assert(*m_DestroyedCount == 0);
+    }
+};
 }  // namespace
 
 int main()
@@ -2083,6 +2217,157 @@ int main()
         assert(engine.RemoveNpc(npcId));
         assert(destroyedCount == 1);
         assert(engine.GetNpcBehavior(dedicatedBehaviorId) == nullptr);
+    }
+
+    {
+        osrssim::Engine engine;
+        osrssim::World& world = engine.GetWorld();
+        std::vector<osrssim::ActorId> updatedActorIds;
+        osrssim::ActorId spawnedActorId = 0;
+        const osrssim::ActorId spawnerId =
+            engine.CreateNpc(
+                1,
+                1,
+                osrssim::CombatComposition{},
+                std::make_unique<SpawningBehavior>(
+                    updatedActorIds,
+                    spawnedActorId,
+                    osrssim::SceneCoordinate{12, 10, 0}))
+                .value();
+
+        assert(world.PlaceActor(
+            spawnerId,
+            world.GetDefaultSceneId(),
+            {10, 10, 0}));
+
+        engine.Step();
+
+        assert(spawnedActorId != 0);
+        assert(world.GetNpc(spawnedActorId) != nullptr);
+        assert(world.GetNpc(spawnedActorId)->npcIndex >
+               world.GetNpc(spawnerId)->npcIndex);
+        assert(updatedActorIds.size() == 2);
+        assert(updatedActorIds[0] == spawnerId);
+        assert(updatedActorIds[1] == spawnedActorId);
+    }
+
+    {
+        osrssim::Engine engine;
+        osrssim::World& world = engine.GetWorld();
+        std::vector<osrssim::ActorId> updatedActorIds;
+        osrssim::ActorId wrappedActorId = 0;
+        const osrssim::ActorId freedIndexActorId =
+            engine.CreateNpc(1, 1, osrssim::CombatComposition{}).value();
+        osrssim::ActorId cursorActorId = 0;
+
+        for (int i = 1; i <= 65535; ++i)
+        {
+            cursorActorId =
+                engine.CreateNpc(1, 1, osrssim::CombatComposition{}).value();
+        }
+
+        assert(world.GetNpc(freedIndexActorId)->npcIndex == 0);
+        assert(world.GetNpc(cursorActorId)->npcIndex == 65535);
+        assert(engine.RemoveNpc(freedIndexActorId));
+        assert(engine.SetNpcBehavior(
+            cursorActorId,
+            std::make_unique<SpawningBehavior>(
+                updatedActorIds,
+                wrappedActorId,
+                osrssim::SceneCoordinate{20, 20, 0})));
+
+        engine.Step();
+
+        assert(wrappedActorId != 0);
+        assert(world.GetNpc(wrappedActorId)->npcIndex == 0);
+        assert(updatedActorIds.size() == 1);
+        assert(updatedActorIds[0] == cursorActorId);
+
+        engine.Step();
+
+        assert(updatedActorIds.size() == 3);
+        assert(updatedActorIds[1] == wrappedActorId);
+        assert(updatedActorIds[2] == cursorActorId);
+    }
+
+    {
+        osrssim::Engine engine;
+        osrssim::World& world = engine.GetWorld();
+        std::vector<osrssim::ActorId> updatedActorIds;
+        int destroyedCount = 0;
+        const osrssim::ActorId npcId =
+            engine.CreateNpc(1, 1, osrssim::CombatComposition{}).value();
+
+        assert(engine.SetNpcBehavior(
+            npcId,
+            std::make_unique<RemovingBehavior>(
+                updatedActorIds,
+                npcId,
+                &destroyedCount)));
+        assert(destroyedCount == 0);
+
+        engine.Step();
+
+        assert(updatedActorIds.size() == 1);
+        assert(updatedActorIds[0] == npcId);
+        assert(world.GetNpc(npcId) == nullptr);
+        assert(destroyedCount == 1);
+    }
+
+    {
+        osrssim::Engine engine;
+        osrssim::World& world = engine.GetWorld();
+        std::vector<osrssim::ActorId> updatedActorIds;
+        const osrssim::ActorId removerId =
+            engine.CreateNpc(1, 1, osrssim::CombatComposition{}).value();
+        const osrssim::ActorId removedBeforeTurnId =
+            engine.CreateNpc(
+                1,
+                1,
+                osrssim::CombatComposition{},
+                std::make_unique<RecordingBehavior>(updatedActorIds))
+                .value();
+
+        assert(world.GetNpc(removerId)->npcIndex <
+               world.GetNpc(removedBeforeTurnId)->npcIndex);
+        assert(engine.SetNpcBehavior(
+            removerId,
+            std::make_unique<RemovingBehavior>(
+                updatedActorIds,
+                removedBeforeTurnId)));
+
+        engine.Step();
+
+        assert(world.GetNpc(removedBeforeTurnId) == nullptr);
+        assert(updatedActorIds.size() == 1);
+        assert(updatedActorIds[0] == removerId);
+    }
+
+    {
+        osrssim::Engine engine;
+        osrssim::World& world = engine.GetWorld();
+        std::vector<osrssim::ActorId> updatedActorIds;
+        int destroyedCount = 0;
+        const osrssim::ActorId npcId =
+            engine.CreateNpc(
+                1,
+                1,
+                osrssim::CombatComposition{},
+                std::make_unique<SelfReplacingBehavior>(
+                    updatedActorIds,
+                    destroyedCount))
+                .value();
+
+        engine.Step();
+
+        assert(updatedActorIds.size() == 1);
+        assert(updatedActorIds[0] == npcId);
+        assert(destroyedCount == 1);
+
+        engine.Step();
+
+        assert(updatedActorIds.size() == 2);
+        assert(updatedActorIds[1] == npcId);
     }
 
     return 0;

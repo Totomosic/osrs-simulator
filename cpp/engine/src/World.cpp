@@ -201,6 +201,7 @@ std::optional<ActorId> World::CreatePlayer(
             {actorId, ClampSize(size), ClampSpeed(speed), combatComposition},
             playerIndex.value(),
             std::nullopt});
+    m_PlayerActorsByIndex.emplace(playerIndex.value(), actorId);
     return actorId;
 }
 
@@ -224,6 +225,7 @@ std::optional<ActorId> World::CreateNpc(
             npcIndex.value(),
             0,
             std::nullopt});
+    m_NpcActorsByIndex.emplace(npcIndex.value(), actorId);
     return actorId;
 }
 
@@ -258,40 +260,39 @@ const Npc* World::GetNpc(ActorId actorId) const
 std::optional<ActorId> World::GetNextPlayerActorIdAfterIndex(
     int playerIndex) const
 {
-    std::optional<ActorId> nextActorId;
-    int nextPlayerIndex = MaxLiveActorIndex + 1;
+    const auto nextIndex =
+        playerIndex < 0
+            ? m_LivePlayerIndices.begin()
+            : m_LivePlayerIndices.upper_bound(
+                  static_cast<PlayerIndex>(playerIndex));
 
-    for (const auto& [actorId, player] : m_Players)
+    if (nextIndex == m_LivePlayerIndices.end())
     {
-        const int candidateIndex = static_cast<int>(player.playerIndex);
-
-        if (candidateIndex > playerIndex && candidateIndex < nextPlayerIndex)
-        {
-            nextActorId = actorId;
-            nextPlayerIndex = candidateIndex;
-        }
+        return std::nullopt;
     }
 
-    return nextActorId;
+    const auto actor = m_PlayerActorsByIndex.find(*nextIndex);
+    return actor == m_PlayerActorsByIndex.end()
+        ? std::nullopt
+        : std::optional<ActorId>(actor->second);
 }
 
 std::optional<ActorId> World::GetNextNpcActorIdAfterIndex(int npcIndex) const
 {
-    std::optional<ActorId> nextActorId;
-    int nextNpcIndex = MaxLiveActorIndex + 1;
+    const auto nextIndex =
+        npcIndex < 0
+            ? m_LiveNpcIndices.begin()
+            : m_LiveNpcIndices.upper_bound(static_cast<NpcIndex>(npcIndex));
 
-    for (const auto& [actorId, npc] : m_Npcs)
+    if (nextIndex == m_LiveNpcIndices.end())
     {
-        const int candidateIndex = static_cast<int>(npc.npcIndex);
-
-        if (candidateIndex > npcIndex && candidateIndex < nextNpcIndex)
-        {
-            nextActorId = actorId;
-            nextNpcIndex = candidateIndex;
-        }
+        return std::nullopt;
     }
 
-    return nextActorId;
+    const auto actor = m_NpcActorsByIndex.find(*nextIndex);
+    return actor == m_NpcActorsByIndex.end()
+        ? std::nullopt
+        : std::optional<ActorId>(actor->second);
 }
 
 const ActorCore* World::GetActorCore(ActorId actorId) const
@@ -582,6 +583,7 @@ bool World::RemoveActor(ActorId actorId)
     if (player != m_Players.end())
     {
         m_LivePlayerIndices.erase(player->second.playerIndex);
+        m_PlayerActorsByIndex.erase(player->second.playerIndex);
         m_Players.erase(player);
     }
 
@@ -590,6 +592,7 @@ bool World::RemoveActor(ActorId actorId)
     if (npc != m_Npcs.end())
     {
         m_LiveNpcIndices.erase(npc->second.npcIndex);
+        m_NpcActorsByIndex.erase(npc->second.npcIndex);
         m_Npcs.erase(npc);
     }
 

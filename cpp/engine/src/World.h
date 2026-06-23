@@ -8,8 +8,8 @@
 
 #include <functional>
 #include <optional>
+#include <set>
 #include <unordered_map>
-#include <unordered_set>
 #include <vector>
 
 namespace osrssim
@@ -69,8 +69,10 @@ private:
     Scene m_Scene;
     std::unordered_map<ActorId, Player> m_Players;
     std::unordered_map<ActorId, Npc> m_Npcs;
-    std::unordered_set<PlayerIndex> m_LivePlayerIndices;
-    std::unordered_set<NpcIndex> m_LiveNpcIndices;
+    std::set<PlayerIndex> m_LivePlayerIndices;
+    std::set<NpcIndex> m_LiveNpcIndices;
+    std::unordered_map<PlayerIndex, ActorId> m_PlayerActorsByIndex;
+    std::unordered_map<NpcIndex, ActorId> m_NpcActorsByIndex;
     std::unordered_map<ActorId, SceneMembership> m_SceneMemberships;
     std::vector<ActorId> m_QueuedActorRemovals;
     std::optional<Tick> m_CurrentTick;

@@ -20,6 +20,7 @@ private:
         std::unique_ptr<behavior::NpcBehavior> behavior;
         int assignmentCount = 0;
         bool dedicated = false;
+        bool destroyWhenSafe = false;
     };
 
     struct QueuedPlayerMovementAction
@@ -33,6 +34,7 @@ private:
     CombatService m_CombatService;
     std::vector<NpcBehaviorSlot> m_NpcBehaviors;
     std::vector<QueuedPlayerMovementAction> m_QueuedPlayerMovementActions;
+    std::optional<NpcBehaviorId> m_UpdatingNpcBehaviorId;
 
 public:
     Engine();
@@ -90,6 +92,7 @@ private:
         std::unique_ptr<behavior::NpcBehavior> behavior,
         bool dedicated);
     void ReleaseNpcBehaviorAssignment(NpcBehaviorId behaviorId);
+    void DestroyNpcBehaviorWhenSafe(NpcBehaviorId behaviorId);
     bool TryHandleActorTargetCombat(ActorId actorId);
     bool IsOverlappingActorMovementTarget(ActorId actorId) const;
     void UpdateNpcBehavior(ActorId actorId);
