@@ -36,6 +36,33 @@ const wasmBinary = await readFile(
 const module = await createGeneratedEngineModule({ wasmBinary });
 const service = new module.DpsService();
 
+{
+    assert.equal(typeof module.DevelopmentPlayerChaseScenario, "function");
+
+    const scenario = new module.DevelopmentPlayerChaseScenario();
+    const world = scenario.GetWorld();
+    const player = JSON.parse(world.GetActorSnapshot(scenario.GetPlayerId()));
+    const npcIds = JSON.parse(scenario.GetNpcIdsJson());
+    const npc = JSON.parse(world.GetActorSnapshot(npcIds[0]));
+
+    assert.equal(Number(scenario.GetCurrentTick()), 0);
+    assert.equal(player.kind, "Player");
+    assert.equal(player.coordinate.x, 8);
+    assert.equal(player.weapon.range, 5);
+    assert.equal(npc.kind, "NPC");
+    assert.equal(npc.coordinate.x, 18);
+    assert.equal(npc.weapon.range, 8);
+
+    scenario.Step();
+    assert.equal(Number(scenario.GetCurrentTick()), 1);
+    scenario.SetRunning(true);
+    assert.equal(scenario.IsRunning(), true);
+    scenario.Reset();
+    assert.equal(Number(scenario.GetCurrentTick()), 0);
+    assert.equal(scenario.IsRunning(), false);
+    assert.equal(JSON.parse(scenario.GetNpcIdsJson()).length, 1);
+}
+
 function createCombatStats(overrides = {}) {
     return {
         attack: 1,

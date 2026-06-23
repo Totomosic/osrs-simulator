@@ -9,6 +9,7 @@
 #include "Scene.h"
 #include "Tile.h"
 #include "World.h"
+#include "debug/DevelopmentPlayerChaseScenario.h"
 
 #include <emscripten/bind.h>
 #include <emscripten/val.h>
@@ -760,5 +761,58 @@ EMSCRIPTEN_BINDINGS(osrssim_engine)
             "GetWorld",
             &GetEngineWorld,
             emscripten::return_value_policy::reference());
+
+    emscripten::class_<osrssim::debug::DevelopmentPlayerChaseScenario>(
+        "DevelopmentPlayerChaseScenario")
+        .constructor<>()
+        .function("Step", &osrssim::debug::DevelopmentPlayerChaseScenario::Step)
+        .function("Reset", &osrssim::debug::DevelopmentPlayerChaseScenario::Reset)
+        .function(
+            "ClickSceneCoordinate",
+            &osrssim::debug::DevelopmentPlayerChaseScenario::ClickSceneCoordinate)
+        .function(
+            "PlaceNpc",
+            &osrssim::debug::DevelopmentPlayerChaseScenario::PlaceNpc)
+        .function(
+            "RemoveNpc",
+            &osrssim::debug::DevelopmentPlayerChaseScenario::RemoveNpc)
+        .function(
+            "PlaceGameObject",
+            &osrssim::debug::DevelopmentPlayerChaseScenario::PlaceGameObject)
+        .function(
+            "RemoveGameObject",
+            &osrssim::debug::DevelopmentPlayerChaseScenario::RemoveGameObject)
+        .function(
+            "HasLineOfSight",
+            &osrssim::debug::DevelopmentPlayerChaseScenario::HasLineOfSight)
+        .function(
+            "HasActorLineOfSight",
+            &osrssim::debug::DevelopmentPlayerChaseScenario::HasActorLineOfSight)
+        .function(
+            "SetRunning",
+            &osrssim::debug::DevelopmentPlayerChaseScenario::SetRunning)
+        .function(
+            "IsRunning",
+            &osrssim::debug::DevelopmentPlayerChaseScenario::IsRunning)
+        .function(
+            "WasLastClickBlocked",
+            &osrssim::debug::DevelopmentPlayerChaseScenario::WasLastClickBlocked)
+        .function(
+            "GetCurrentTick",
+            &osrssim::debug::DevelopmentPlayerChaseScenario::GetCurrentTick)
+        .function(
+            "GetWorld",
+            emscripten::select_overload<osrssim::World&()>(
+                &osrssim::debug::DevelopmentPlayerChaseScenario::GetWorld),
+            emscripten::return_value_policy::reference())
+        .function(
+            "GetPlayerId",
+            &osrssim::debug::DevelopmentPlayerChaseScenario::GetPlayerId)
+        .function(
+            "GetNpcIdsJson",
+            &osrssim::debug::DevelopmentPlayerChaseScenario::GetNpcIdsJson)
+        .function(
+            "GetSelectedNpcId",
+            &osrssim::debug::DevelopmentPlayerChaseScenario::GetSelectedNpcId);
 
 }

@@ -1,3 +1,12 @@
+2026-06-24 #106 Migrate Player Chase debug scenario onto encounter infrastructure
+- Selected issue: #106, ready-for-agent. Blockers #103/#104/#105 are closed. Parent PRD: #98.
+- Docs read: CONTEXT.md; docs/agents/domain.md; docs/adr/0010-engine-owned-npc-behaviors.md; docs/adr/0011-encounter-runner-orchestrates-active-encounters.md; PRD #98; feature #106; blockers #103/#104/#105.
+- Plan: TDD native debug Player Chase scenario backed by Active Encounter + Encounter Runner, expose it to WASM, and keep TypeScript snapshots/view controls debug-specific with fallback fake-module tests. Scope guard: only #106; no Encounter Definition/registry/generic result/effects/projectiles.
+- Completed: PRD #98 story 42 and feature #106 acceptance for Player Chase debug scenario migrated to Active Encounter + Encounter Runner while preserving controls, reset-by-recreate, and view-specific snapshots.
+- Decisions: add EncounterContext actor lifecycle helpers but no Engine/Step exposure; keep C++ DevelopmentPlayerChaseScenario debug-only, not registry/definition; normalize WASM uint64 IDs to numbers in TS scenario state.
+- Files changed: cpp/engine/src/EncounterContext.*, cpp/engine/src/debug/DevelopmentPlayerChaseScenario.*, cpp/engine/src/EngineBindings.cpp, cpp/engine/tests/DevelopmentPlayerChaseScenarioTest.cpp, cpp/engine/CMakeLists.txt, web/src/scenarios.ts, web/src/wasm/EngineModule.ts, web tests, progress.txt.
+- Validation: initial red player-chase-scenario test failed on missing native construction; tools/build_wasm.sh; cmake --build build; ctest --test-dir build --output-on-failure; yarn --cwd web typecheck/test/build; git diff --check passed. No blockers.
+
 2026-06-23 #103 Support safe behavior-driven creation, removal, and replacement during NPC updates
 - Selected issue: #103, ready-for-agent. Blockers #101/#102 are closed. Parent PRD: #98. #106 skipped because blocked by #103.
 - Docs read: CONTEXT.md; docs/architecture/simulation-model.md; docs/adr/0002-deterministic-engine.md; docs/adr/0005-world-owns-scenes-and-actors.md; docs/adr/0009-actor-owned-combat-queues.md; docs/adr/0010-engine-owned-npc-behaviors.md; docs/adr/0011-encounter-runner-orchestrates-active-encounters.md; PRD #98; feature #103; blockers #101/#102.

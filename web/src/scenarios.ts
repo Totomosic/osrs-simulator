@@ -8,6 +8,7 @@ import type {
     SceneCoordinate,
     WeaponDefinition,
     World,
+    DevelopmentPlayerChaseScenario,
 } from "./wasm/EngineModule";
 export { loadEngineModule } from "./wasm/EngineModule";
 
@@ -199,9 +200,10 @@ const npcWeaponRange = 8;
 
 class WebPlayerChaseScenario implements PlayerChaseScenario {
     private m_Module: EngineModule;
-    private m_Engine: Engine;
-    private m_World: World;
-    private m_Scene: Scene;
+    private m_Engine: Engine | null = null;
+    private m_NativeScenario: DevelopmentPlayerChaseScenario | null = null;
+    private m_World!: World;
+    private m_Scene!: Scene;
     private m_Running = false;
     private m_LastClickBlocked = false;
     private m_ActionFeedback: ActionFeedback = { state: "none" };
@@ -213,6 +215,14 @@ class WebPlayerChaseScenario implements PlayerChaseScenario {
 
     public constructor(module: EngineModule) {
         this.m_Module = module;
+
+        if (module.DevelopmentPlayerChaseScenario !== undefined) {
+            this.m_NativeScenario = new module.DevelopmentPlayerChaseScenario();
+            this.syncNativeScenarioState();
+            this.resetDebugGameObjectState();
+            return;
+        }
+
         this.m_Engine = new module.Engine();
         this.m_World = this.m_Engine.GetWorld();
 
@@ -227,11 +237,25 @@ class WebPlayerChaseScenario implements PlayerChaseScenario {
     }
 
     public step(): void {
-        this.m_Engine.Step();
+        if (this.m_NativeScenario !== null) {
+            this.m_NativeScenario.Step();
+            return;
+        }
+
+        this.m_Engine?.Step();
     }
 
     public clickSceneCoordinate(x: number, y: number, plane: number): boolean {
         const coordinate = { x, y, plane };
+
+        if (this.m_NativeScenario !== null) {
+            const moved = this.m_NativeScenario.ClickSceneCoordinate(x, y, plane);
+            this.m_LastClickBlocked = this.m_NativeScenario.WasLastClickBlocked();
+            this.m_ActionFeedback = moved
+                ? { state: "none" }
+                : { state: "blocked-movement" };
+            return moved;
+        }
 
         if (
             !this.m_World.CanPlayerUseSceneCoordinateMovementTarget(
@@ -263,6 +287,26 @@ class WebPlayerChaseScenario implements PlayerChaseScenario {
         y: number,
         plane: number,
     ): boolean {
+        if (this.m_NativeScenario !== null) {
+            const placed = this.m_NativeScenario.PlaceNpc(
+                size,
+                speed,
+                x,
+                y,
+                plane,
+            );
+
+            if (!placed) {
+                this.m_ActionFeedback = { state: "placement-failure" };
+                return false;
+            }
+
+            this.syncNativeScenarioState();
+            this.m_LastClickBlocked = false;
+            this.m_ActionFeedback = { state: "none" };
+            return true;
+        }
+
         const npcId = this.m_World.CreateNpc(
             size,
             speed,
@@ -301,6 +345,20 @@ class WebPlayerChaseScenario implements PlayerChaseScenario {
             return false;
         }
 
+        if (this.m_NativeScenario !== null) {
+            const removed = this.m_NativeScenario.RemoveNpc(x, y, plane);
+
+            if (!removed) {
+                this.m_ActionFeedback = { state: "removal-failure" };
+                return false;
+            }
+
+            this.syncNativeScenarioState();
+            this.m_LastClickBlocked = false;
+            this.m_ActionFeedback = { state: "none" };
+            return true;
+        }
+
         this.m_World.RemoveActor(npcId);
         this.m_NpcIds = this.m_NpcIds.filter((id) => id !== npcId);
 
@@ -326,17 +384,28 @@ class WebPlayerChaseScenario implements PlayerChaseScenario {
         const coordinate = { x, y, plane };
         const id = this.m_NextGameObjectId;
         const normalizedDirection = this.normalizeCardinalDirection(direction);
-        const placed = this.m_Scene.PlaceGameObject(
-            coordinate,
-            id,
-            normalizedDirection,
-            sizeX,
-            sizeY,
-            {
+        const placed =
+            this.m_NativeScenario?.PlaceGameObject(
+                x,
+                y,
+                plane,
+                sizeX,
+                sizeY,
+                normalizedDirection,
                 blocksMovement,
                 blocksLineOfSight,
-            },
-        );
+            ) ??
+            this.m_Scene.PlaceGameObject(
+                coordinate,
+                id,
+                normalizedDirection,
+                sizeX,
+                sizeY,
+                {
+                    blocksMovement,
+                    blocksLineOfSight,
+                },
+            );
 
         if (!placed) {
             this.m_ActionFeedback = { state: "placement-failure" };
@@ -373,7 +442,9 @@ class WebPlayerChaseScenario implements PlayerChaseScenario {
             return false;
         }
 
-        const removed = this.m_Scene.RemoveGameObject({ x, y, plane });
+        const removed =
+            this.m_NativeScenario?.RemoveGameObject(x, y, plane) ??
+            this.m_Scene.RemoveGameObject({ x, y, plane });
 
         if (!removed) {
             this.m_ActionFeedback = { state: "removal-failure" };
@@ -395,6 +466,16 @@ class WebPlayerChaseScenario implements PlayerChaseScenario {
         plane: number,
         range: number,
     ): boolean {
+        if (this.m_NativeScenario !== null) {
+            return this.m_NativeScenario.HasLineOfSight(
+                actorId,
+                x,
+                y,
+                plane,
+                this.clampLineOfSightRange(range),
+            );
+        }
+
         const actor = this.tryReadActorSnapshot(actorId);
 
         if (actor === null) {
@@ -414,6 +495,14 @@ class WebPlayerChaseScenario implements PlayerChaseScenario {
         targetActorId: number,
         range: number,
     ): boolean {
+        if (this.m_NativeScenario !== null) {
+            return this.m_NativeScenario.HasActorLineOfSight(
+                sourceActorId,
+                targetActorId,
+                this.clampLineOfSightRange(range),
+            );
+        }
+
         const source = this.tryReadActorSnapshot(sourceActorId);
         const target = this.tryReadActorSnapshot(targetActorId);
 
@@ -431,18 +520,40 @@ class WebPlayerChaseScenario implements PlayerChaseScenario {
     }
 
     public setRunning(running: boolean): void {
+        if (this.m_NativeScenario !== null) {
+            this.m_NativeScenario.SetRunning(running);
+        }
+
         this.m_Running = running;
     }
 
     public isRunning(): boolean {
+        if (this.m_NativeScenario !== null) {
+            return this.m_NativeScenario.IsRunning();
+        }
+
         return this.m_Running;
     }
 
     public wasLastClickBlocked(): boolean {
+        if (this.m_NativeScenario !== null) {
+            return this.m_NativeScenario.WasLastClickBlocked();
+        }
+
         return this.m_LastClickBlocked;
     }
 
     public reset(): void {
+        if (this.m_NativeScenario !== null) {
+            this.m_NativeScenario.Reset();
+            this.syncNativeScenarioState();
+            this.m_Running = false;
+            this.m_LastClickBlocked = false;
+            this.m_ActionFeedback = { state: "none" };
+            this.resetDebugGameObjectState();
+            return;
+        }
+
         this.removeExistingActors();
         this.m_Scene.RemoveGameObject({ x: 12, y: 4, plane: 0 });
 
@@ -541,7 +652,11 @@ class WebPlayerChaseScenario implements PlayerChaseScenario {
     }
 
     private getTick(): number {
-        return Number(this.m_Engine.GetCurrentTick());
+        if (this.m_NativeScenario !== null) {
+            return Number(this.m_NativeScenario.GetCurrentTick());
+        }
+
+        return Number(this.m_Engine?.GetCurrentTick() ?? 0);
     }
 
     private getSceneWidth(): number {
@@ -599,6 +714,39 @@ class WebPlayerChaseScenario implements PlayerChaseScenario {
                 projectileId: 0,
             }),
         );
+    }
+
+    private syncNativeScenarioState(): void {
+        if (this.m_NativeScenario === null) {
+            return;
+        }
+
+        this.m_World = this.m_NativeScenario.GetWorld();
+
+        const scene = this.m_World.TryGetScene(this.m_World.GetDefaultSceneId());
+
+        if (scene === null) {
+            throw new Error("Player Chase requires the default scene.");
+        }
+
+        this.m_Scene = scene;
+        this.m_PlayerId = Number(this.m_NativeScenario.GetPlayerId());
+        this.m_NpcIds = JSON.parse(this.m_NativeScenario.GetNpcIdsJson()) as number[];
+        this.m_SelectedNpcId = Number(this.m_NativeScenario.GetSelectedNpcId());
+    }
+
+    private resetDebugGameObjectState(): void {
+        this.m_GameObjects = [
+            {
+                id: 200,
+                origin: { x: 12, y: 4, plane: 0 },
+                sizeX: 3,
+                sizeY: 3,
+                footprintWidth: 3,
+                footprintHeight: 3,
+            },
+        ];
+        this.m_NextGameObjectId = 201;
     }
 
     private normalizeMovementTarget(

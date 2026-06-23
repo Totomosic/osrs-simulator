@@ -12,6 +12,45 @@ export interface Engine {
     GetWorld(): World;
 }
 
+export interface DevelopmentPlayerChaseScenario {
+    Step(): void;
+    Reset(): void;
+    ClickSceneCoordinate(x: number, y: number, plane: number): boolean;
+    PlaceNpc(size: number, speed: number, x: number, y: number, plane: number): boolean;
+    RemoveNpc(x: number, y: number, plane: number): boolean;
+    PlaceGameObject(
+        x: number,
+        y: number,
+        plane: number,
+        sizeX: number,
+        sizeY: number,
+        direction: CardinalDirection,
+        blocksMovement: boolean,
+        blocksLineOfSight: boolean,
+    ): boolean;
+    RemoveGameObject(x: number, y: number, plane: number): boolean;
+    HasLineOfSight(
+        actorId: number,
+        x: number,
+        y: number,
+        plane: number,
+        range: number,
+    ): boolean;
+    HasActorLineOfSight(
+        sourceActorId: number,
+        targetActorId: number,
+        range: number,
+    ): boolean;
+    SetRunning(running: boolean): void;
+    IsRunning(): boolean;
+    WasLastClickBlocked(): boolean;
+    GetCurrentTick(): number | bigint;
+    GetWorld(): World;
+    GetPlayerId(): number | bigint;
+    GetNpcIdsJson(): string;
+    GetSelectedNpcId(): number | bigint;
+}
+
 export interface SceneCoordinate {
     x: number;
     y: number;
@@ -401,6 +440,7 @@ export type CombatCompositionSource = number | "BuiltIn" | "Saved";
 
 export interface EngineModule {
     Engine: new () => Engine;
+    DevelopmentPlayerChaseScenario?: new () => DevelopmentPlayerChaseScenario;
     DpsService: DpsServiceConstructor;
     EquipmentDatabase: EquipmentDatabaseConstructor;
     DatabaseService: DatabaseServiceConstructor;

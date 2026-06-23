@@ -23,6 +23,8 @@ await writeFile(`${outfile}.stamp`, new Date().toISOString());
 
 const { createPlayerChaseScenario } = await import(pathToFileURL(outfile));
 
+let nativePlayerChaseScenarioConstructCount = 0;
+
 function createFakeEngineModule() {
     class FakeEngine {
         constructor() {
@@ -45,12 +47,263 @@ function createFakeEngineModule() {
 
     return {
         Engine: FakeEngine,
+        DevelopmentPlayerChaseScenario: FakeNativePlayerChaseScenario,
         CardinalDirection: {
             North: "North",
             East: "East",
             South: "South",
             West: "West",
         },
+    };
+}
+
+class FakeNativePlayerChaseScenario {
+    constructor() {
+        nativePlayerChaseScenarioConstructCount += 1;
+        this.engine = new (createFakeEngineModuleWithoutNative().Engine)();
+        this.world = this.engine.GetWorld();
+        this.resetCount = 0;
+        this.stepCount = 0;
+        this.running = false;
+        this.lastClickBlocked = false;
+        this.reset();
+    }
+
+    Step() {
+        this.stepCount += 1;
+        this.engine.Step();
+    }
+
+    Reset() {
+        this.reset();
+    }
+
+    ClickSceneCoordinate(x, y, plane) {
+        const coordinate = { x, y, plane };
+
+        if (
+            !this.world.CanPlayerUseSceneCoordinateMovementTarget(
+                this.playerId,
+                coordinate,
+            )
+        ) {
+            this.lastClickBlocked = true;
+            return false;
+        }
+
+        this.lastClickBlocked = false;
+        return this.world.SetPlayerSceneCoordinateMovementTarget(
+            this.playerId,
+            coordinate,
+        );
+    }
+
+    PlaceNpc(size, speed, x, y, plane) {
+        const npcId = this.world.CreateNpc(
+            size,
+            speed,
+            createTestCombatComposition({
+                id: 0,
+                range: 8,
+                speed: 4,
+                projectileId: 1,
+            }),
+        );
+
+        if (!this.world.PlaceActor(npcId, this.world.GetDefaultSceneId(), { x, y, plane })) {
+            this.world.RemoveActor(npcId);
+            return false;
+        }
+
+        this.world.SetActorMovementTarget(npcId, this.playerId);
+        this.npcIds.push(npcId);
+        this.selectedNpcId = npcId;
+        return true;
+    }
+
+    RemoveNpc(x, y, plane) {
+        const npcId = this.npcIds.find((id) => {
+            const snapshot = JSON.parse(this.world.GetActorSnapshot(id));
+            return (
+                snapshot.coordinate.x === x &&
+                snapshot.coordinate.y === y &&
+                snapshot.coordinate.plane === plane
+            );
+        });
+
+        if (npcId === undefined) {
+            return false;
+        }
+
+        this.world.RemoveActor(npcId);
+        this.npcIds = this.npcIds.filter((id) => id !== npcId);
+        this.selectedNpcId = this.npcIds[0] ?? 0;
+        return true;
+    }
+
+    PlaceGameObject(x, y, plane, sizeX, sizeY, direction, blocksMovement, blocksLineOfSight) {
+        return this.world.scene.PlaceGameObject(
+            { x, y, plane },
+            900 + this.world.scene.gameObjects.length,
+            direction,
+            sizeX,
+            sizeY,
+            { blocksMovement, blocksLineOfSight },
+        );
+    }
+
+    RemoveGameObject(x, y, plane) {
+        return this.world.scene.RemoveGameObject({ x, y, plane });
+    }
+
+    HasLineOfSight(actorId, x, y, plane, range) {
+        const actor = JSON.parse(this.world.GetActorSnapshot(actorId));
+        return this.world.scene.HasLineOfSight(
+            actor.coordinate,
+            actor.size,
+            { x, y, plane },
+            range,
+        );
+    }
+
+    HasActorLineOfSight(sourceActorId, targetActorId, range) {
+        const source = JSON.parse(this.world.GetActorSnapshot(sourceActorId));
+        const target = JSON.parse(this.world.GetActorSnapshot(targetActorId));
+        return this.world.scene.HasActorLineOfSight(
+            source.coordinate,
+            source.size,
+            target.coordinate,
+            target.size,
+            range,
+        );
+    }
+
+    SetRunning(running) {
+        this.running = running;
+    }
+
+    IsRunning() {
+        return this.running;
+    }
+
+    WasLastClickBlocked() {
+        return this.lastClickBlocked;
+    }
+
+    GetCurrentTick() {
+        return this.engine.GetCurrentTick();
+    }
+
+    GetWorld() {
+        return this.world;
+    }
+
+    GetPlayerId() {
+        return BigInt(this.playerId);
+    }
+
+    GetNpcIdsJson() {
+        return JSON.stringify(this.npcIds);
+    }
+
+    GetSelectedNpcId() {
+        return BigInt(this.selectedNpcId);
+    }
+
+    reset() {
+        this.resetCount += 1;
+        this.engine = new (createFakeEngineModuleWithoutNative().Engine)();
+        this.world = this.engine.GetWorld();
+        this.running = false;
+        this.lastClickBlocked = false;
+        this.playerId = this.world.CreatePlayer(
+            1,
+            2,
+            createTestCombatComposition({
+                id: 2,
+                range: 5,
+                speed: 4,
+                projectileId: 61,
+            }),
+        );
+        const npcId = this.world.CreateNpc(
+            4,
+            1,
+            createTestCombatComposition({
+                id: 0,
+                range: 8,
+                speed: 4,
+                projectileId: 1,
+            }),
+        );
+        this.npcIds = [npcId];
+        this.selectedNpcId = npcId;
+        this.world.PlaceActor(this.playerId, this.world.GetDefaultSceneId(), {
+            x: 8,
+            y: 11,
+            plane: 0,
+        });
+        this.world.PlaceActor(npcId, this.world.GetDefaultSceneId(), {
+            x: 18,
+            y: 20,
+            plane: 0,
+        });
+        this.world.SetActorMovementTarget(npcId, this.playerId);
+        this.world.scene.PlaceGameObject(
+            { x: 12, y: 4, plane: 0 },
+            200,
+            "North",
+            3,
+            3,
+            { blocksMovement: true, blocksLineOfSight: true },
+        );
+    }
+}
+
+function createFakeEngineModuleWithoutNative() {
+    const module = createFakeEngineModule();
+    delete module.DevelopmentPlayerChaseScenario;
+    return module;
+}
+
+function createTestCombatComposition(weapon) {
+    return {
+        stats: {
+            attack: 1,
+            strength: 1,
+            defence: 1,
+            ranged: 1,
+            magic: 1,
+            hitpoints: 10,
+        },
+        baseStats: {
+            attack: 1,
+            strength: 1,
+            defence: 1,
+            ranged: 1,
+            magic: 1,
+            hitpoints: 10,
+        },
+        bonuses: {
+            stabAttack: 0,
+            slashAttack: 0,
+            crushAttack: 0,
+            magicAttack: 0,
+            rangedAttack: 0,
+            stabDefence: 0,
+            slashDefence: 0,
+            crushDefence: 0,
+            magicDefence: 0,
+            rangedDefenceLight: 0,
+            rangedDefenceStandard: 0,
+            rangedDefenceHeavy: 0,
+            meleeStrength: 0,
+            rangedStrength: 0,
+            magicDamagePercent: 0,
+        },
+        attackType: "Slash",
+        magicBaseMaximumHit: 0,
+        weapon,
     };
 }
 
@@ -267,9 +520,11 @@ const playerChaseViewSource = await readFile(
 );
 
 {
+    nativePlayerChaseScenarioConstructCount = 0;
     const scenario = createPlayerChaseScenario(module);
     const snapshot = scenario.snapshot();
 
+    assert.equal(nativePlayerChaseScenarioConstructCount, 1);
     assert.equal(snapshot.name, "Player Chase");
     assert.equal(snapshot.player.weapon.range, 5);
     assert.equal(snapshot.player.playerIndex, 0);
@@ -293,6 +548,23 @@ const playerChaseViewSource = await readFile(
             totalTicks: 2,
         },
     ]);
+}
+
+{
+    const scenario = createPlayerChaseScenario(module);
+
+    scenario.step();
+    scenario.setRunning(true);
+    assert.equal(scenario.isRunning(), true);
+    assert.equal(scenario.snapshot().tick, 1);
+
+    scenario.reset();
+    const snapshot = scenario.snapshot();
+
+    assert.equal(snapshot.tick, 0);
+    assert.equal(snapshot.running, false);
+    assert.equal(snapshot.player.coordinate.x, 8);
+    assert.equal(snapshot.npcs.length, 1);
 }
 
 {
