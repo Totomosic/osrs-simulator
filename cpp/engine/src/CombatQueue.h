@@ -31,6 +31,9 @@ public:
         ProjectileMetadata projectile);
     void Process();
     std::size_t GetEventCount() const;
+    void UpdateProjectileTargetCenter(
+        ActorId targetActorId,
+        ScenePosition targetCenter);
     std::vector<ProjectileSnapshot> GetProjectileSnapshots() const;
 };
 

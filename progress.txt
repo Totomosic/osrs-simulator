@@ -1,3 +1,12 @@
+2026-06-23 #97 Track Projectile Targets Across Movement And Removal
+- Selected issue: #97, ready-for-agent. Blocker #94 is closed. Parent PRD: #92.
+- Docs read: CONTEXT.md; docs/agents/domain.md; docs/architecture/simulation-model.md; docs/adr/0002-deterministic-engine.md; docs/adr/0003-osrs-scene-model.md; docs/adr/0006-web-development-viewer.md; docs/adr/0009-actor-owned-combat-queues.md.
+- Plan: TDD World/CombatQueue projectile snapshots so live Actor Footprint Center updates flow into pending projectile metadata, removed target actors fall back to last known center, expiry remains tied to combat event processing, and multiple pending projectiles remain ordered/deterministic. Scope guard: only #97; no new projectile rendering style, hitpoint bars, or combat semantics.
+- Completed: PRD #92 stories 6-7, 21-24 and feature #97 acceptance for live target Actor Footprint Center tracking, last-known fallback after target removal, combat-event expiry, and multiple pending projectile snapshots.
+- Decisions: refresh stored projectile target centers when actors are placed/moved, and overlay live centers at snapshot assembly when the target still has scene membership; keep fallback as last stored center when target actor/membership is gone.
+- Files changed: cpp/engine/src/CombatQueue.h, cpp/engine/src/CombatQueue.cpp, cpp/engine/src/World.h, cpp/engine/src/World.cpp, cpp/engine/tests/WorldTest.cpp, progress.txt.
+- Validation: initial red osrssim_engine_world_test failed on stale lastKnownTargetCenter; cmake --build build --target osrssim_engine_world_test; ./build/cpp/engine/osrssim_engine_world_test; cmake --build build; ctest --test-dir build --output-on-failure; tools/build_wasm.sh; yarn --cwd web typecheck; yarn --cwd web test; yarn --cwd web build; git diff --check passed. No blockers.
+
 2026-06-23 #96 Smooth Projectile Motion In Viewer Playback
 - Selected issue: #96, unblocked because #94 is closed. Parent PRD: #92.
 - Docs read: CONTEXT.md, docs/agents/domain.md, docs/architecture/simulation-model.md, docs/adr/0006-web-development-viewer.md, docs/adr/0009-actor-owned-combat-queues.md, PRD #92, feature #96, blocker #94.

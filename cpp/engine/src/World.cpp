@@ -313,10 +313,21 @@ std::vector<ProjectileSnapshot> World::GetProjectileSnapshots() const
 {
     std::vector<ProjectileSnapshot> snapshots;
 
-    auto appendActorProjectiles = [&snapshots](const ActorCore& actor)
+    auto appendActorProjectiles = [this, &snapshots](const ActorCore& actor)
     {
         std::vector<ProjectileSnapshot> actorProjectiles =
             actor.combatQueue.GetProjectileSnapshots();
+
+        for (ProjectileSnapshot& projectile : actorProjectiles)
+        {
+            if (GetActorCore(projectile.targetActorId) != nullptr &&
+                GetSceneMembership(projectile.targetActorId) != nullptr)
+            {
+                projectile.lastKnownTargetCenter =
+                    GetActorFootprintCenter(projectile.targetActorId);
+            }
+        }
+
         snapshots.insert(
             snapshots.end(),
             actorProjectiles.begin(),
@@ -447,6 +458,7 @@ bool World::PlaceActor(
 
     m_SceneMemberships[actorId] = SceneMembership{sceneId, coordinate};
     AddActorOccupancy(*scene, coordinate, actor->size);
+    UpdateProjectilesTargetingActor(actorId);
 
     return true;
 }
@@ -566,6 +578,7 @@ bool World::MoveActorByDelta(ActorId actorId, int dx, int dy)
     RemoveActorOccupancy(*scene, membership->coordinate, actor->size);
     membership->coordinate = destination;
     AddActorOccupancy(*scene, membership->coordinate, actor->size);
+    UpdateProjectilesTargetingActor(actorId);
 
     return true;
 }
@@ -1547,6 +1560,33 @@ bool World::TryResolveMovementDelta(
     resolvedDy = bestDy;
 
     return true;
+}
+
+void World::UpdateProjectilesTargetingActor(ActorId actorId)
+{
+    const ActorCore* targetActor = TryGetActorCore(actorId);
+    const SceneMembership* targetMembership = GetSceneMembership(actorId);
+
+    if (targetActor == nullptr || targetMembership == nullptr)
+    {
+        return;
+    }
+
+    const ScenePosition targetCenter = GetActorFootprintCenter(actorId);
+
+    for (auto& [_, player] : m_Players)
+    {
+        player.actor.combatQueue.UpdateProjectileTargetCenter(
+            actorId,
+            targetCenter);
+    }
+
+    for (auto& [_, npc] : m_Npcs)
+    {
+        npc.actor.combatQueue.UpdateProjectileTargetCenter(
+            actorId,
+            targetCenter);
+    }
 }
 
 void World::AddActorOccupancy(

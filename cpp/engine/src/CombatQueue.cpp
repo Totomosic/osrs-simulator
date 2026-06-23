@@ -69,6 +69,20 @@ std::size_t CombatQueue::GetEventCount() const
     return m_Events.size();
 }
 
+void CombatQueue::UpdateProjectileTargetCenter(
+    ActorId targetActorId,
+    ScenePosition targetCenter)
+{
+    for (CombatEvent& event : m_Events)
+    {
+        if (event.projectile.has_value() &&
+            event.projectile->targetActorId == targetActorId)
+        {
+            event.projectile->lastKnownTargetCenter = targetCenter;
+        }
+    }
+}
+
 std::vector<ProjectileSnapshot> CombatQueue::GetProjectileSnapshots() const
 {
     std::vector<ProjectileSnapshot> snapshots;

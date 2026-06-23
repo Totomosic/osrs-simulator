@@ -229,6 +229,7 @@ private:
         int requestedDy,
         int& resolvedDx,
         int& resolvedDy) const;
+    void UpdateProjectilesTargetingActor(ActorId actorId);
     void AddActorOccupancy(
         Scene& scene,
         SceneCoordinate coordinate,

@@ -2,6 +2,7 @@
 #include "World.h"
 
 #include <cassert>
+#include <vector>
 
 namespace
 {
@@ -1243,6 +1244,105 @@ int main()
         assert(world.GetSceneMembership(playerId)->coordinate ==
                (osrssim::SceneCoordinate{12, 11, 0}));
         assert(world.GetNpc(npcId)->movementTarget.has_value());
+    }
+
+    {
+        osrssim::World world;
+        osrssim::ActorId eventOwnerId =
+            world.CreatePlayer(1, 1, osrssim::CombatComposition{});
+        osrssim::ActorId targetId =
+            world.CreateNpc(2, 1, osrssim::CombatComposition{});
+        int firstEventCount = 0;
+        int secondEventCount = 0;
+
+        assert(world.PlaceActor(
+            eventOwnerId,
+            world.GetDefaultSceneId(),
+            {10, 10, 0}));
+        assert(world.PlaceActor(
+            targetId,
+            world.GetDefaultSceneId(),
+            {20, 20, 0}));
+        assert(world.QueueActorCombatEvent(
+            eventOwnerId,
+            2,
+            [&firstEventCount]()
+            {
+                ++firstEventCount;
+            },
+            osrssim::ProjectileMetadata{
+                101,
+                {10.5, 10.5, 0},
+                targetId,
+                world.GetActorFootprintCenter(targetId)}));
+        assert(world.QueueActorCombatEvent(
+            eventOwnerId,
+            3,
+            [&secondEventCount]()
+            {
+                ++secondEventCount;
+            },
+            osrssim::ProjectileMetadata{
+                202,
+                {11.5, 10.5, 0},
+                targetId,
+                world.GetActorFootprintCenter(targetId)}));
+
+        assert(world.MoveActorByDelta(targetId, 1, 0));
+
+        {
+            const std::vector<osrssim::ProjectileSnapshot> projectiles =
+                world.GetProjectileSnapshots();
+            assert(projectiles.size() == 2);
+            assert(projectiles[0].projectileId == 101);
+            assert(projectiles[0].targetActorId == targetId);
+            assert(projectiles[0].lastKnownTargetCenter ==
+                   (osrssim::ScenePosition{22.0, 21.0, 0}));
+            assert(projectiles[0].elapsedTicks == 0);
+            assert(projectiles[0].totalTicks == 2);
+            assert(projectiles[1].projectileId == 202);
+            assert(projectiles[1].targetActorId == targetId);
+            assert(projectiles[1].lastKnownTargetCenter ==
+                   (osrssim::ScenePosition{22.0, 21.0, 0}));
+            assert(projectiles[1].elapsedTicks == 0);
+            assert(projectiles[1].totalTicks == 3);
+        }
+
+        assert(world.RemoveActor(targetId));
+
+        world.GetActorCombatQueue(eventOwnerId)->Process();
+
+        {
+            const std::vector<osrssim::ProjectileSnapshot> projectiles =
+                world.GetProjectileSnapshots();
+            assert(projectiles.size() == 2);
+            assert(projectiles[0].lastKnownTargetCenter ==
+                   (osrssim::ScenePosition{22.0, 21.0, 0}));
+            assert(projectiles[0].elapsedTicks == 1);
+            assert(projectiles[1].lastKnownTargetCenter ==
+                   (osrssim::ScenePosition{22.0, 21.0, 0}));
+            assert(projectiles[1].elapsedTicks == 1);
+        }
+
+        world.GetActorCombatQueue(eventOwnerId)->Process();
+
+        {
+            const std::vector<osrssim::ProjectileSnapshot> projectiles =
+                world.GetProjectileSnapshots();
+            assert(firstEventCount == 1);
+            assert(secondEventCount == 0);
+            assert(projectiles.size() == 1);
+            assert(projectiles[0].projectileId == 202);
+            assert(projectiles[0].lastKnownTargetCenter ==
+                   (osrssim::ScenePosition{22.0, 21.0, 0}));
+            assert(projectiles[0].elapsedTicks == 2);
+        }
+
+        world.GetActorCombatQueue(eventOwnerId)->Process();
+
+        assert(firstEventCount == 1);
+        assert(secondEventCount == 1);
+        assert(world.GetProjectileSnapshots().empty());
     }
 
     return 0;
