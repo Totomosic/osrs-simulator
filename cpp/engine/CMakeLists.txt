@@ -7,6 +7,8 @@ add_library(osrssim_engine
   src/EquipmentDatabase.cpp
   src/EquipmentSet.cpp
   src/Engine.cpp
+  src/behavior/DefaultNpcBehavior.cpp
+  src/behavior/NpcBehavior.cpp
   src/LineOfSight.cpp
   src/NpcDatabase.cpp
   src/Pathing.cpp

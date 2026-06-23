@@ -222,6 +222,7 @@ std::optional<ActorId> World::CreateNpc(
         Npc{
             {actorId, ClampSize(size), ClampSpeed(speed), combatComposition},
             npcIndex.value(),
+            0,
             std::nullopt});
     return actorId;
 }

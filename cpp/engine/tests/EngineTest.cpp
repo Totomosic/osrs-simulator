@@ -81,6 +81,17 @@ int main()
 {
     {
         osrssim::Engine engine;
+        const osrssim::behavior::NpcBehavior* defaultBehavior =
+            engine.GetNpcBehavior(0);
+
+        assert(defaultBehavior != nullptr);
+        assert(defaultBehavior->CanBeShared());
+        assert(engine.GetNpcBehaviorCount() == 1);
+        assert(engine.GetNpcBehavior(1) == nullptr);
+    }
+
+    {
+        osrssim::Engine engine;
         osrssim::World& world = engine.GetWorld();
         osrssim::ActorId playerId = world.CreatePlayer(1, 1, osrssim::CombatComposition{}).value();
 

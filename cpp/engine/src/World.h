@@ -49,6 +49,7 @@ struct Npc
 {
     ActorCore actor;
     NpcIndex npcIndex = 0;
+    NpcBehaviorId behaviorId = 0;
     std::optional<MovementTarget> movementTarget;
 };
 

@@ -1,9 +1,18 @@
 #include "Engine.h"
 
+#include "behavior/DefaultNpcBehavior.h"
+
 #include <optional>
+#include <stdexcept>
 
 namespace osrssim
 {
+
+Engine::Engine()
+{
+    m_NpcBehaviors.push_back(
+        std::make_unique<behavior::DefaultNpcBehavior>());
+}
 
 bool Engine::SetPlayerSceneCoordinateMovementTarget(
     ActorId actorId,
@@ -75,6 +84,22 @@ CombatService& Engine::GetCombatService()
 const CombatService& Engine::GetCombatService() const
 {
     return m_CombatService;
+}
+
+const behavior::NpcBehavior* Engine::GetNpcBehavior(
+    NpcBehaviorId behaviorId) const
+{
+    if (behaviorId >= m_NpcBehaviors.size())
+    {
+        return nullptr;
+    }
+
+    return m_NpcBehaviors[behaviorId].get();
+}
+
+int Engine::GetNpcBehaviorCount() const
+{
+    return static_cast<int>(m_NpcBehaviors.size());
 }
 
 void Engine::ProcessQueuedPlayerMovementActions()
@@ -174,6 +199,46 @@ bool Engine::IsOverlappingActorMovementTarget(ActorId actorId) const
                movementTarget->actorId);
 }
 
+void Engine::UpdateNpcBehavior(ActorId actorId)
+{
+    const Npc* npc = m_World.GetNpc(actorId);
+
+    if (npc == nullptr)
+    {
+        return;
+    }
+
+    behavior::NpcBehavior* behavior = nullptr;
+
+    if (npc->behaviorId < m_NpcBehaviors.size())
+    {
+        behavior = m_NpcBehaviors[npc->behaviorId].get();
+    }
+
+    if (behavior == nullptr)
+    {
+        throw std::logic_error("NPC behavior ID is not registered");
+    }
+
+    behavior::NpcBehaviorContext context(
+        m_World,
+        m_CombatService,
+        m_CurrentTick,
+        this,
+        [](void* owner, ActorId callbackActorId)
+        {
+            return static_cast<Engine*>(owner)->TryHandleActorTargetCombat(
+                callbackActorId);
+        },
+        [](void* owner, ActorId callbackActorId)
+        {
+            return static_cast<Engine*>(owner)
+                ->IsOverlappingActorMovementTarget(callbackActorId);
+        });
+
+    behavior->Update(context, actorId);
+}
+
 void Engine::UpdateNpcs()
 {
     int npcIndex = -1;
@@ -204,18 +269,7 @@ void Engine::UpdateNpcs()
             continue;
         }
 
-        if (!TryHandleActorTargetCombat(actorId))
-        {
-            const bool startedFromOverlap =
-                IsOverlappingActorMovementTarget(actorId);
-            const bool moved =
-                m_World.UpdateActorMovement(actorId, m_CurrentTick);
-
-            if (moved && !startedFromOverlap)
-            {
-                TryHandleActorTargetCombat(actorId);
-            }
-        }
+        UpdateNpcBehavior(actorId);
     }
 }
 

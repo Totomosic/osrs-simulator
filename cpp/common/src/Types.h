@@ -15,6 +15,7 @@ using Seed = std::uint64_t;
 using WeaponId = std::uint64_t;
 using CombatCompositionId = std::uint64_t;
 using NpcId = std::uint64_t;
+using NpcBehaviorId = std::uint64_t;
 
 struct SceneCoordinate
 {

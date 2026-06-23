@@ -3,7 +3,9 @@
 #include "CombatService.h"
 #include "Types.h"
 #include "World.h"
+#include "behavior/NpcBehavior.h"
 
+#include <memory>
 #include <vector>
 
 namespace osrssim
@@ -21,9 +23,12 @@ private:
     Tick m_CurrentTick = 0;
     World m_World;
     CombatService m_CombatService;
+    std::vector<std::unique_ptr<behavior::NpcBehavior>> m_NpcBehaviors;
     std::vector<QueuedPlayerMovementAction> m_QueuedPlayerMovementActions;
 
 public:
+    Engine();
+
     bool SetPlayerSceneCoordinateMovementTarget(
         ActorId actorId,
         SceneCoordinate coordinate);
@@ -37,6 +42,9 @@ public:
     const World& GetWorld() const;
     CombatService& GetCombatService();
     const CombatService& GetCombatService() const;
+    const behavior::NpcBehavior* GetNpcBehavior(
+        NpcBehaviorId behaviorId) const;
+    int GetNpcBehaviorCount() const;
 
 private:
     void ProcessQueuedPlayerMovementActions();
@@ -44,6 +52,7 @@ private:
     void ProcessActorCombatQueue(ActorId actorId);
     bool TryHandleActorTargetCombat(ActorId actorId);
     bool IsOverlappingActorMovementTarget(ActorId actorId) const;
+    void UpdateNpcBehavior(ActorId actorId);
     void UpdateNpcs();
     void UpdatePlayers();
 };

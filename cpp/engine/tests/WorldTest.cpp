@@ -35,6 +35,8 @@ int main()
         assert(world.GetPlayer(secondPlayerId)->playerIndex == 1);
         assert(world.GetNpc(firstNpcId)->npcIndex == 0);
         assert(world.GetNpc(secondNpcId)->npcIndex == 1);
+        assert(world.GetNpc(firstNpcId)->behaviorId == 0);
+        assert(world.GetNpc(secondNpcId)->behaviorId == 0);
         assert(world.GetPlayer(firstPlayerId)->actor.id == firstPlayerId);
         assert(world.GetNpc(firstNpcId)->actor.id == firstNpcId);
     }
