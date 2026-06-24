@@ -6,14 +6,158 @@
   },
   "initialState": {
     "tick": 0,
-    "actors": [],
+    "actors": [
+      {
+        "id": 1,
+        "kind": "Player",
+        "present": true,
+        "playerIndex": 0,
+        "sceneMembership": {
+          "sceneId": 1,
+          "coordinate": {
+            "x": 10,
+            "y": 11,
+            "plane": 0
+          }
+        },
+        "size": 1,
+        "speed": 2,
+        "combatComposition": {
+          "stats": {
+            "attack": 70,
+            "strength": 71,
+            "defence": 72,
+            "ranged": 73,
+            "magic": 74,
+            "hitpoints": 82
+          },
+          "baseStats": {
+            "attack": 1,
+            "strength": 1,
+            "defence": 1,
+            "ranged": 1,
+            "magic": 1,
+            "hitpoints": 99
+          },
+          "bonuses": {
+            "stabAttack": 0,
+            "slashAttack": 15,
+            "crushAttack": 0,
+            "magicAttack": 0,
+            "rangedAttack": 0,
+            "stabDefence": 0,
+            "slashDefence": 0,
+            "crushDefence": 0,
+            "magicDefence": 0,
+            "rangedDefenceLight": 0,
+            "rangedDefenceStandard": 0,
+            "rangedDefenceHeavy": 0,
+            "meleeStrength": 0,
+            "rangedStrength": 0,
+            "magicDamagePercent": 0
+          },
+          "attackType": "Slash",
+          "magicBaseMaximumHit": 9,
+          "weapon": {
+            "id": 12,
+            "range": 4,
+            "speed": 6,
+            "projectileId": 88
+          }
+        },
+        "debug": {
+          "movementTarget": null,
+          "attackTimer": 0
+        }
+      }
+    ],
     "sceneEntities": [],
     "projectiles": []
   },
   "ticks": [
     {
       "tick": 1,
-      "actors": [],
+      "actors": [
+        {
+          "id": 1,
+          "sceneMembership": {
+            "sceneId": 1,
+            "coordinate": {
+              "x": 12,
+              "y": 13,
+              "plane": 0
+            }
+          },
+          "currentHitpoints": 77,
+          "debug": {
+            "movementTarget": null,
+            "attackTimer": 6
+          }
+        },
+        {
+          "id": 2,
+          "kind": "Npc",
+          "present": true,
+          "npcIndex": 0,
+          "sceneMembership": {
+            "sceneId": 1,
+            "coordinate": {
+              "x": 20,
+              "y": 21,
+              "plane": 0
+            }
+          },
+          "size": 2,
+          "speed": 1,
+          "combatComposition": {
+            "stats": {
+              "attack": 70,
+              "strength": 71,
+              "defence": 72,
+              "ranged": 73,
+              "magic": 74,
+              "hitpoints": 50
+            },
+            "baseStats": {
+              "attack": 1,
+              "strength": 1,
+              "defence": 1,
+              "ranged": 1,
+              "magic": 1,
+              "hitpoints": 50
+            },
+            "bonuses": {
+              "stabAttack": 0,
+              "slashAttack": 15,
+              "crushAttack": 0,
+              "magicAttack": 0,
+              "rangedAttack": 0,
+              "stabDefence": 0,
+              "slashDefence": 0,
+              "crushDefence": 0,
+              "magicDefence": 0,
+              "rangedDefenceLight": 0,
+              "rangedDefenceStandard": 0,
+              "rangedDefenceHeavy": 0,
+              "meleeStrength": 0,
+              "rangedStrength": 0,
+              "magicDamagePercent": 0
+            },
+            "attackType": "Slash",
+            "magicBaseMaximumHit": 9,
+            "weapon": {
+              "id": 12,
+              "range": 4,
+              "speed": 6,
+              "projectileId": 88
+            }
+          },
+          "debug": {
+            "movementTarget": null,
+            "attackTimer": -1
+          }
+        }
+      ],
       "attacks": [],
       "damageApplications": [],
       "sceneChanges": [],
@@ -21,7 +165,57 @@
     },
     {
       "tick": 2,
-      "actors": [],
+      "actors": [
+        {
+          "id": 1,
+          "combatComposition": {
+            "stats": {
+              "attack": 80,
+              "strength": 71,
+              "defence": 72,
+              "ranged": 73,
+              "magic": 74,
+              "hitpoints": 76
+            },
+            "baseStats": {
+              "attack": 1,
+              "strength": 1,
+              "defence": 1,
+              "ranged": 1,
+              "magic": 1,
+              "hitpoints": 99
+            },
+            "bonuses": {
+              "stabAttack": 0,
+              "slashAttack": 15,
+              "crushAttack": 0,
+              "magicAttack": 0,
+              "rangedAttack": 0,
+              "stabDefence": 0,
+              "slashDefence": 0,
+              "crushDefence": 0,
+              "magicDefence": 0,
+              "rangedDefenceLight": 0,
+              "rangedDefenceStandard": 0,
+              "rangedDefenceHeavy": 0,
+              "meleeStrength": 0,
+              "rangedStrength": 0,
+              "magicDamagePercent": 0
+            },
+            "attackType": "Slash",
+            "magicBaseMaximumHit": 9,
+            "weapon": {
+              "id": 12,
+              "range": 4,
+              "speed": 6,
+              "projectileId": 88
+            }
+          },
+          "debug": {
+            "attackTimer": 5
+          }
+        }
+      ],
       "attacks": [],
       "damageApplications": [],
       "sceneChanges": [],

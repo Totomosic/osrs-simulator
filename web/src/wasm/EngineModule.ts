@@ -18,6 +18,7 @@ export interface RecordingPlayback {
     GetInitialTick(): number;
     GetCurrentTick(): number;
     GetLastTick(): number;
+    GetActorsJson(): string;
     PreviousTick(): boolean;
     NextTick(): boolean;
     GoToTick(tick: number): boolean;

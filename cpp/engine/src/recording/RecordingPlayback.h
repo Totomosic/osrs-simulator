@@ -11,9 +11,11 @@ class RecordingPlayback
 {
 private:
     nlohmann::json m_Recording;
+    nlohmann::json m_Actors = nlohmann::json::object();
     int m_CurrentTick = 0;
 
     static void Validate(const nlohmann::json& recording);
+    void RebuildToCurrentTick();
 
 public:
     static RecordingPlayback LoadFromJson(const std::string& jsonText);
@@ -23,6 +25,7 @@ public:
     int GetInitialTick() const;
     int GetCurrentTick() const;
     int GetLastTick() const;
+    std::string GetActorsJson() const;
     bool PreviousTick();
     bool NextTick();
     bool GoToTick(int tick);

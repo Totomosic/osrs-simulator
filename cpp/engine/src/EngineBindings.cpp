@@ -784,6 +784,9 @@ EMSCRIPTEN_BINDINGS(osrssim_engine)
             "GetLastTick",
             &osrssim::recording::RecordingPlayback::GetLastTick)
         .function(
+            "GetActorsJson",
+            &osrssim::recording::RecordingPlayback::GetActorsJson)
+        .function(
             "PreviousTick",
             &osrssim::recording::RecordingPlayback::PreviousTick)
         .function(

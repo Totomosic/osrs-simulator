@@ -3,6 +3,47 @@ import { computed, onMounted, onUnmounted, ref, shallowRef } from "vue";
 import { loadEngineModule } from "./wasm/EngineModule";
 import type { EngineModule, RecordingPlayback } from "./wasm/EngineModule";
 
+interface RecordingActor {
+    id: number;
+    kind: "Player" | "Npc";
+    playerIndex?: number;
+    npcIndex?: number;
+    present: boolean;
+    sceneMembership: {
+        sceneId: number;
+        coordinate: {
+            x: number;
+            y: number;
+            plane: number;
+        };
+    };
+    size: number;
+    speed: number;
+    combatComposition: {
+        stats: Record<string, number>;
+        baseStats: Record<string, number>;
+        bonuses: Record<string, number>;
+        attackType: string;
+        magicBaseMaximumHit: number;
+        weapon: {
+            id: number;
+            range: number;
+            speed: number;
+            projectileId: number;
+        };
+    };
+    debug: {
+        movementTarget:
+            | null
+            | { kind: "Actor"; actorId: number }
+            | {
+                  kind: "SceneCoordinate";
+                  coordinate: { x: number; y: number; plane: number };
+              };
+        attackTimer: number;
+    };
+}
+
 const bundledSamples = [
     {
         label: "Minimal Encounter Recording",
@@ -13,7 +54,9 @@ const bundledSamples = [
 const engineModule = shallowRef<EngineModule | null>(null);
 const playback = shallowRef<RecordingPlayback | null>(null);
 const selectedSamplePath = ref(bundledSamples[0].path);
+const selectedActorId = ref<number | null>(null);
 const loadError = ref("");
+const actorJsonRevision = ref(0);
 
 const encounterName = computed(
     () => playback.value?.GetEncounterName() ?? "No recording loaded",
@@ -23,6 +66,75 @@ const currentTick = computed(() => playback.value?.GetCurrentTick() ?? 0);
 const initialTick = computed(() => playback.value?.GetInitialTick() ?? 0);
 const lastTick = computed(() => playback.value?.GetLastTick() ?? 0);
 const hasPlayback = computed(() => playback.value !== null);
+const actors = computed<RecordingActor[]>(() => {
+    void actorJsonRevision.value;
+
+    if (playback.value === null) {
+        return [];
+    }
+
+    return JSON.parse(playback.value.GetActorsJson()) as RecordingActor[];
+});
+const selectedActor = computed(
+    () => actors.value.find((actor) => actor.id === selectedActorId.value) ?? null,
+);
+const visibleSceneBounds = computed(() => {
+    if (actors.value.length === 0) {
+        return { minX: 0, maxX: 4, minY: 0, maxY: 4 };
+    }
+
+    const xs = actors.value.map((actor) => actor.sceneMembership.coordinate.x);
+    const ys = actors.value.map((actor) => actor.sceneMembership.coordinate.y);
+
+    return {
+        minX: Math.min(...xs) - 2,
+        maxX: Math.max(...xs) + 2,
+        minY: Math.min(...ys) - 2,
+        maxY: Math.max(...ys) + 2,
+    };
+});
+const sceneRows = computed(() => {
+    const rows = [];
+
+    for (let y = visibleSceneBounds.value.maxY; y >= visibleSceneBounds.value.minY; --y) {
+        const cells = [];
+
+        for (let x = visibleSceneBounds.value.minX; x <= visibleSceneBounds.value.maxX; ++x) {
+            cells.push({ x, y });
+        }
+
+        rows.push(cells);
+    }
+
+    return rows;
+});
+
+function actorLabel(actor: RecordingActor): string {
+    const index =
+        actor.kind === "Player" ? actor.playerIndex ?? 0 : actor.npcIndex ?? 0;
+    return `${actor.kind} ${index} (#${actor.id})`;
+}
+
+function actorAtCell(x: number, y: number): RecordingActor | null {
+    return (
+        actors.value.find(
+            (actor) =>
+                actor.sceneMembership.coordinate.x === x &&
+                actor.sceneMembership.coordinate.y === y,
+        ) ?? null
+    );
+}
+
+function refreshActors(): void {
+    actorJsonRevision.value += 1;
+
+    if (
+        selectedActorId.value === null ||
+        !actors.value.some((actor) => actor.id === selectedActorId.value)
+    ) {
+        selectedActorId.value = actors.value[0]?.id ?? null;
+    }
+}
 
 async function loadSelectedSample(): Promise<void> {
     loadError.value = "";
@@ -41,8 +153,11 @@ async function loadSelectedSample(): Promise<void> {
         const json = await response.text();
         playback.value?.delete?.();
         playback.value = engineModule.value.RecordingPlayback.LoadFromJson(json);
+        refreshActors();
     } catch (error) {
         playback.value = null;
+        selectedActorId.value = null;
+        refreshActors();
         loadError.value =
             error instanceof Error ? error.message : "Unable to load recording";
     }
@@ -50,10 +165,12 @@ async function loadSelectedSample(): Promise<void> {
 
 function previousTick(): void {
     playback.value?.PreviousTick();
+    refreshActors();
 }
 
 function nextTick(): void {
     playback.value?.NextTick();
+    refreshActors();
 }
 
 onMounted(() => {
@@ -117,6 +234,89 @@ onUnmounted(() => {
         Next
       </button>
     </section>
+
+    <section class="recording-inspector" aria-label="Actor inspector">
+      <div class="recording-scene" aria-label="Recording scene">
+        <div v-for="row in sceneRows" :key="row[0].y" class="scene-row">
+          <button
+            v-for="cell in row"
+            :key="`${cell.x},${cell.y}`"
+            type="button"
+            class="scene-cell"
+            :class="{ selected: actorAtCell(cell.x, cell.y)?.id === selectedActorId }"
+            :aria-label="`Tile ${cell.x}, ${cell.y}`"
+            @click="selectedActorId = actorAtCell(cell.x, cell.y)?.id ?? selectedActorId"
+          >
+            <span v-if="actorAtCell(cell.x, cell.y)" class="actor-token">
+              {{ actorAtCell(cell.x, cell.y)?.kind === "Player" ? "P" : "N" }}
+            </span>
+          </button>
+        </div>
+      </div>
+
+      <div class="actor-panel">
+        <label>
+          Actor
+          <select v-model.number="selectedActorId" :disabled="actors.length === 0">
+            <option
+              v-for="actor in actors"
+              :key="actor.id"
+              :value="actor.id"
+            >
+              {{ actorLabel(actor) }}
+            </option>
+          </select>
+        </label>
+
+        <dl v-if="selectedActor" class="actor-stats">
+          <div>
+            <dt>Hitpoints</dt>
+            <dd>
+              {{ selectedActor.combatComposition.stats.hitpoints }} /
+              {{ selectedActor.combatComposition.baseStats.hitpoints }}
+            </dd>
+          </div>
+          <div>
+            <dt>Scene</dt>
+            <dd>
+              {{ selectedActor.sceneMembership.sceneId }}:
+              {{ selectedActor.sceneMembership.coordinate.x }},
+              {{ selectedActor.sceneMembership.coordinate.y }},
+              {{ selectedActor.sceneMembership.coordinate.plane }}
+            </dd>
+          </div>
+          <div>
+            <dt>Stats</dt>
+            <dd>
+              Atk {{ selectedActor.combatComposition.stats.attack }},
+              Str {{ selectedActor.combatComposition.stats.strength }},
+              Def {{ selectedActor.combatComposition.stats.defence }},
+              Rng {{ selectedActor.combatComposition.stats.ranged }},
+              Mag {{ selectedActor.combatComposition.stats.magic }}
+            </dd>
+          </div>
+          <div>
+            <dt>Combat Composition</dt>
+            <dd>
+              {{ selectedActor.combatComposition.attackType }},
+              weapon #{{ selectedActor.combatComposition.weapon.id }},
+              range {{ selectedActor.combatComposition.weapon.range }},
+              speed {{ selectedActor.combatComposition.weapon.speed }}
+            </dd>
+          </div>
+          <div>
+            <dt>Movement Target</dt>
+            <dd>
+              {{ selectedActor.debug.movementTarget?.kind ?? "None" }}
+            </dd>
+          </div>
+          <div>
+            <dt>Attack Timer</dt>
+            <dd>{{ selectedActor.debug.attackTimer }}</dd>
+          </div>
+        </dl>
+      </div>
+    </section>
   </main>
 </template>
 
@@ -137,6 +337,110 @@ onUnmounted(() => {
     display: flex;
     flex-wrap: wrap;
     gap: 12px;
+}
+
+.recording-inspector {
+    display: grid;
+    gap: 18px;
+    grid-template-columns: minmax(260px, 1fr) minmax(260px, 320px);
+}
+
+.recording-scene {
+    border: 1px solid #9cadb7;
+    display: inline-grid;
+    gap: 2px;
+    padding: 8px;
+    width: max-content;
+}
+
+.scene-row {
+    display: flex;
+    gap: 2px;
+}
+
+.scene-cell {
+    align-items: center;
+    background: #f6f8f9;
+    border: 1px solid #d7e0e5;
+    color: #1e252b;
+    display: flex;
+    font: inherit;
+    font-size: 0.8rem;
+    font-weight: 900;
+    height: 32px;
+    justify-content: center;
+    padding: 0;
+    width: 32px;
+}
+
+.scene-cell.selected {
+    border-color: #1c5d7a;
+    box-shadow: inset 0 0 0 2px #1c5d7a;
+}
+
+.actor-token {
+    align-items: center;
+    background: #2e6f55;
+    border-radius: 999px;
+    color: white;
+    display: flex;
+    height: 20px;
+    justify-content: center;
+    width: 20px;
+}
+
+.actor-panel {
+    display: grid;
+    gap: 14px;
+}
+
+.actor-panel label {
+    display: grid;
+    font-weight: 900;
+    gap: 6px;
+}
+
+.actor-panel select {
+    border: 1px solid #8aa0ad;
+    border-radius: 6px;
+    font: inherit;
+    min-height: 36px;
+    padding: 6px 10px;
+}
+
+.actor-stats {
+    display: grid;
+    gap: 10px;
+    margin: 0;
+}
+
+.actor-stats div {
+    border-left: 3px solid #2e6f55;
+    padding-left: 10px;
+}
+
+.actor-stats dt {
+    color: #52616a;
+    font-size: 0.78rem;
+    font-weight: 900;
+    text-transform: uppercase;
+}
+
+.actor-stats dd {
+    font-weight: 800;
+    line-height: 1.35;
+    margin: 2px 0 0;
+}
+
+@media (max-width: 760px) {
+    .recording-inspector {
+        grid-template-columns: 1fr;
+    }
+
+    .recording-scene {
+        max-width: 100%;
+        overflow: auto;
+    }
 }
 
 .recording-toolbar label {
