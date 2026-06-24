@@ -3,9 +3,12 @@
 #include "Types.h"
 
 #include <random>
+#include <vector>
 
 namespace osrssim
 {
+
+enum class EquipmentSlot;
 
 enum class AttackType
 {
@@ -70,6 +73,12 @@ struct AttackComposition
     WeaponDefinition weapon;
 };
 
+struct EquipmentPieceProvenance
+{
+    EquipmentSlot slot;
+    int pieceId = 0;
+};
+
 struct CombatComposition
 {
     CombatStats stats;
@@ -78,6 +87,7 @@ struct CombatComposition
     AttackType attackType = AttackType::Slash;
     int magicBaseMaximumHit = 0;
     WeaponDefinition weapon;
+    std::vector<EquipmentPieceProvenance> equipmentProvenance;
 };
 
 struct DefenceComposition

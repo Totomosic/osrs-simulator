@@ -1,7 +1,9 @@
 #include "encounter/ActiveEncounter.h"
 #include "encounter/EncounterRunner.h"
+#include "EquipmentSet.h"
 #include "recording/EncounterRecorder.h"
 #include "recording/RecordingPlayback.h"
+#include "WeaponDatabase.h"
 
 #include <nlohmann/json.hpp>
 
@@ -41,6 +43,65 @@ osrssim::CombatComposition CreateCombatComposition(int hitpoints, int baseHitpoi
     return composition;
 }
 
+osrssim::CombatComposition CreateEquipmentSetCombatComposition()
+{
+    const osrssim::WeaponDatabase weaponDatabase =
+        osrssim::WeaponDatabase::LoadFromJson(R"({
+            "version": 1,
+            "weapons": [
+                {
+                    "id": 0,
+                    "name": "Unarmed",
+                    "range": 1,
+                    "speed": 4,
+                    "attackCallbackName": "standard_attack"
+                },
+                {
+                    "id": 12,
+                    "name": "Sample bow",
+                    "range": 4,
+                    "speed": 6,
+                    "projectileId": 88,
+                    "attackCallbackName": "standard_attack"
+                }
+            ]
+        })");
+
+    osrssim::CombatStats stats;
+    stats.attack = 70;
+    stats.strength = 71;
+    stats.defence = 72;
+    stats.ranged = 73;
+    stats.magic = 74;
+    stats.hitpoints = 82;
+
+    osrssim::EquipmentBonuses amuletBonuses;
+    amuletBonuses.slashAttack = 15;
+
+    osrssim::EquipmentSet equipmentSet;
+    osrssim::EquipmentPiece amulet;
+    amulet.id = 2001;
+    amulet.slot = osrssim::EquipmentSlot::Amulet;
+    amulet.bonuses = amuletBonuses;
+    equipmentSet.SetEquipmentPiece(amulet);
+
+    osrssim::EquipmentPiece weapon;
+    weapon.id = 2002;
+    weapon.slot = osrssim::EquipmentSlot::Weapon;
+    weapon.hasWeapon = true;
+    weapon.weaponId = 12;
+    equipmentSet.SetEquipmentPiece(weapon);
+
+    osrssim::CombatComposition composition =
+        equipmentSet.BuildCombatComposition(
+            stats,
+            osrssim::AttackType::Slash,
+            9,
+            weaponDatabase);
+    composition.baseStats.hitpoints = 99;
+    return composition;
+}
+
 class PlacedActorEncounter : public osrssim::encounter::ActiveEncounter
 {
 private:
@@ -68,6 +129,35 @@ public:
                          .value();
         m_UnplacedNpcId =
             context.CreateNpc(2, 1, CreateCombatComposition(50, 50)).value();
+
+        assert(context.GetWorld().PlaceActor(
+            m_PlayerId,
+            context.GetWorld().GetDefaultSceneId(),
+            {10, 11, 0}));
+    }
+
+    bool IsComplete(const osrssim::EncounterContext&) const override
+    {
+        return false;
+    }
+};
+
+class EquipmentProvenanceEncounter : public osrssim::encounter::ActiveEncounter
+{
+private:
+    osrssim::ActorId m_PlayerId = 0;
+
+public:
+    osrssim::ActorId GetPlayerId() const
+    {
+        return m_PlayerId;
+    }
+
+    void Initialize(osrssim::EncounterContext& context) override
+    {
+        m_PlayerId =
+            context.CreatePlayer(1, 2, CreateEquipmentSetCombatComposition())
+                .value();
 
         assert(context.GetWorld().PlaceActor(
             m_PlayerId,
@@ -266,6 +356,10 @@ int main()
                 .at("combatComposition")
                 .at("weapon")
                 .at("projectileId") == 88);
+        assert(
+            !initialActors.at(0)
+                 .at("combatComposition")
+                 .contains("equipmentProvenance"));
         assert(initialActors.at(0).at("debug").at("movementTarget").is_null());
         assert(initialActors.at(0).at("debug").at("attackTimer") == 0);
 
@@ -281,6 +375,45 @@ int main()
             nlohmann::json::parse(playback.GetActorsJson());
 
         assert(playbackActors == initialActors);
+    }
+
+    {
+        auto encounter = std::make_unique<EquipmentProvenanceEncounter>();
+        EquipmentProvenanceEncounter* encounterPtr = encounter.get();
+        osrssim::recording::EncounterRecorder recorder(
+            "Equipment Provenance",
+            0.6);
+        osrssim::encounter::EncounterRunner runner(std::move(encounter));
+
+        assert(runner.AttachRecorder(recorder));
+        runner.Start();
+
+        const nlohmann::json recording =
+            nlohmann::json::parse(recorder.ExportJson());
+        const nlohmann::json& initialActor =
+            recording.at("initialState").at("actors").at(0);
+        const nlohmann::json& provenance =
+            initialActor.at("combatComposition").at("equipmentProvenance");
+
+        assert(initialActor.at("id") == encounterPtr->GetPlayerId());
+        assert(provenance.size() == 2);
+        assert(provenance.at(0).at("slot") == "Amulet");
+        assert(provenance.at(0).at("pieceId") == 2001);
+        assert(!provenance.at(0).contains("name"));
+        assert(!provenance.at(0).contains("bonuses"));
+        assert(provenance.at(1).at("slot") == "Weapon");
+        assert(provenance.at(1).at("pieceId") == 2002);
+
+        osrssim::recording::RecordingPlayback playback =
+            osrssim::recording::RecordingPlayback::LoadFromJson(
+                recorder.ExportJson());
+        const nlohmann::json playbackActors =
+            nlohmann::json::parse(playback.GetActorsJson());
+
+        assert(
+            playbackActors.at(0)
+                .at("combatComposition")
+                .at("equipmentProvenance") == provenance);
     }
 
     {

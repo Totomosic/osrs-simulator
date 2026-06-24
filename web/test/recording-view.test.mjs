@@ -19,6 +19,13 @@ assert.equal(sampleJson.initialState.tick, 0);
 assert.equal(sampleJson.initialState.actors.length, 1);
 assert.equal(sampleJson.initialState.actors[0].kind, "Player");
 assert.equal(sampleJson.initialState.actors[0].combatComposition.stats.hitpoints, 82);
+assert.deepEqual(
+    sampleJson.initialState.actors[0].combatComposition.equipmentProvenance,
+    [
+        { slot: "Amulet", pieceId: 2001 },
+        { slot: "Weapon", pieceId: 2002 },
+    ],
+);
 assert.equal(sampleJson.ticks[0].actors.length, 2);
 assert.equal(sampleJson.ticks[0].actors[0].currentHitpoints, 77);
 assert.deepEqual(Object.keys(sampleJson.ticks[0]), [
@@ -41,6 +48,8 @@ assert.match(viewSource, /aria-label="Recording scene"/);
 assert.match(viewSource, /GetActorsJson/);
 assert.match(viewSource, /Hitpoints/);
 assert.match(viewSource, /Combat Composition/);
+assert.match(viewSource, /Equipment Provenance/);
+assert.match(viewSource, /equipmentProvenanceText/);
 assert.match(viewSource, /Movement Target/);
 assert.match(viewSource, /Attack Timer/);
 assert.match(viewSource, /Previous/);

@@ -63,7 +63,17 @@
             "range": 4,
             "speed": 6,
             "projectileId": 88
-          }
+          },
+          "equipmentProvenance": [
+            {
+              "slot": "Amulet",
+              "pieceId": 2001
+            },
+            {
+              "slot": "Weapon",
+              "pieceId": 2002
+            }
+          ]
         },
         "debug": {
           "movementTarget": null,
@@ -150,7 +160,17 @@
               "range": 4,
               "speed": 6,
               "projectileId": 88
-            }
+            },
+            "equipmentProvenance": [
+              {
+                "slot": "Amulet",
+                "pieceId": 2001
+              },
+              {
+                "slot": "Weapon",
+                "pieceId": 2002
+              }
+            ]
           },
           "debug": {
             "movementTarget": null,
@@ -209,7 +229,17 @@
               "range": 4,
               "speed": 6,
               "projectileId": 88
-            }
+            },
+            "equipmentProvenance": [
+              {
+                "slot": "Amulet",
+                "pieceId": 2001
+              },
+              {
+                "slot": "Weapon",
+                "pieceId": 2002
+              }
+            ]
           },
           "debug": {
             "attackTimer": 5

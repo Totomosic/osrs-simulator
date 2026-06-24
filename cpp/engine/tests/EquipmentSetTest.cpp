@@ -131,6 +131,19 @@ int main()
     assert(combatComposition.weapon.id == 300);
     assert(combatComposition.weapon.range == 2);
     assert(combatComposition.weapon.speed == 5);
+    assert(combatComposition.equipmentProvenance.size() == 3);
+    assert(
+        combatComposition.equipmentProvenance.at(0).slot ==
+        osrssim::EquipmentSlot::Amulet);
+    assert(combatComposition.equipmentProvenance.at(0).pieceId == 101);
+    assert(
+        combatComposition.equipmentProvenance.at(1).slot ==
+        osrssim::EquipmentSlot::Weapon);
+    assert(combatComposition.equipmentProvenance.at(1).pieceId == 103);
+    assert(
+        combatComposition.equipmentProvenance.at(2).slot ==
+        osrssim::EquipmentSlot::Body);
+    assert(combatComposition.equipmentProvenance.at(2).pieceId == 102);
 
     const osrssim::AttackComposition attackComposition =
         equipmentSet.BuildAttackComposition(
@@ -138,6 +151,7 @@ int main()
             osrssim::AttackType::Slash,
             weaponDatabase);
     assert(attackComposition.weapon.id == 300);
+    assert(attackComposition.bonuses.slashAttack == 74);
 
     const osrssim::DefenceComposition defenceComposition =
         equipmentSet.BuildDefenceComposition(combatStats);
@@ -154,6 +168,9 @@ int main()
     assert(unarmedAttackComposition.weapon.id == 0);
     assert(unarmedAttackComposition.weapon.range == 1);
     assert(unarmedAttackComposition.weapon.speed == 4);
+
+    osrssim::CombatComposition manualComposition;
+    assert(manualComposition.equipmentProvenance.empty());
 
     bool missingWeaponFailed = false;
     try

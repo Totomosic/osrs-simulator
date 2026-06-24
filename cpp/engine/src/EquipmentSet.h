@@ -32,6 +32,9 @@ public:
         const WeaponDatabase& weaponDatabase) const;
     DefenceComposition BuildDefenceComposition(
         const CombatStats& stats) const;
+
+private:
+    std::vector<EquipmentPieceProvenance> GetEquipmentProvenance() const;
 };
 
 }  // namespace osrssim

@@ -31,6 +31,10 @@ interface RecordingActor {
             speed: number;
             projectileId: number;
         };
+        equipmentProvenance?: Array<{
+            slot: string;
+            pieceId: number;
+        }>;
     };
     debug: {
         movementTarget:
@@ -123,6 +127,18 @@ function actorAtCell(x: number, y: number): RecordingActor | null {
                 actor.sceneMembership.coordinate.y === y,
         ) ?? null
     );
+}
+
+function equipmentProvenanceText(actor: RecordingActor): string {
+    const provenance = actor.combatComposition.equipmentProvenance ?? [];
+
+    if (provenance.length === 0) {
+        return "None";
+    }
+
+    return provenance
+        .map((piece) => `${piece.slot} #${piece.pieceId}`)
+        .join(", ");
 }
 
 function refreshActors(): void {
@@ -303,6 +319,10 @@ onUnmounted(() => {
               range {{ selectedActor.combatComposition.weapon.range }},
               speed {{ selectedActor.combatComposition.weapon.speed }}
             </dd>
+          </div>
+          <div>
+            <dt>Equipment Provenance</dt>
+            <dd>{{ equipmentProvenanceText(selectedActor) }}</dd>
           </div>
           <div>
             <dt>Movement Target</dt>

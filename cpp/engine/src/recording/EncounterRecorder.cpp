@@ -1,5 +1,7 @@
 #include "recording/EncounterRecorder.h"
 
+#include "EquipmentDatabase.h"
+
 #include <algorithm>
 #include <stdexcept>
 #include <utility>
@@ -48,6 +50,37 @@ nlohmann::json CreateBonusesJson(const EquipmentBonuses& bonuses)
         {"magicDamagePercent", bonuses.magicDamagePercent}};
 }
 
+const char* EquipmentSlotName(EquipmentSlot slot)
+{
+    switch (slot)
+    {
+        case EquipmentSlot::Head:
+            return "Head";
+        case EquipmentSlot::Cape:
+            return "Cape";
+        case EquipmentSlot::Amulet:
+            return "Amulet";
+        case EquipmentSlot::Weapon:
+            return "Weapon";
+        case EquipmentSlot::Body:
+            return "Body";
+        case EquipmentSlot::Shield:
+            return "Shield";
+        case EquipmentSlot::Legs:
+            return "Legs";
+        case EquipmentSlot::Hands:
+            return "Hands";
+        case EquipmentSlot::Feet:
+            return "Feet";
+        case EquipmentSlot::Ring:
+            return "Ring";
+        case EquipmentSlot::Ammo:
+            return "Ammo";
+    }
+
+    return "Unknown";
+}
+
 const char* AttackTypeName(AttackType attackType)
 {
     switch (attackType)
@@ -80,16 +113,39 @@ nlohmann::json CreateWeaponJson(const WeaponDefinition& weapon)
         {"projectileId", weapon.projectileId}};
 }
 
+nlohmann::json CreateEquipmentProvenanceJson(
+    const std::vector<EquipmentPieceProvenance>& provenance)
+{
+    nlohmann::json provenanceJson = nlohmann::json::array();
+
+    for (const EquipmentPieceProvenance& piece : provenance)
+    {
+        provenanceJson.push_back(
+            {{"slot", EquipmentSlotName(piece.slot)},
+             {"pieceId", piece.pieceId}});
+    }
+
+    return provenanceJson;
+}
+
 nlohmann::json CreateCombatCompositionJson(
     const CombatComposition& composition)
 {
-    return nlohmann::json{
+    nlohmann::json compositionJson = {
         {"stats", CreateStatsJson(composition.stats)},
         {"baseStats", CreateStatsJson(composition.baseStats)},
         {"bonuses", CreateBonusesJson(composition.bonuses)},
         {"attackType", AttackTypeName(composition.attackType)},
         {"magicBaseMaximumHit", composition.magicBaseMaximumHit},
         {"weapon", CreateWeaponJson(composition.weapon)}};
+
+    if (!composition.equipmentProvenance.empty())
+    {
+        compositionJson["equipmentProvenance"] =
+            CreateEquipmentProvenanceJson(composition.equipmentProvenance);
+    }
+
+    return compositionJson;
 }
 
 nlohmann::json CreateMovementTargetJson(

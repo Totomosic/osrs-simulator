@@ -1,5 +1,6 @@
 #include "EquipmentSet.h"
 
+#include <algorithm>
 #include <stdexcept>
 
 namespace osrssim
@@ -89,6 +90,28 @@ EquipmentBonuses EquipmentSet::GetEquipmentBonuses() const
     return total;
 }
 
+std::vector<EquipmentPieceProvenance> EquipmentSet::GetEquipmentProvenance()
+    const
+{
+    std::vector<EquipmentPieceProvenance> provenance;
+
+    for (const auto& [slot, piece] : m_PiecesBySlot)
+    {
+        provenance.push_back({slot, piece.id});
+    }
+
+    std::sort(
+        provenance.begin(),
+        provenance.end(),
+        [](const EquipmentPieceProvenance& left,
+           const EquipmentPieceProvenance& right)
+        {
+            return static_cast<int>(left.slot) < static_cast<int>(right.slot);
+        });
+
+    return provenance;
+}
+
 CombatComposition EquipmentSet::BuildCombatComposition(
     const CombatStats& stats,
     AttackType attackType,
@@ -102,6 +125,7 @@ CombatComposition EquipmentSet::BuildCombatComposition(
     composition.bonuses = GetEquipmentBonuses();
     composition.attackType = attackType;
     composition.magicBaseMaximumHit = magicBaseMaximumHit;
+    composition.equipmentProvenance = GetEquipmentProvenance();
 
     const EquipmentPiece* weaponPiece =
         TryGetEquipmentPiece(EquipmentSlot::Weapon);
