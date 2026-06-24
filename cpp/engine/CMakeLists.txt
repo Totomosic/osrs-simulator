@@ -13,6 +13,8 @@ add_library(osrssim_engine
   src/debug/DevelopmentPlayerChaseScenario.cpp
   src/encounter/ActiveEncounter.cpp
   src/encounter/EncounterRunner.cpp
+  src/recording/EncounterRecorder.cpp
+  src/recording/RecordingPlayback.cpp
   src/LineOfSight.cpp
   src/NpcDatabase.cpp
   src/Pathing.cpp
@@ -88,6 +90,10 @@ if(BUILD_TESTING)
     tests/EncounterRunnerTest.cpp
   )
 
+  add_executable(osrssim_engine_recording_test
+    tests/RecordingTest.cpp
+  )
+
   add_executable(osrssim_engine_development_player_chase_scenario_test
     tests/DevelopmentPlayerChaseScenarioTest.cpp
   )
@@ -150,6 +156,11 @@ if(BUILD_TESTING)
       osrssim::engine
   )
 
+  target_link_libraries(osrssim_engine_recording_test
+    PRIVATE
+      osrssim::engine
+  )
+
   target_link_libraries(osrssim_engine_development_player_chase_scenario_test
     PRIVATE
       osrssim::engine
@@ -196,6 +207,7 @@ if(BUILD_TESTING)
   add_test(NAME osrssim_engine_world_test COMMAND osrssim_engine_world_test)
   add_test(NAME osrssim_engine_engine_test COMMAND osrssim_engine_engine_test)
   add_test(NAME osrssim_engine_encounter_runner_test COMMAND osrssim_engine_encounter_runner_test)
+  add_test(NAME osrssim_engine_recording_test COMMAND osrssim_engine_recording_test)
   add_test(NAME osrssim_engine_development_player_chase_scenario_test COMMAND osrssim_engine_development_player_chase_scenario_test)
   add_test(NAME osrssim_engine_combat_queue_test COMMAND osrssim_engine_combat_queue_test)
   add_test(NAME osrssim_engine_dps_service_test COMMAND osrssim_engine_dps_service_test)

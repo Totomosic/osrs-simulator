@@ -26,11 +26,13 @@ const { createAppRoutes } = await import(pathToFileURL(outfile));
 
 const DebugView = { template: "<main>Player Chase</main>" };
 const DpsView = { template: "<main>DPS Calculator</main>" };
+const RecordingView = { template: "<main>Recording</main>" };
 const router = createRouter({
     history: createMemoryHistory(),
     routes: createAppRoutes({
         debug: DebugView,
         dps: DpsView,
+        recording: RecordingView,
     }),
 });
 
@@ -45,3 +47,10 @@ assert.equal(router.currentRoute.value.matched[0].components.default, DpsView);
 await router.push("/debug");
 assert.equal(router.currentRoute.value.fullPath, "/");
 assert.equal(router.currentRoute.value.name, "debug");
+
+await router.push("/recording");
+assert.equal(router.currentRoute.value.name, "recording");
+assert.equal(
+    router.currentRoute.value.matched[0].components.default,
+    RecordingView,
+);

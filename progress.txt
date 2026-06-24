@@ -1,3 +1,12 @@
+2026-06-24 #108 Load a minimal Encounter Recording in the web viewer
+- Selected issue: #108, ready-for-agent and unblocked. Parent PRD: #107.
+- Docs read: docs/adr/0012-encounter-recordings-are-observation-logs.md, docs/adr/0014-engine-owned-recording-playback.md, docs/adr/0011-encounter-runner-orchestrates-active-encounters.md, docs/adr/0006-web-development-viewer.md.
+- Plan: TDD minimal recorder attachment/export, Recording Playback metadata navigation/validation, WASM binding surface, bundled sample, and /recording route with previous/next Tick navigation.
+- Completed: PRD #107 stories 40, 42, 43, 45, 51-52 minimal recording path and feature #108 acceptance for attach-before-start, versioned JSON, contiguous empty buckets, playback metadata/navigation, WASM binding source, bundled sample, and /recording route.
+- Decisions: keep v1 initial/tick buckets typed but empty in this slice; playback validates version and contiguous Ticks now, leaving detailed actor/scene/combat facts for later blocked issues; web viewer uses C++ RecordingPlayback API and only displays metadata/Tick controls.
+- Files changed: cpp/engine recording classes, EncounterRunner recorder attachment, EngineBindings, RecordingTest/CMake, web RecordingView/routes/types/tests/sample, progress.txt.
+- Validation: cmake --build build; ctest --test-dir build --output-on-failure; source /home/jordan/dev/emsdk/emsdk_env.sh && yarn wasm:build; yarn --cwd web test; yarn --cwd web typecheck; yarn --cwd web build; generated module RecordingPlayback smoke passed. No blockers.
+
 2026-06-24 #106 Migrate Player Chase debug scenario onto encounter infrastructure
 - Selected issue: #106, ready-for-agent. Blockers #103/#104/#105 are closed. Parent PRD: #98.
 - Docs read: CONTEXT.md; docs/agents/domain.md; docs/adr/0010-engine-owned-npc-behaviors.md; docs/adr/0011-encounter-runner-orchestrates-active-encounters.md; PRD #98; feature #106; blockers #103/#104/#105.

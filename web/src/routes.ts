@@ -4,6 +4,7 @@ import type { RouteRecordRaw } from "vue-router";
 export interface AppRouteComponents {
     debug: Component;
     dps: Component;
+    recording: Component;
 }
 
 export function createAppRoutes(
@@ -23,6 +24,11 @@ export function createAppRoutes(
             path: "/dps",
             name: "dps",
             component: components.dps,
+        },
+        {
+            path: "/recording",
+            name: "recording",
+            component: components.recording,
         },
     ];
 }

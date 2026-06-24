@@ -7,6 +7,7 @@ import { RouterLink, RouterView } from "vue-router";
     <nav class="app-nav" aria-label="Development views">
       <RouterLink to="/">Player Chase</RouterLink>
       <RouterLink to="/dps">DPS</RouterLink>
+      <RouterLink to="/recording">Recording</RouterLink>
     </nav>
     <RouterView />
   </div>

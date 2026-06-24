@@ -6,6 +6,7 @@
 #include "EquipmentSet.h"
 #include "LineOfSight.h"
 #include "NpcDatabase.h"
+#include "recording/RecordingPlayback.h"
 #include "Scene.h"
 #include "Tile.h"
 #include "World.h"
@@ -761,6 +762,34 @@ EMSCRIPTEN_BINDINGS(osrssim_engine)
             "GetWorld",
             &GetEngineWorld,
             emscripten::return_value_policy::reference());
+
+    emscripten::class_<osrssim::recording::RecordingPlayback>(
+        "RecordingPlayback")
+        .class_function(
+            "LoadFromJson",
+            &osrssim::recording::RecordingPlayback::LoadFromJson)
+        .function(
+            "GetEncounterName",
+            &osrssim::recording::RecordingPlayback::GetEncounterName)
+        .function(
+            "GetSecondsPerTick",
+            &osrssim::recording::RecordingPlayback::GetSecondsPerTick)
+        .function(
+            "GetInitialTick",
+            &osrssim::recording::RecordingPlayback::GetInitialTick)
+        .function(
+            "GetCurrentTick",
+            &osrssim::recording::RecordingPlayback::GetCurrentTick)
+        .function(
+            "GetLastTick",
+            &osrssim::recording::RecordingPlayback::GetLastTick)
+        .function(
+            "PreviousTick",
+            &osrssim::recording::RecordingPlayback::PreviousTick)
+        .function(
+            "NextTick",
+            &osrssim::recording::RecordingPlayback::NextTick)
+        .function("GoToTick", &osrssim::recording::RecordingPlayback::GoToTick);
 
     emscripten::class_<osrssim::debug::DevelopmentPlayerChaseScenario>(
         "DevelopmentPlayerChaseScenario")

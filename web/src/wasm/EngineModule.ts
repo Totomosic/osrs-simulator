@@ -12,6 +12,22 @@ export interface Engine {
     GetWorld(): World;
 }
 
+export interface RecordingPlayback {
+    GetEncounterName(): string;
+    GetSecondsPerTick(): number;
+    GetInitialTick(): number;
+    GetCurrentTick(): number;
+    GetLastTick(): number;
+    PreviousTick(): boolean;
+    NextTick(): boolean;
+    GoToTick(tick: number): boolean;
+    delete?(): void;
+}
+
+export interface RecordingPlaybackConstructor {
+    LoadFromJson(json: string): RecordingPlayback;
+}
+
 export interface DevelopmentPlayerChaseScenario {
     Step(): void;
     Reset(): void;
@@ -440,6 +456,7 @@ export type CombatCompositionSource = number | "BuiltIn" | "Saved";
 
 export interface EngineModule {
     Engine: new () => Engine;
+    RecordingPlayback: RecordingPlaybackConstructor;
     DevelopmentPlayerChaseScenario?: new () => DevelopmentPlayerChaseScenario;
     DpsService: DpsServiceConstructor;
     EquipmentDatabase: EquipmentDatabaseConstructor;

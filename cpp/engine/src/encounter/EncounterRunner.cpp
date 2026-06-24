@@ -26,6 +26,22 @@ void EncounterRunner::Start()
     EncounterContext context(m_Engine);
     m_ActiveEncounter->Initialize(context);
     m_Started = true;
+
+    if (m_Recorder != nullptr)
+    {
+        m_Recorder->RecordInitialState(m_Engine);
+    }
+}
+
+bool EncounterRunner::AttachRecorder(recording::EncounterRecorder& recorder)
+{
+    if (m_Started)
+    {
+        return false;
+    }
+
+    m_Recorder = &recorder;
+    return true;
 }
 
 bool EncounterRunner::Step()
@@ -45,6 +61,11 @@ bool EncounterRunner::Step()
     m_ActiveEncounter->BeforeEngineTick(context);
     m_Engine.Step();
     m_ActiveEncounter->AfterEngineTick(context);
+
+    if (m_Recorder != nullptr)
+    {
+        m_Recorder->RecordCompletedTick(m_Engine);
+    }
 
     return true;
 }
