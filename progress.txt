@@ -1,3 +1,12 @@
+2026-06-25 #115 Finish the Recording Playback viewer workflow
+- Selected issue: #115, ready-for-agent and unblocked because #109/#111/#112/#114 are closed. Parent PRD: #107.
+- Docs read: CONTEXT.md, docs/adr/0012-encounter-recordings-are-observation-logs.md, docs/adr/0013-structured-damage-events-for-recordable-combat.md, docs/adr/0014-engine-owned-recording-playback.md, docs/adr/0006-web-development-viewer.md, PRD #107, feature #115, blockers #109/#111/#112/#114.
+- Plan: TDD web viewer workflow only: add missing file load, play/pause, Tick selector, camera follow/free state/default first-player fallback, then focused web/type/build loops. Scope guard: only #115; do not change C++ recording/playback schema.
+- Completed: PRD #107 stories 50-59 and feature #115 acceptance for sample/file loading through WASM Recording Playback, previous/next/play/pause/Tick selection, first-player/default actor follow camera, follow/free modes, actor selector/stats/debug, scene entities, projectiles, current-Tick event links, and load errors.
+- Decisions: keep TypeScript as viewer orchestration only; centralize all JSON loads through C++ WASM RecordingPlayback; implement free camera as full recording bounds and follow mode as a fixed-radius actor-centered grid.
+- Files changed: web/src/RecordingView.vue, web/test/recording-view.test.mjs, progress.txt.
+- Validation: red node web/test/recording-view.test.mjs first; node web/test/recording-view.test.mjs; yarn --cwd web test; yarn --cwd web typecheck; yarn --cwd web build; git diff --check. No blockers.
+
 2026-06-25 #114 Harden Recording Playback validation and random access
 - Selected issue: #114, ready-for-agent and unblocked because #109/#111/#112 are closed. Parent PRD: #107.
 - Docs read: docs/adr/0012-encounter-recordings-are-observation-logs.md, docs/adr/0013-structured-damage-events-for-recordable-combat.md, docs/adr/0014-engine-owned-recording-playback.md, docs/adr/0002-deterministic-engine.md, docs/adr/0003-osrs-scene-model.md, docs/adr/0006-web-development-viewer.md, docs/adr/0011-encounter-runner-orchestrates-active-encounters.md, PRD #107, feature #114, blockers #109/#111/#112.

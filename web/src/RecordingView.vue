@@ -121,6 +121,12 @@ const selectedSamplePath = ref(bundledSamples[0].path);
 const selectedActorId = ref<number | null>(null);
 const loadError = ref("");
 const actorJsonRevision = ref(0);
+const selectedTick = ref(0);
+const cameraMode = ref<"follow-selected-actor" | "free-camera">(
+    "follow-selected-actor",
+);
+const isPlaying = ref(false);
+const playbackTimer = ref<number | null>(null);
 
 const encounterName = computed(
     () => playback.value?.GetEncounterName() ?? "No recording loaded",
@@ -180,7 +186,32 @@ const projectiles = computed<RecordingProjectile[]>(() => {
 const selectedActor = computed(
     () => actors.value.find((actor) => actor.id === selectedActorId.value) ?? null,
 );
+const firstPlayer = computed(
+    () => actors.value.find((actor) => actor.kind === "Player") ?? null,
+);
+const cameraActor = computed(() => {
+    if (cameraMode.value === "free-camera") {
+        return null;
+    }
+
+    return selectedActor.value ?? firstPlayer.value ?? actors.value[0] ?? null;
+});
 const visibleSceneBounds = computed(() => {
+    const actor = cameraActor.value;
+
+    if (actor !== null) {
+        const centerX = actor.sceneMembership.coordinate.x;
+        const centerY = actor.sceneMembership.coordinate.y;
+        const radius = 6;
+
+        return {
+            minX: centerX - radius,
+            maxX: centerX + radius,
+            minY: centerY - radius,
+            maxY: centerY + radius,
+        };
+    }
+
     if (actors.value.length === 0 && sceneEntities.value.length === 0) {
         return { minX: 0, maxX: 4, minY: 0, maxY: 4 };
     }
@@ -277,12 +308,13 @@ function equipmentProvenanceText(actor: RecordingActor): string {
 
 function refreshActors(): void {
     actorJsonRevision.value += 1;
+    selectedTick.value = currentTick.value;
 
     if (
         selectedActorId.value === null ||
         !actors.value.some((actor) => actor.id === selectedActorId.value)
     ) {
-        selectedActorId.value = actors.value[0]?.id ?? null;
+        selectedActorId.value = firstPlayer.value?.id ?? actors.value[0]?.id ?? null;
     }
 }
 
@@ -296,30 +328,62 @@ function formatRecordingLoadError(error: unknown): string {
     return "Recording load failed: invalid or unsupported recording JSON.";
 }
 
+async function ensureEngineModule(): Promise<EngineModule> {
+    if (engineModule.value === null) {
+        engineModule.value = await loadEngineModule();
+    }
+
+    return engineModule.value;
+}
+
+async function loadRecordingJson(json: string): Promise<void> {
+    loadError.value = "";
+
+    try {
+        const module = await ensureEngineModule();
+        playback.value?.delete?.();
+        playback.value = module.RecordingPlayback.LoadFromJson(json);
+        stopPlayback();
+        refreshActors();
+    } catch (error) {
+        playback.value = null;
+        selectedActorId.value = null;
+        stopPlayback();
+        refreshActors();
+        loadError.value = formatRecordingLoadError(error);
+    }
+}
+
 async function loadSelectedSample(): Promise<void> {
     loadError.value = "";
 
     try {
-        if (engineModule.value === null) {
-            engineModule.value = await loadEngineModule();
-        }
-
         const response = await fetch(selectedSamplePath.value);
 
         if (!response.ok) {
             throw new Error(`Unable to load sample: ${response.status}`);
         }
 
-        const json = await response.text();
-        playback.value?.delete?.();
-        playback.value = engineModule.value.RecordingPlayback.LoadFromJson(json);
-        refreshActors();
+        await loadRecordingJson(await response.text());
     } catch (error) {
         playback.value = null;
         selectedActorId.value = null;
+        stopPlayback();
         refreshActors();
         loadError.value = formatRecordingLoadError(error);
     }
+}
+
+async function handleRecordingFileChange(event: Event): Promise<void> {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0];
+
+    if (file === undefined) {
+        return;
+    }
+
+    await loadRecordingJson(await file.text());
+    input.value = "";
 }
 
 function previousTick(): void {
@@ -328,8 +392,42 @@ function previousTick(): void {
 }
 
 function nextTick(): void {
-    playback.value?.NextTick();
+    if (playback.value?.NextTick() === false) {
+        stopPlayback();
+    }
+
     refreshActors();
+}
+
+function goToSelectedTick(): void {
+    const tick = Math.max(
+        initialTick.value,
+        Math.min(lastTick.value, Math.trunc(selectedTick.value)),
+    );
+
+    playback.value?.GoToTick(tick);
+    selectedTick.value = tick;
+    refreshActors();
+}
+
+function stopPlayback(): void {
+    if (playbackTimer.value !== null) {
+        window.clearInterval(playbackTimer.value);
+        playbackTimer.value = null;
+    }
+
+    isPlaying.value = false;
+}
+
+function startPlayback(): void {
+    if (!hasPlayback.value || isPlaying.value) {
+        return;
+    }
+
+    isPlaying.value = true;
+    playbackTimer.value = window.setInterval(() => {
+        nextTick();
+    }, Math.max(50, secondsPerTick.value * 1000));
 }
 
 onMounted(() => {
@@ -337,6 +435,7 @@ onMounted(() => {
 });
 
 onUnmounted(() => {
+    stopPlayback();
     playback.value?.delete?.();
 });
 </script>
@@ -357,6 +456,15 @@ onUnmounted(() => {
         </select>
       </label>
       <button type="button" @click="loadSelectedSample">Load</button>
+      <label>
+        File
+        <input
+          type="file"
+          accept="application/json,.json"
+          aria-label="Recording JSON file"
+          @change="handleRecordingFileChange"
+        >
+      </label>
       <p v-if="loadError" class="recording-error" role="alert">
         {{ loadError }}
       </p>
@@ -384,7 +492,29 @@ onUnmounted(() => {
       >
         Previous
       </button>
+      <button
+        v-if="!isPlaying"
+        type="button"
+        :disabled="!hasPlayback || currentTick >= lastTick"
+        @click="startPlayback"
+      >
+        Play
+      </button>
+      <button v-else type="button" @click="stopPlayback">
+        Pause
+      </button>
       <output aria-label="Current Tick">Tick {{ currentTick }}</output>
+      <label>
+        Tick
+        <input
+          v-model.number="selectedTick"
+          type="number"
+          :min="initialTick"
+          :max="lastTick"
+          :disabled="!hasPlayback"
+          @change="goToSelectedTick"
+        >
+      </label>
       <button
         type="button"
         :disabled="!hasPlayback || currentTick >= lastTick"
@@ -392,6 +522,20 @@ onUnmounted(() => {
       >
         Next
       </button>
+      <fieldset class="camera-mode" aria-label="Camera mode">
+        <label>
+          <input
+            v-model="cameraMode"
+            type="radio"
+            value="follow-selected-actor"
+          >
+          Follow selected actor
+        </label>
+        <label>
+          <input v-model="cameraMode" type="radio" value="free-camera">
+          Free camera
+        </label>
+      </fieldset>
     </section>
 
     <section class="recording-inspector" aria-label="Actor inspector">
@@ -498,18 +642,36 @@ onUnmounted(() => {
     <section class="recording-events" aria-label="Current Tick events">
       <h2>Current Tick Events</h2>
       <ol>
-        <li v-for="attack in attacks" :key="`attack-${attack.id}`">
-          Attack #{{ attack.id }}:
+        <li
+          v-for="attack in attacks"
+          :id="`attack-${attack.id}`"
+          :key="`attack-${attack.id}`"
+        >
+          <a :href="`#attack-${attack.id}`">Attack #{{ attack.id }}</a>:
           {{ actorName(attack.attackerId) }} -> {{ actorName(attack.targetId) }},
-          {{ attack.callback }},
-          damage event #{{ attack.queuedDamageEvents[0]?.id ?? "n/a" }}
+          {{ attack.callback }}
+          <span
+            v-for="queuedDamageEvent in attack.queuedDamageEvents"
+            :key="queuedDamageEvent.id"
+          >
+            , queued
+            <a :href="`#damage-${queuedDamageEvent.id}`">
+              damage #{{ queuedDamageEvent.id }}
+            </a>
+            for {{ queuedDamageEvent.damage }}
+          </span>
         </li>
         <li
           v-for="damageApplication in damageApplications"
+          :id="`damage-${damageApplication.damageEventId}`"
           :key="`damage-${damageApplication.damageEventId}`"
         >
-          Damage #{{ damageApplication.damageEventId }}:
-          attack #{{ damageApplication.attackId }},
+          <a :href="`#damage-${damageApplication.damageEventId}`">
+            Damage #{{ damageApplication.damageEventId }}
+          </a>:
+          <a :href="`#attack-${damageApplication.attackId}`">
+            attack #{{ damageApplication.attackId }}
+          </a>,
           {{ actorName(damageApplication.targetId) }},
           {{ damageApplication.appliedDamage }}/{{ damageApplication.queuedDamage }}
         </li>
