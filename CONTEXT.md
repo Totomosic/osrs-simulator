@@ -24,6 +24,14 @@ _Avoid_: Room, map
 One live attempt of an encounter, including its current phase, timers, spawned actors, and completion state.
 _Avoid_: Room instance, encounter definition
 
+**Encounter Recording**:
+An observation log of one active encounter over time. An encounter recording captures the initial scene and actor state plus the absolute facts that changed on each tick, rather than the player inputs, random seed, or state deltas needed to re-run the encounter.
+_Avoid_: Replay log, input log, delta log
+
+**Recording Playback**:
+A presentation of an encounter recording by applying the recorded facts directly. Recording playback is a view of observed encounter history, not a resumed active encounter.
+_Avoid_: Simulation replay, encounter resume
+
 **Scene Coordinate**:
 A tile position inside the loaded scene, identified by plane, x, and y. Scene coordinates currently follow OSRS scene bounds, but they are distinct from persistent world coordinates.
 _Avoid_: Map coordinate
@@ -209,7 +217,7 @@ The offensive, defensive, and damage bonuses contributed by equipment.
 _Avoid_: Gear stats, item stats
 
 **Combat Composition**:
-A complete combat loadout, including combat stats, equipment bonuses, selected attack type, magic base maximum hit, and a weapon definition, that always contains enough data to produce both attack-side and defence-side composition for combat calculations.
+A complete combat loadout, including combat stats, equipment bonuses, selected attack type, magic base maximum hit, and a weapon definition, that always contains enough data to produce both attack-side and defence-side composition for combat calculations. A combat composition may also identify the equipment set it was built from when that source is known.
 _Avoid_: Combat setup, stat block
 
 **Combat Composition ID**:
