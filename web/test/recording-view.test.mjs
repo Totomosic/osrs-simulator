@@ -76,3 +76,5 @@ assert.match(viewSource, /Previous/);
 assert.match(viewSource, /Next/);
 assert.match(viewSource, /Current Tick/);
 assert.match(viewSource, /role="alert"/);
+assert.match(viewSource, /formatRecordingLoadError/);
+assert.match(viewSource, /Recording load failed: invalid or unsupported recording JSON\./);

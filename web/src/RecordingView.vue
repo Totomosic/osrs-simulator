@@ -286,6 +286,16 @@ function refreshActors(): void {
     }
 }
 
+function formatRecordingLoadError(error: unknown): string {
+    const message = error instanceof Error ? error.message : "";
+
+    if (message.length > 0 && message !== "Aborted(undefined)") {
+        return `Recording load failed: ${message}`;
+    }
+
+    return "Recording load failed: invalid or unsupported recording JSON.";
+}
+
 async function loadSelectedSample(): Promise<void> {
     loadError.value = "";
 
@@ -308,8 +318,7 @@ async function loadSelectedSample(): Promise<void> {
         playback.value = null;
         selectedActorId.value = null;
         refreshActors();
-        loadError.value =
-            error instanceof Error ? error.message : "Unable to load recording";
+        loadError.value = formatRecordingLoadError(error);
     }
 }
 

@@ -184,5 +184,75 @@ assert.deepEqual(JSON.parse(playback.GetAttacksJson()), []);
 assert.equal(JSON.parse(playback.GetDamageApplicationsJson())[0].attackId, 1);
 assert.deepEqual(JSON.parse(playback.GetProjectilesJson()), []);
 assert.equal(playback.NextTick(), false);
+assert.equal(playback.GoToTick(1), true);
+assert.equal(playback.GetCurrentTick(), 1);
+assert.equal(
+    JSON.parse(playback.GetActorsJson())[0].combatComposition.stats.hitpoints,
+    77,
+);
+assert.equal(playback.GoToTick(0), true);
+assert.equal(
+    JSON.parse(playback.GetActorsJson())[0].combatComposition.stats.hitpoints,
+    82,
+);
 
 playback.delete?.();
+
+assert.throws(() =>
+    engineModule.RecordingPlayback.LoadFromJson(
+        JSON.stringify({
+            version: 1,
+            metadata: {
+                encounterName: "Invalid Recording Playback",
+                secondsPerTick: 0.6,
+            },
+            initialState: {
+                tick: 0,
+                actors: [
+                    {
+                        id: 1,
+                        kind: "Goblin",
+                        present: true,
+                        sceneMembership: {
+                            sceneId: 1,
+                            coordinate: { x: 10, y: 11, plane: 0 },
+                        },
+                        size: 1,
+                        speed: 2,
+                        combatComposition: {
+                            stats: {
+                                attack: 70,
+                                strength: 71,
+                                defence: 72,
+                                ranged: 73,
+                                magic: 74,
+                                hitpoints: 82,
+                            },
+                            baseStats: {
+                                attack: 1,
+                                strength: 1,
+                                defence: 1,
+                                ranged: 1,
+                                magic: 1,
+                                hitpoints: 99,
+                            },
+                            bonuses: {},
+                            attackType: "Slash",
+                            magicBaseMaximumHit: 9,
+                            weapon: {
+                                id: 12,
+                                range: 4,
+                                speed: 6,
+                                projectileId: 88,
+                            },
+                        },
+                        debug: { movementTarget: null, attackTimer: 0 },
+                    },
+                ],
+                sceneEntities: [],
+                projectiles: [],
+            },
+            ticks: [],
+        }),
+    ),
+);

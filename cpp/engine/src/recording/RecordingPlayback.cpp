@@ -107,6 +107,40 @@ CollisionProfile ParseCollisionProfile(const nlohmann::json& value)
     return collisionProfile;
 }
 
+bool IsKnownAttackType(const std::string& value)
+{
+    return value == "Stab" || value == "Slash" || value == "Crush" ||
+           value == "Magic" || value == "RangedLight" ||
+           value == "RangedStandard" || value == "RangedHeavy";
+}
+
+bool IsKnownEquipmentSlot(const std::string& value)
+{
+    return value == "Head" || value == "Cape" || value == "Amulet" ||
+           value == "Weapon" || value == "Body" || value == "Shield" ||
+           value == "Legs" || value == "Hands" || value == "Feet" ||
+           value == "Ring" || value == "Ammo";
+}
+
+bool IsKnownActorKind(const std::string& value)
+{
+    return value == "Player" || value == "Npc";
+}
+
+void RequireKnownStringValue(
+    const nlohmann::json& object,
+    const char* fieldName,
+    bool (*isKnown)(const std::string&),
+    const char* errorMessage)
+{
+    RequireObjectField(object, fieldName, RequiredJsonKind::String);
+
+    if (!isKnown(object.at(fieldName).get<std::string>()))
+    {
+        throw std::invalid_argument(errorMessage);
+    }
+}
+
 CardinalDirection ParseWallDirectionEntryDirection(const nlohmann::json& value)
 {
     RequireObjectField(value, "direction", RequiredJsonKind::String);
@@ -129,6 +163,315 @@ SceneCoordinate ParseSceneCoordinate(const nlohmann::json& value)
         value.at("x").get<int>(),
         value.at("y").get<int>(),
         value.at("plane").get<int>()};
+}
+
+void ValidateSceneCoordinateShape(const nlohmann::json& value)
+{
+    const Scene scene;
+    const SceneCoordinate coordinate = ParseSceneCoordinate(value);
+
+    if (!scene.Contains(coordinate))
+    {
+        throw std::invalid_argument("Recorded Scene Coordinate is invalid");
+    }
+}
+
+void ValidateScenePositionShape(const nlohmann::json& value)
+{
+    RequireObjectField(value, "x", RequiredJsonKind::Number);
+    RequireObjectField(value, "y", RequiredJsonKind::Number);
+    RequireObjectField(value, "plane", RequiredJsonKind::Integer);
+}
+
+void ValidateSceneMembershipShape(const nlohmann::json& value)
+{
+    RequireObjectField(value, "sceneId", RequiredJsonKind::Integer);
+    RequireObjectField(value, "coordinate", RequiredJsonKind::Object);
+    ValidateSceneCoordinateShape(value.at("coordinate"));
+}
+
+void ValidateActorFootprintShape(SceneCoordinate coordinate, int actorSize)
+{
+    const Scene scene;
+
+    for (int offsetX = 0; offsetX < actorSize; ++offsetX)
+    {
+        for (int offsetY = 0; offsetY < actorSize; ++offsetY)
+        {
+            if (!scene.Contains(
+                    {coordinate.x + offsetX,
+                     coordinate.y + offsetY,
+                     coordinate.plane}))
+            {
+                throw std::invalid_argument(
+                    "Recorded Actor placement cannot be applied");
+            }
+        }
+    }
+}
+
+void ValidateCombatStatsShape(const nlohmann::json& value)
+{
+    RequireObjectField(value, "attack", RequiredJsonKind::Integer);
+    RequireObjectField(value, "strength", RequiredJsonKind::Integer);
+    RequireObjectField(value, "defence", RequiredJsonKind::Integer);
+    RequireObjectField(value, "ranged", RequiredJsonKind::Integer);
+    RequireObjectField(value, "magic", RequiredJsonKind::Integer);
+    RequireObjectField(value, "hitpoints", RequiredJsonKind::Integer);
+}
+
+void ValidateWeaponShape(const nlohmann::json& value)
+{
+    RequireObjectField(value, "id", RequiredJsonKind::Integer);
+    RequireObjectField(value, "range", RequiredJsonKind::Integer);
+    RequireObjectField(value, "speed", RequiredJsonKind::Integer);
+    RequireObjectField(value, "projectileId", RequiredJsonKind::Integer);
+}
+
+void ValidateEquipmentProvenanceShape(const nlohmann::json& value)
+{
+    if (!value.is_array())
+    {
+        throw std::invalid_argument(
+            "Recording equipment provenance must be an array");
+    }
+
+    for (const nlohmann::json& piece : value)
+    {
+        RequireKnownStringValue(
+            piece,
+            "slot",
+            IsKnownEquipmentSlot,
+            "Unknown Equipment Slot");
+        RequireObjectField(piece, "pieceId", RequiredJsonKind::Integer);
+    }
+}
+
+void ValidateCombatCompositionShape(const nlohmann::json& value)
+{
+    RequireObjectField(value, "stats", RequiredJsonKind::Object);
+    ValidateCombatStatsShape(value.at("stats"));
+    RequireObjectField(value, "baseStats", RequiredJsonKind::Object);
+    ValidateCombatStatsShape(value.at("baseStats"));
+    RequireObjectField(value, "bonuses", RequiredJsonKind::Object);
+    RequireKnownStringValue(
+        value,
+        "attackType",
+        IsKnownAttackType,
+        "Unknown Attack Type");
+    RequireObjectField(
+        value,
+        "magicBaseMaximumHit",
+        RequiredJsonKind::Integer);
+    RequireObjectField(value, "weapon", RequiredJsonKind::Object);
+    ValidateWeaponShape(value.at("weapon"));
+
+    if (value.contains("equipmentProvenance"))
+    {
+        ValidateEquipmentProvenanceShape(value.at("equipmentProvenance"));
+    }
+}
+
+void ValidateMovementTargetShape(const nlohmann::json& value)
+{
+    if (value.is_null())
+    {
+        return;
+    }
+
+    RequireKnownStringValue(
+        value,
+        "kind",
+        [](const std::string& kind)
+        {
+            return kind == "SceneCoordinate" || kind == "Actor";
+        },
+        "Unknown Movement Target kind");
+
+    const std::string kind = value.at("kind").get<std::string>();
+
+    if (kind == "SceneCoordinate")
+    {
+        RequireObjectField(value, "coordinate", RequiredJsonKind::Object);
+        ValidateSceneCoordinateShape(value.at("coordinate"));
+        return;
+    }
+
+    RequireObjectField(value, "actorId", RequiredJsonKind::Integer);
+}
+
+void ValidateActorDebugShape(const nlohmann::json& value)
+{
+    if (value.contains("movementTarget"))
+    {
+        ValidateMovementTargetShape(value.at("movementTarget"));
+    }
+
+    if (value.contains("attackTimer"))
+    {
+        RequireObjectField(value, "attackTimer", RequiredJsonKind::Integer);
+    }
+}
+
+void ValidateActorShape(const nlohmann::json& actor)
+{
+    RequireObjectField(actor, "id", RequiredJsonKind::Integer);
+
+    if (actor.contains("present"))
+    {
+        RequireObjectField(actor, "present", RequiredJsonKind::Boolean);
+
+        if (!actor.at("present").get<bool>())
+        {
+            return;
+        }
+    }
+
+    if (actor.contains("kind"))
+    {
+        RequireKnownStringValue(
+            actor,
+            "kind",
+            IsKnownActorKind,
+            "Unknown Actor kind");
+    }
+
+    const bool fullActor = actor.contains("present") &&
+                           actor.at("present").get<bool>();
+
+    if (fullActor)
+    {
+        RequireKnownStringValue(
+            actor,
+            "kind",
+            IsKnownActorKind,
+            "Unknown Actor kind");
+
+        if (actor.at("kind").get<std::string>() == "Player")
+        {
+            RequireObjectField(actor, "playerIndex", RequiredJsonKind::Integer);
+        }
+        else
+        {
+            RequireObjectField(actor, "npcIndex", RequiredJsonKind::Integer);
+        }
+
+        RequireObjectField(actor, "size", RequiredJsonKind::Integer);
+        RequireObjectField(actor, "speed", RequiredJsonKind::Integer);
+        RequireObjectField(
+            actor,
+            "sceneMembership",
+            RequiredJsonKind::Object);
+        RequireObjectField(
+            actor,
+            "combatComposition",
+            RequiredJsonKind::Object);
+        RequireObjectField(actor, "debug", RequiredJsonKind::Object);
+    }
+
+    if (actor.contains("sceneMembership"))
+    {
+        ValidateSceneMembershipShape(actor.at("sceneMembership"));
+
+        if (actor.contains("size") && actor.at("size").is_number_integer())
+        {
+            ValidateActorFootprintShape(
+                ParseSceneCoordinate(
+                    actor.at("sceneMembership").at("coordinate")),
+                actor.at("size").get<int>());
+        }
+    }
+
+    if (actor.contains("currentHitpoints"))
+    {
+        RequireObjectField(actor, "currentHitpoints", RequiredJsonKind::Integer);
+    }
+
+    if (actor.contains("combatComposition"))
+    {
+        ValidateCombatCompositionShape(actor.at("combatComposition"));
+    }
+
+    if (actor.contains("debug"))
+    {
+        RequireObjectField(actor, "debug", RequiredJsonKind::Object);
+        ValidateActorDebugShape(actor.at("debug"));
+    }
+}
+
+void ValidateProjectileShape(const nlohmann::json& projectile)
+{
+    RequireObjectField(projectile, "projectileId", RequiredJsonKind::Integer);
+    RequireObjectField(projectile, "source", RequiredJsonKind::Object);
+    ValidateScenePositionShape(projectile.at("source"));
+    RequireObjectField(projectile, "targetActorId", RequiredJsonKind::Integer);
+    RequireObjectField(
+        projectile,
+        "lastKnownTargetCenter",
+        RequiredJsonKind::Object);
+    ValidateScenePositionShape(projectile.at("lastKnownTargetCenter"));
+    RequireObjectField(projectile, "totalTicks", RequiredJsonKind::Integer);
+
+    if (projectile.contains("elapsedTicks"))
+    {
+        RequireObjectField(
+            projectile,
+            "elapsedTicks",
+            RequiredJsonKind::Integer);
+    }
+}
+
+void ValidateQueuedDamageEventShape(const nlohmann::json& damageEvent)
+{
+    RequireObjectField(damageEvent, "id", RequiredJsonKind::Integer);
+    RequireObjectField(damageEvent, "attackId", RequiredJsonKind::Integer);
+    RequireObjectField(damageEvent, "targetId", RequiredJsonKind::Integer);
+    RequireObjectField(damageEvent, "damage", RequiredJsonKind::Integer);
+    RequireObjectField(damageEvent, "delayTicks", RequiredJsonKind::Integer);
+}
+
+void ValidateAttackShape(const nlohmann::json& attack)
+{
+    RequireObjectField(attack, "id", RequiredJsonKind::Integer);
+    RequireObjectField(attack, "tick", RequiredJsonKind::Integer);
+    RequireObjectField(attack, "attackerId", RequiredJsonKind::Integer);
+    RequireObjectField(attack, "targetId", RequiredJsonKind::Integer);
+    RequireObjectField(attack, "callback", RequiredJsonKind::String);
+    RequireObjectField(
+        attack,
+        "queuedDamageEvents",
+        RequiredJsonKind::Array);
+
+    for (const nlohmann::json& damageEvent :
+         attack.at("queuedDamageEvents"))
+    {
+        ValidateQueuedDamageEventShape(damageEvent);
+    }
+
+    if (attack.contains("projectile"))
+    {
+        RequireObjectField(attack, "projectile", RequiredJsonKind::Object);
+        ValidateProjectileShape(attack.at("projectile"));
+    }
+}
+
+void ValidateDamageApplicationShape(const nlohmann::json& damageApplication)
+{
+    RequireObjectField(
+        damageApplication,
+        "damageEventId",
+        RequiredJsonKind::Integer);
+    RequireObjectField(damageApplication, "attackId", RequiredJsonKind::Integer);
+    RequireObjectField(damageApplication, "tick", RequiredJsonKind::Integer);
+    RequireObjectField(damageApplication, "targetId", RequiredJsonKind::Integer);
+    RequireObjectField(
+        damageApplication,
+        "queuedDamage",
+        RequiredJsonKind::Integer);
+    RequireObjectField(
+        damageApplication,
+        "appliedDamage",
+        RequiredJsonKind::Integer);
 }
 
 std::string SceneEntityKey(const nlohmann::json& sceneEntity)
@@ -479,10 +822,22 @@ void RecordingPlayback::Validate(const nlohmann::json& recording)
         RequiredJsonKind::Array);
     RequireObjectField(recording, "ticks", RequiredJsonKind::Array);
 
+    for (const nlohmann::json& actor :
+         recording.at("initialState").at("actors"))
+    {
+        ValidateActorShape(actor);
+    }
+
     for (const nlohmann::json& sceneEntity :
          recording.at("initialState").at("sceneEntities"))
     {
         ValidateSceneEntityShape(sceneEntity);
+    }
+
+    for (const nlohmann::json& projectile :
+         recording.at("initialState").at("projectiles"))
+    {
+        ValidateProjectileShape(projectile);
     }
 
     int expectedTick = recording.at("initialState").at("tick").get<int>() + 1;
@@ -499,6 +854,22 @@ void RecordingPlayback::Validate(const nlohmann::json& recording)
         RequireObjectField(tick, "sceneChanges", RequiredJsonKind::Array);
         RequireObjectField(tick, "projectiles", RequiredJsonKind::Array);
 
+        for (const nlohmann::json& actor : tick.at("actors"))
+        {
+            ValidateActorShape(actor);
+        }
+
+        for (const nlohmann::json& attack : tick.at("attacks"))
+        {
+            ValidateAttackShape(attack);
+        }
+
+        for (const nlohmann::json& damageApplication :
+             tick.at("damageApplications"))
+        {
+            ValidateDamageApplicationShape(damageApplication);
+        }
+
         for (const nlohmann::json& sceneChange : tick.at("sceneChanges"))
         {
             ValidateSceneEntityShape(sceneChange);
@@ -506,6 +877,11 @@ void RecordingPlayback::Validate(const nlohmann::json& recording)
                 sceneChange,
                 "present",
                 RequiredJsonKind::Boolean);
+        }
+
+        for (const nlohmann::json& projectile : tick.at("projectiles"))
+        {
+            ValidateProjectileShape(projectile);
         }
 
         if (tick.at("tick").get<int>() != expectedTick)
