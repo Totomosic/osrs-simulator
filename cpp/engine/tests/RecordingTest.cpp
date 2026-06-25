@@ -364,6 +364,54 @@ public:
         return false;
     }
 };
+
+class CustomAttackRecordingEncounter
+    : public osrssim::encounter::ActiveEncounter
+{
+private:
+    osrssim::ActorId m_PlayerId = 0;
+    osrssim::ActorId m_NpcId = 0;
+
+public:
+    osrssim::ActorId GetPlayerId() const
+    {
+        return m_PlayerId;
+    }
+
+    osrssim::ActorId GetNpcId() const
+    {
+        return m_NpcId;
+    }
+
+    void Initialize(osrssim::EncounterContext& context) override
+    {
+        osrssim::CombatComposition playerComposition =
+            CreateCombatComposition(82, 99);
+        playerComposition.weapon = {77, 1, 4, 0};
+
+        osrssim::CombatComposition npcComposition =
+            CreateCombatComposition(20, 20);
+        npcComposition.weapon = {0, 1, 4, 0};
+
+        m_PlayerId = context.CreatePlayer(1, 2, playerComposition).value();
+        m_NpcId = context.CreateNpc(1, 1, npcComposition).value();
+
+        assert(context.GetWorld().PlaceActor(
+            m_PlayerId,
+            context.GetWorld().GetDefaultSceneId(),
+            {10, 10, 0}));
+        assert(context.GetWorld().PlaceActor(
+            m_NpcId,
+            context.GetWorld().GetDefaultSceneId(),
+            {11, 10, 0}));
+        assert(context.GetWorld().SetActorMovementTarget(m_PlayerId, m_NpcId));
+    }
+
+    bool IsComplete(const osrssim::EncounterContext&) const override
+    {
+        return false;
+    }
+};
 }  // namespace
 
 int main()
@@ -854,5 +902,124 @@ int main()
         assert(nlohmann::json::parse(playback.GetDamageApplicationsJson()) ==
                tickTwo.at("damageApplications"));
         assert(nlohmann::json::parse(playback.GetProjectilesJson()).empty());
+    }
+
+    {
+        auto encounter = std::make_unique<CustomAttackRecordingEncounter>();
+        CustomAttackRecordingEncounter* encounterPtr = encounter.get();
+        osrssim::recording::EncounterRecorder recorder(
+            "Named Custom Attack Recording",
+            0.6);
+        osrssim::encounter::EncounterRunner runner(std::move(encounter));
+        osrssim::CombatService& combatService =
+            runner.GetEngine().GetCombatService();
+
+        combatService.RegisterAttackCallbackName(
+            "dragon_claws",
+            [&combatService](
+                osrssim::World& world,
+                osrssim::ActorId attackerId,
+                osrssim::ActorId targetId,
+                osrssim::Tick currentTick,
+                const osrssim::WeaponDefinition&)
+            {
+                osrssim::CombatService::AttackObservation attack =
+                    combatService.CreateAttackObservation(
+                        world,
+                        attackerId,
+                        targetId,
+                        currentTick);
+
+                assert(combatService.QueueStructuredDamageEvent(
+                    world,
+                    attack,
+                    targetId,
+                    7,
+                    1));
+                assert(combatService.QueueStructuredDamageEvent(
+                    world,
+                    attack,
+                    targetId,
+                    5,
+                    1));
+                combatService.RecordAttackObservation(attack);
+                return true;
+            });
+        combatService.BindWeaponAttackCallbackName(77, "dragon_claws");
+
+        assert(runner.AttachRecorder(recorder));
+        runner.Start();
+        assert(runner.Step());
+        assert(runner.Step());
+
+        const nlohmann::json recording =
+            nlohmann::json::parse(recorder.ExportJson());
+        const nlohmann::json& tickOne = recording.at("ticks").at(0);
+        const nlohmann::json& attack = tickOne.at("attacks").at(0);
+
+        assert(tickOne.at("attacks").size() == 1);
+        assert(attack.at("id") == 1);
+        assert(attack.at("attackerId") == encounterPtr->GetPlayerId());
+        assert(attack.at("targetId") == encounterPtr->GetNpcId());
+        assert(attack.at("callback") == "dragon_claws");
+        assert(attack.at("queuedDamageEvents").size() == 2);
+        assert(attack.at("queuedDamageEvents").at(0).at("id") == 1);
+        assert(attack.at("queuedDamageEvents").at(0).at("attackId") == 1);
+        assert(attack.at("queuedDamageEvents").at(0).at("damage") == 7);
+        assert(attack.at("queuedDamageEvents").at(1).at("id") == 2);
+        assert(attack.at("queuedDamageEvents").at(1).at("attackId") == 1);
+        assert(attack.at("queuedDamageEvents").at(1).at("damage") == 5);
+        assert(!attack.contains("projectile"));
+
+        const nlohmann::json& damageApplications =
+            recording.at("ticks").at(1).at("damageApplications");
+        assert(damageApplications.size() == 2);
+        assert(damageApplications.at(0).at("damageEventId") == 1);
+        assert(damageApplications.at(0).at("attackId") == 1);
+        assert(damageApplications.at(0).at("queuedDamage") == 7);
+        assert(damageApplications.at(0).at("appliedDamage") == 7);
+        assert(damageApplications.at(1).at("damageEventId") == 2);
+        assert(damageApplications.at(1).at("attackId") == 1);
+        assert(damageApplications.at(1).at("queuedDamage") == 5);
+        assert(damageApplications.at(1).at("appliedDamage") == 5);
+    }
+
+    {
+        auto encounter = std::make_unique<CustomAttackRecordingEncounter>();
+        CustomAttackRecordingEncounter* encounterPtr = encounter.get();
+        osrssim::recording::EncounterRecorder recorder(
+            "Anonymous Custom Attack Recording",
+            0.6);
+        osrssim::encounter::EncounterRunner runner(std::move(encounter));
+        osrssim::CombatService& combatService =
+            runner.GetEngine().GetCombatService();
+
+        combatService.RegisterWeaponAttackCallback(
+            77,
+            [](
+                osrssim::World&,
+                osrssim::ActorId,
+                osrssim::ActorId,
+                osrssim::Tick,
+                const osrssim::WeaponDefinition&)
+            {
+                return true;
+            });
+
+        assert(runner.AttachRecorder(recorder));
+        runner.Start();
+        assert(runner.Step());
+
+        const nlohmann::json recording =
+            nlohmann::json::parse(recorder.ExportJson());
+        const nlohmann::json& attacks =
+            recording.at("ticks").at(0).at("attacks");
+
+        assert(attacks.size() == 1);
+        assert(attacks.at(0).at("attackerId") == encounterPtr->GetPlayerId());
+        assert(attacks.at(0).at("targetId") == encounterPtr->GetNpcId());
+        assert(attacks.at(0).at("callback") == "anonymous_attack_callback");
+        assert(attacks.at(0).at("queuedDamageEvents").empty());
+        assert(recording.at("ticks").at(0).at("damageApplications").empty());
     }
 }

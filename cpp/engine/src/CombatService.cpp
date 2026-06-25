@@ -30,7 +30,9 @@ CombatService::CombatService()
 
 void CombatService::RegisterGenericAttackCallback(AttackCallback callback)
 {
-    m_GenericAttackCallback = std::move(callback);
+    m_GenericAttackCallback = {
+        std::move(callback),
+        "anonymous_attack_callback"};
 }
 
 void CombatService::RegisterAttackCallbackName(
@@ -55,7 +57,9 @@ void CombatService::RegisterWeaponAttackCallback(
     WeaponId weaponId,
     AttackCallback callback)
 {
-    m_WeaponAttackCallbacks[weaponId] = std::move(callback);
+    m_WeaponAttackCallbacks[weaponId] = {
+        std::move(callback),
+        "anonymous_attack_callback"};
 }
 
 void CombatService::BindWeaponAttackCallbackName(
@@ -68,7 +72,9 @@ void CombatService::BindWeaponAttackCallbackName(
         throw std::invalid_argument("attack callback name is not registered");
     }
 
-    m_WeaponAttackCallbacks[weaponId] = callback->second;
+    m_WeaponAttackCallbacks[weaponId] = {
+        callback->second,
+        callbackName};
 }
 
 void CombatService::AddObserver(Observer& observer)
@@ -90,6 +96,99 @@ void CombatService::RemoveObserver(Observer& observer)
 void CombatService::SetDpsSeed(unsigned int seed)
 {
     m_DpsService.SetSeed(seed);
+}
+
+CombatService::AttackObservation CombatService::CreateAttackObservation(
+    const World&,
+    ActorId attackerId,
+    ActorId targetId,
+    Tick currentTick) const
+{
+    AttackObservation attack;
+    attack.id = m_NextAttackId++;
+    attack.tick = currentTick;
+    attack.attackerId = attackerId;
+    attack.targetId = targetId;
+    attack.callback =
+        m_CurrentAttackCallbackName.value_or("anonymous_attack_callback");
+    return attack;
+}
+
+bool CombatService::QueueStructuredDamageEvent(
+    World& world,
+    AttackObservation& attack,
+    ActorId targetId,
+    int damage,
+    int delayTicks) const
+{
+    const int queuedDamage = ClampDamageToCurrentHitpoints(
+        world,
+        targetId,
+        damage);
+    const std::uint64_t damageEventId = m_NextDamageEventId++;
+    const QueuedDamageEventObservation queuedDamageEvent{
+        damageEventId,
+        attack.id,
+        targetId,
+        queuedDamage,
+        delayTicks};
+    const bool queued = world.QueueActorCombatEvent(
+        targetId,
+        delayTicks,
+        [this, &world, targetId, damage = queuedDamage, damageEventId, attackId = attack.id]()
+        {
+            ApplyDamage(world, targetId, damage, damageEventId, attackId);
+        });
+
+    if (queued)
+    {
+        attack.queuedDamageEvents.push_back(queuedDamageEvent);
+    }
+
+    return queued;
+}
+
+bool CombatService::QueueStructuredDamageEvent(
+    World& world,
+    AttackObservation& attack,
+    ActorId targetId,
+    int damage,
+    int delayTicks,
+    ProjectileMetadata projectile) const
+{
+    const int queuedDamage = ClampDamageToCurrentHitpoints(
+        world,
+        targetId,
+        damage);
+    const std::uint64_t damageEventId = m_NextDamageEventId++;
+    const QueuedDamageEventObservation queuedDamageEvent{
+        damageEventId,
+        attack.id,
+        targetId,
+        queuedDamage,
+        delayTicks};
+    const bool queued = world.QueueActorCombatEvent(
+        targetId,
+        delayTicks,
+        [this, &world, targetId, damage = queuedDamage, damageEventId, attackId = attack.id]()
+        {
+            ApplyDamage(world, targetId, damage, damageEventId, attackId);
+        },
+        projectile);
+
+    if (queued)
+    {
+        attack.queuedDamageEvents.push_back(queuedDamageEvent);
+        attack.projectile = projectile;
+    }
+
+    return queued;
+}
+
+void CombatService::RecordAttackObservation(
+    const AttackObservation& attack) const
+{
+    NotifyAttackQueued(attack);
 }
 
 void CombatService::DecrementAttackTimers(World& world) const
@@ -170,16 +269,20 @@ bool CombatService::DispatchAttack(
 
     if (weaponCallback != m_WeaponAttackCallbacks.end())
     {
-        attackSucceeded = weaponCallback->second(
+        m_CurrentAttackCallbackName = weaponCallback->second.callbackName;
+        m_CurrentDispatchRecordedAttack = false;
+        attackSucceeded = weaponCallback->second.callback(
             world,
             attackerId,
             targetId,
             currentTick,
             attackWeapon);
     }
-    else if (m_GenericAttackCallback)
+    else if (m_GenericAttackCallback.callback)
     {
-        attackSucceeded = m_GenericAttackCallback(
+        m_CurrentAttackCallbackName = m_GenericAttackCallback.callbackName;
+        m_CurrentDispatchRecordedAttack = false;
+        attackSucceeded = m_GenericAttackCallback.callback(
             world,
             attackerId,
             targetId,
@@ -194,6 +297,20 @@ bool CombatService::DispatchAttack(
             targetId,
             attackWeapon);
     }
+
+    if (attackSucceeded && m_CurrentAttackCallbackName.has_value() &&
+        !m_CurrentDispatchRecordedAttack)
+    {
+        RecordAttackObservation(
+            CreateAttackObservation(
+                world,
+                attackerId,
+                targetId,
+                currentTick));
+    }
+
+    m_CurrentAttackCallbackName.reset();
+    m_CurrentDispatchRecordedAttack = false;
 
     if (attackSucceeded)
     {
@@ -445,6 +562,8 @@ void CombatService::QueueDeath(
 
 void CombatService::NotifyAttackQueued(const AttackObservation& attack) const
 {
+    m_CurrentDispatchRecordedAttack = true;
+
     for (Observer* observer : m_Observers)
     {
         observer->OnAttackQueued(attack);

@@ -19,6 +19,12 @@ private:
     using AttackCallback =
         std::function<bool(World&, ActorId, ActorId, Tick, const WeaponDefinition&)>;
 
+    struct AttackCallbackBinding
+    {
+        AttackCallback callback;
+        std::string callbackName;
+    };
+
 public:
     struct QueuedDamageEventObservation
     {
@@ -61,11 +67,13 @@ public:
 
 private:
     mutable DpsService m_DpsService;
-    AttackCallback m_GenericAttackCallback;
+    AttackCallbackBinding m_GenericAttackCallback;
     std::unordered_map<std::string, AttackCallback> m_AttackCallbacksByName;
-    std::unordered_map<WeaponId, AttackCallback> m_WeaponAttackCallbacks;
+    std::unordered_map<WeaponId, AttackCallbackBinding> m_WeaponAttackCallbacks;
     mutable std::uint64_t m_NextAttackId = 1;
     mutable std::uint64_t m_NextDamageEventId = 1;
+    mutable std::optional<std::string> m_CurrentAttackCallbackName;
+    mutable bool m_CurrentDispatchRecordedAttack = false;
     std::vector<Observer*> m_Observers;
 
 public:
@@ -85,6 +93,25 @@ public:
     void AddObserver(Observer& observer);
     void RemoveObserver(Observer& observer);
     void SetDpsSeed(unsigned int seed);
+    AttackObservation CreateAttackObservation(
+        const World& world,
+        ActorId attackerId,
+        ActorId targetId,
+        Tick currentTick) const;
+    bool QueueStructuredDamageEvent(
+        World& world,
+        AttackObservation& attack,
+        ActorId targetId,
+        int damage,
+        int delayTicks) const;
+    bool QueueStructuredDamageEvent(
+        World& world,
+        AttackObservation& attack,
+        ActorId targetId,
+        int damage,
+        int delayTicks,
+        ProjectileMetadata projectile) const;
+    void RecordAttackObservation(const AttackObservation& attack) const;
     void DecrementAttackTimers(World& world) const;
     bool CanAttackActorTarget(
         const World& world,
