@@ -48,7 +48,21 @@ const playback = engineModule.RecordingPlayback.LoadFromJson(
                     debug: { movementTarget: null, attackTimer: 0 },
                 },
             ],
-            sceneEntities: [],
+            sceneEntities: [
+                {
+                    kind: "GameObject",
+                    sceneId: 1,
+                    id: 5001,
+                    coordinate: { x: 11, y: 12, plane: 0 },
+                    direction: "North",
+                    sizeX: 1,
+                    sizeY: 1,
+                    collision: {
+                        blocksMovement: true,
+                        blocksLineOfSight: false,
+                    },
+                },
+            ],
             projectiles: [],
         },
         ticks: [
@@ -63,7 +77,20 @@ const playback = engineModule.RecordingPlayback.LoadFromJson(
                 ],
                 attacks: [],
                 damageApplications: [],
-                sceneChanges: [],
+                sceneChanges: [
+                    {
+                        kind: "WallObject",
+                        sceneId: 1,
+                        id: 6001,
+                        coordinate: { x: 13, y: 13, plane: 0 },
+                        direction: "East",
+                        collision: {
+                            blocksMovement: true,
+                            blocksLineOfSight: false,
+                        },
+                        present: true,
+                    },
+                ],
                 projectiles: [],
             },
         ],
@@ -76,6 +103,7 @@ assert.equal(playback.GetInitialTick(), 0);
 assert.equal(playback.GetCurrentTick(), 0);
 assert.equal(playback.GetLastTick(), 1);
 assert.equal(JSON.parse(playback.GetActorsJson())[0].kind, "Player");
+assert.equal(JSON.parse(playback.GetSceneEntitiesJson())[0].id, 5001);
 assert.equal(playback.NextTick(), true);
 assert.equal(playback.GetCurrentTick(), 1);
 assert.equal(
@@ -83,6 +111,8 @@ assert.equal(
     77,
 );
 assert.equal(JSON.parse(playback.GetActorsJson())[0].debug.attackTimer, 6);
+assert.equal(JSON.parse(playback.GetSceneEntitiesJson()).length, 2);
+assert.equal(JSON.parse(playback.GetSceneEntitiesJson())[1].id, 6001);
 assert.equal(playback.NextTick(), false);
 
 playback.delete?.();

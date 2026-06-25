@@ -4,6 +4,7 @@
 
 #include <algorithm>
 #include <stdexcept>
+#include <tuple>
 #include <utility>
 #include <vector>
 
@@ -104,6 +105,51 @@ const char* AttackTypeName(AttackType attackType)
     return "Unknown";
 }
 
+const char* CardinalDirectionName(CardinalDirection direction)
+{
+    switch (direction)
+    {
+        case CardinalDirection::North:
+            return "North";
+        case CardinalDirection::East:
+            return "East";
+        case CardinalDirection::South:
+            return "South";
+        case CardinalDirection::West:
+            return "West";
+    }
+
+    return "Unknown";
+}
+
+nlohmann::json CreateCollisionProfileJson(
+    const CollisionProfile& collisionProfile)
+{
+    return nlohmann::json{
+        {"blocksMovement", collisionProfile.blocksMovement},
+        {"blocksLineOfSight", collisionProfile.blocksLineOfSight}};
+}
+
+nlohmann::json CreateWallDirectionsJson(
+    const SceneEntityPlacement& placement)
+{
+    nlohmann::json directions = nlohmann::json::array();
+
+    for (int index = 0; index < placement.directionCount; ++index)
+    {
+        directions.push_back(
+            {{"direction",
+              CardinalDirectionName(
+                  placement.directions[static_cast<std::size_t>(index)])},
+             {"collision",
+              CreateCollisionProfileJson(
+                  placement
+                      .collisionProfiles[static_cast<std::size_t>(index)])}});
+    }
+
+    return directions;
+}
+
 nlohmann::json CreateWeaponJson(const WeaponDefinition& weapon)
 {
     return nlohmann::json{
@@ -189,6 +235,62 @@ std::vector<ActorId> GetSortedActorIds(
 
     std::sort(actorIds.begin(), actorIds.end());
     return actorIds;
+}
+
+std::string CreateSceneEntityKey(const nlohmann::json& sceneEntity)
+{
+    const nlohmann::json& coordinate = sceneEntity.at("coordinate");
+
+    return sceneEntity.at("kind").get<std::string>() + "|" +
+           std::to_string(sceneEntity.at("sceneId").get<int>()) + "|" +
+           std::to_string(coordinate.at("plane").get<int>()) + "|" +
+           std::to_string(coordinate.at("x").get<int>()) + "|" +
+           std::to_string(coordinate.at("y").get<int>()) + "|" +
+           std::to_string(sceneEntity.at("id").get<int>());
+}
+
+std::vector<std::string> GetSortedSceneEntityKeys(
+    const std::unordered_map<std::string, nlohmann::json>& sceneEntities)
+{
+    std::vector<std::string> keys;
+    keys.reserve(sceneEntities.size());
+
+    for (const auto& [key, sceneEntity] : sceneEntities)
+    {
+        keys.push_back(key);
+    }
+
+    std::sort(
+        keys.begin(),
+        keys.end(),
+        [&sceneEntities](const std::string& lhs, const std::string& rhs)
+        {
+            const nlohmann::json& left = sceneEntities.at(lhs);
+            const nlohmann::json& right = sceneEntities.at(rhs);
+            const nlohmann::json& leftCoordinate = left.at("coordinate");
+            const nlohmann::json& rightCoordinate = right.at("coordinate");
+            const int leftKind =
+                left.at("kind").get<std::string>() == "GameObject" ? 0 : 1;
+            const int rightKind =
+                right.at("kind").get<std::string>() == "GameObject" ? 0 : 1;
+
+            return std::tuple{
+                       left.at("sceneId").get<int>(),
+                       leftCoordinate.at("plane").get<int>(),
+                       leftCoordinate.at("x").get<int>(),
+                       leftCoordinate.at("y").get<int>(),
+                       leftKind,
+                       left.at("id").get<int>()} <
+                   std::tuple{
+                       right.at("sceneId").get<int>(),
+                       rightCoordinate.at("plane").get<int>(),
+                       rightCoordinate.at("x").get<int>(),
+                       rightCoordinate.at("y").get<int>(),
+                       rightKind,
+                       right.at("id").get<int>()};
+        });
+
+    return keys;
 }
 }  // namespace
 
@@ -337,6 +439,78 @@ nlohmann::json EncounterRecorder::CreateActorChanges(
     return changes;
 }
 
+std::unordered_map<std::string, nlohmann::json>
+EncounterRecorder::CreateSceneEntities(const World& world)
+{
+    std::unordered_map<std::string, nlohmann::json> sceneEntities;
+
+    const SceneId sceneId = world.GetDefaultSceneId();
+    const Scene* scene = world.TryGetScene(sceneId);
+
+    if (scene == nullptr)
+    {
+        return sceneEntities;
+    }
+
+    for (const SceneEntityPlacement& placement :
+         scene->GetSceneEntityPlacements())
+    {
+        nlohmann::json sceneEntity = {
+            {"kind",
+             placement.kind == SceneEntityPlacement::Kind::GameObject
+                 ? "GameObject"
+                 : "WallObject"},
+            {"sceneId", sceneId},
+            {"id", placement.id},
+            {"coordinate", CreateCoordinateJson(placement.coordinate)},
+            {"direction", CardinalDirectionName(placement.direction)},
+            {"collision", CreateCollisionProfileJson(placement.collisionProfile)}};
+
+        if (placement.kind == SceneEntityPlacement::Kind::GameObject)
+        {
+            sceneEntity["sizeX"] = placement.sizeX;
+            sceneEntity["sizeY"] = placement.sizeY;
+        }
+        else if (placement.directionCount > 1)
+        {
+            sceneEntity["directions"] = CreateWallDirectionsJson(placement);
+        }
+
+        sceneEntities.emplace(CreateSceneEntityKey(sceneEntity), sceneEntity);
+    }
+
+    return sceneEntities;
+}
+
+nlohmann::json EncounterRecorder::CreateSceneEntityChanges(
+    const std::unordered_map<std::string, nlohmann::json>& previousSceneEntities,
+    const std::unordered_map<std::string, nlohmann::json>& currentSceneEntities)
+{
+    nlohmann::json changes = nlohmann::json::array();
+
+    for (const std::string& key : GetSortedSceneEntityKeys(previousSceneEntities))
+    {
+        if (!currentSceneEntities.contains(key))
+        {
+            nlohmann::json removal = previousSceneEntities.at(key);
+            removal["present"] = false;
+            changes.push_back(removal);
+        }
+    }
+
+    for (const std::string& key : GetSortedSceneEntityKeys(currentSceneEntities))
+    {
+        if (!previousSceneEntities.contains(key))
+        {
+            nlohmann::json placement = currentSceneEntities.at(key);
+            placement["present"] = true;
+            changes.push_back(placement);
+        }
+    }
+
+    return changes;
+}
+
 EncounterRecorder::EncounterRecorder(
     std::string encounterName,
     double secondsPerTick)
@@ -358,11 +532,18 @@ EncounterRecorder::EncounterRecorder(
 void EncounterRecorder::RecordInitialState(const Engine& engine)
 {
     m_PreviousActors = CreatePlacedActors(engine.GetWorld());
+    m_PreviousSceneEntities = CreateSceneEntities(engine.GetWorld());
     nlohmann::json actors = nlohmann::json::array();
+    nlohmann::json sceneEntities = nlohmann::json::array();
 
     for (ActorId actorId : GetSortedActorIds(m_PreviousActors))
     {
         actors.push_back(m_PreviousActors.at(actorId));
+    }
+
+    for (const std::string& key : GetSortedSceneEntityKeys(m_PreviousSceneEntities))
+    {
+        sceneEntities.push_back(m_PreviousSceneEntities.at(key));
     }
 
     m_Recording = nlohmann::json{
@@ -373,7 +554,7 @@ void EncounterRecorder::RecordInitialState(const Engine& engine)
         {"initialState",
          {{"tick", static_cast<int>(engine.GetCurrentTick())},
           {"actors", actors},
-          {"sceneEntities", nlohmann::json::array()},
+          {"sceneEntities", sceneEntities},
           {"projectiles", nlohmann::json::array()}}},
         {"ticks", nlohmann::json::array()}};
 }
@@ -388,9 +569,14 @@ void EncounterRecorder::RecordCompletedTick(const Engine& engine)
 
     const std::unordered_map<ActorId, nlohmann::json> currentActors =
         CreatePlacedActors(engine.GetWorld());
+    const std::unordered_map<std::string, nlohmann::json> currentSceneEntities =
+        CreateSceneEntities(engine.GetWorld());
     nlohmann::json tick = CreateEmptyTick(static_cast<int>(engine.GetCurrentTick()));
     tick["actors"] = CreateActorChanges(m_PreviousActors, currentActors);
+    tick["sceneChanges"] =
+        CreateSceneEntityChanges(m_PreviousSceneEntities, currentSceneEntities);
     m_PreviousActors = currentActors;
+    m_PreviousSceneEntities = currentSceneEntities;
     m_Recording["ticks"].push_back(tick);
 }
 

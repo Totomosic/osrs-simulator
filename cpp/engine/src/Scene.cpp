@@ -300,6 +300,44 @@ const Tile* Scene::TryGetTile(SceneCoordinate coordinate) const
     return &m_Tiles[GetIndex(coordinate)];
 }
 
+std::vector<SceneEntityPlacement> Scene::GetSceneEntityPlacements() const
+{
+    std::vector<SceneEntityPlacement> placements;
+
+    for (const Tile& tile : m_Tiles)
+    {
+        if (tile.gameObject.has_value() &&
+            tile.gameObject->origin == tile.coordinate)
+        {
+            SceneEntityPlacement placement;
+            placement.kind = SceneEntityPlacement::Kind::GameObject;
+            placement.id = tile.gameObject->id;
+            placement.coordinate = tile.gameObject->origin;
+            placement.direction = tile.gameObject->direction;
+            placement.sizeX = tile.gameObject->sizeX;
+            placement.sizeY = tile.gameObject->sizeY;
+            placement.collisionProfile = tile.gameObject->collisionProfile;
+            placements.push_back(placement);
+        }
+
+        if (tile.wallObject.has_value())
+        {
+            SceneEntityPlacement placement;
+            placement.kind = SceneEntityPlacement::Kind::WallObject;
+            placement.id = tile.wallObject->id;
+            placement.coordinate = tile.coordinate;
+            placement.direction = tile.wallObject->directions[0];
+            placement.collisionProfile = tile.wallObject->collisionProfiles[0];
+            placement.directions = tile.wallObject->directions;
+            placement.collisionProfiles = tile.wallObject->collisionProfiles;
+            placement.directionCount = tile.wallObject->directionCount;
+            placements.push_back(placement);
+        }
+    }
+
+    return placements;
+}
+
 std::size_t Scene::GetIndex(SceneCoordinate coordinate)
 {
     return static_cast<std::size_t>(

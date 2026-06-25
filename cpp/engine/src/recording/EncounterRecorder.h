@@ -17,6 +17,7 @@ private:
     double m_SecondsPerTick = 0.6;
     nlohmann::json m_Recording;
     std::unordered_map<ActorId, nlohmann::json> m_PreviousActors;
+    std::unordered_map<std::string, nlohmann::json> m_PreviousSceneEntities;
 
     static nlohmann::json CreateEmptyTick(int tick);
     static nlohmann::json CreateActorSnapshot(
@@ -27,6 +28,11 @@ private:
     static nlohmann::json CreateActorChanges(
         const std::unordered_map<ActorId, nlohmann::json>& previousActors,
         const std::unordered_map<ActorId, nlohmann::json>& currentActors);
+    static std::unordered_map<std::string, nlohmann::json> CreateSceneEntities(
+        const World& world);
+    static nlohmann::json CreateSceneEntityChanges(
+        const std::unordered_map<std::string, nlohmann::json>& previousSceneEntities,
+        const std::unordered_map<std::string, nlohmann::json>& currentSceneEntities);
 
 public:
     EncounterRecorder(std::string encounterName, double secondsPerTick);

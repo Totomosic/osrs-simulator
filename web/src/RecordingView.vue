@@ -48,6 +48,24 @@ interface RecordingActor {
     };
 }
 
+interface RecordingSceneEntity {
+    kind: "GameObject" | "WallObject";
+    sceneId: number;
+    id: number;
+    coordinate: {
+        x: number;
+        y: number;
+        plane: number;
+    };
+    direction: "North" | "East" | "South" | "West";
+    sizeX?: number;
+    sizeY?: number;
+    collision: {
+        blocksMovement: boolean;
+        blocksLineOfSight: boolean;
+    };
+}
+
 const bundledSamples = [
     {
         label: "Minimal Encounter Recording",
@@ -79,16 +97,31 @@ const actors = computed<RecordingActor[]>(() => {
 
     return JSON.parse(playback.value.GetActorsJson()) as RecordingActor[];
 });
+const sceneEntities = computed<RecordingSceneEntity[]>(() => {
+    void actorJsonRevision.value;
+
+    if (playback.value === null) {
+        return [];
+    }
+
+    return JSON.parse(playback.value.GetSceneEntitiesJson()) as RecordingSceneEntity[];
+});
 const selectedActor = computed(
     () => actors.value.find((actor) => actor.id === selectedActorId.value) ?? null,
 );
 const visibleSceneBounds = computed(() => {
-    if (actors.value.length === 0) {
+    if (actors.value.length === 0 && sceneEntities.value.length === 0) {
         return { minX: 0, maxX: 4, minY: 0, maxY: 4 };
     }
 
-    const xs = actors.value.map((actor) => actor.sceneMembership.coordinate.x);
-    const ys = actors.value.map((actor) => actor.sceneMembership.coordinate.y);
+    const xs = [
+        ...actors.value.map((actor) => actor.sceneMembership.coordinate.x),
+        ...sceneEntities.value.map((sceneEntity) => sceneEntity.coordinate.x),
+    ];
+    const ys = [
+        ...actors.value.map((actor) => actor.sceneMembership.coordinate.y),
+        ...sceneEntities.value.map((sceneEntity) => sceneEntity.coordinate.y),
+    ];
 
     return {
         minX: Math.min(...xs) - 2,
@@ -125,6 +158,15 @@ function actorAtCell(x: number, y: number): RecordingActor | null {
             (actor) =>
                 actor.sceneMembership.coordinate.x === x &&
                 actor.sceneMembership.coordinate.y === y,
+        ) ?? null
+    );
+}
+
+function sceneEntityAtCell(x: number, y: number): RecordingSceneEntity | null {
+    return (
+        sceneEntities.value.find(
+            (sceneEntity) =>
+                sceneEntity.coordinate.x === x && sceneEntity.coordinate.y === y,
         ) ?? null
     );
 }
@@ -265,6 +307,13 @@ onUnmounted(() => {
           >
             <span v-if="actorAtCell(cell.x, cell.y)" class="actor-token">
               {{ actorAtCell(cell.x, cell.y)?.kind === "Player" ? "P" : "N" }}
+            </span>
+            <span
+              v-else-if="sceneEntityAtCell(cell.x, cell.y)"
+              class="scene-entity-token"
+              :title="`${sceneEntityAtCell(cell.x, cell.y)?.kind} #${sceneEntityAtCell(cell.x, cell.y)?.id}`"
+            >
+              {{ sceneEntityAtCell(cell.x, cell.y)?.kind === "GameObject" ? "G" : "W" }}
             </span>
           </button>
         </div>
@@ -407,6 +456,18 @@ onUnmounted(() => {
     height: 20px;
     justify-content: center;
     width: 20px;
+}
+
+.scene-entity-token {
+    align-items: center;
+    background: #7b5c2e;
+    border-radius: 4px;
+    color: white;
+    display: flex;
+    font-size: 0.7rem;
+    height: 18px;
+    justify-content: center;
+    width: 18px;
 }
 
 .actor-panel {

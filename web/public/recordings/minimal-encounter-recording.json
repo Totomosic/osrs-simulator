@@ -81,7 +81,25 @@
         }
       }
     ],
-    "sceneEntities": [],
+    "sceneEntities": [
+      {
+        "kind": "GameObject",
+        "sceneId": 1,
+        "id": 5001,
+        "coordinate": {
+          "x": 11,
+          "y": 12,
+          "plane": 0
+        },
+        "direction": "North",
+        "sizeX": 1,
+        "sizeY": 1,
+        "collision": {
+          "blocksMovement": true,
+          "blocksLineOfSight": true
+        }
+      }
+    ],
     "projectiles": []
   },
   "ticks": [
@@ -180,7 +198,24 @@
       ],
       "attacks": [],
       "damageApplications": [],
-      "sceneChanges": [],
+      "sceneChanges": [
+        {
+          "kind": "WallObject",
+          "sceneId": 1,
+          "id": 6001,
+          "coordinate": {
+            "x": 13,
+            "y": 13,
+            "plane": 0
+          },
+          "direction": "East",
+          "collision": {
+            "blocksMovement": true,
+            "blocksLineOfSight": false
+          },
+          "present": true
+        }
+      ],
       "projectiles": []
     },
     {

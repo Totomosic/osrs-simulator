@@ -787,6 +787,9 @@ EMSCRIPTEN_BINDINGS(osrssim_engine)
             "GetActorsJson",
             &osrssim::recording::RecordingPlayback::GetActorsJson)
         .function(
+            "GetSceneEntitiesJson",
+            &osrssim::recording::RecordingPlayback::GetSceneEntitiesJson)
+        .function(
             "PreviousTick",
             &osrssim::recording::RecordingPlayback::PreviousTick)
         .function(

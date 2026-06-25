@@ -8,6 +8,28 @@
 namespace osrssim
 {
 
+struct SceneEntityPlacement
+{
+    enum class Kind
+    {
+        GameObject,
+        WallObject,
+    };
+
+    Kind kind = Kind::GameObject;
+    EntityId id = 0;
+    SceneCoordinate coordinate;
+    CardinalDirection direction = CardinalDirection::North;
+    std::array<CardinalDirection, 2> directions{
+        CardinalDirection::North,
+        CardinalDirection::North};
+    std::array<CollisionProfile, 2> collisionProfiles{};
+    int directionCount = 1;
+    int sizeX = 1;
+    int sizeY = 1;
+    CollisionProfile collisionProfile;
+};
+
 class Scene
 {
 private:
@@ -53,6 +75,7 @@ public:
     bool RemoveGameObject(SceneCoordinate coordinate);
     Tile* TryGetTile(SceneCoordinate coordinate);
     const Tile* TryGetTile(SceneCoordinate coordinate) const;
+    std::vector<SceneEntityPlacement> GetSceneEntityPlacements() const;
 
 private:
     static std::size_t GetIndex(SceneCoordinate coordinate);

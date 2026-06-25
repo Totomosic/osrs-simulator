@@ -243,6 +243,79 @@ public:
         return false;
     }
 };
+
+class SceneEntityEncounter : public osrssim::encounter::ActiveEncounter
+{
+public:
+    void Initialize(osrssim::EncounterContext& context) override
+    {
+        osrssim::Scene* scene =
+            context.GetWorld().TryGetScene(context.GetWorld().GetDefaultSceneId());
+        assert(scene != nullptr);
+
+        osrssim::CollisionProfile gameObjectCollision;
+        gameObjectCollision.blocksMovement = true;
+        gameObjectCollision.blocksLineOfSight = true;
+
+        assert(scene->PlaceGameObject(
+            {30, 31, 0},
+            2001,
+            osrssim::CardinalDirection::East,
+            2,
+            1,
+            gameObjectCollision));
+
+        osrssim::CollisionProfile wallCollision;
+        wallCollision.blocksMovement = true;
+
+        assert(scene->PlaceWallObject(
+            {40, 41, 0},
+            3001,
+            osrssim::CardinalDirection::North,
+            wallCollision));
+
+        osrssim::CollisionProfile lineOfSightCollision;
+        lineOfSightCollision.blocksLineOfSight = true;
+
+        assert(scene->PlaceWallObject(
+            {42, 41, 0},
+            3002,
+            osrssim::CardinalDirection::North,
+            wallCollision,
+            osrssim::CardinalDirection::East,
+            lineOfSightCollision));
+    }
+
+    void AfterEngineTick(osrssim::EncounterContext& context) override
+    {
+        osrssim::Scene* scene =
+            context.GetWorld().TryGetScene(context.GetWorld().GetDefaultSceneId());
+        assert(scene != nullptr);
+
+        if (context.GetCurrentTick() == 1)
+        {
+            osrssim::CollisionProfile collision;
+            collision.blocksLineOfSight = true;
+
+            assert(scene->RemoveGameObject({30, 31, 0}));
+            assert(scene->PlaceGameObject(
+                {50, 51, 0},
+                2002,
+                osrssim::CardinalDirection::South,
+                collision));
+        }
+        else if (context.GetCurrentTick() == 2)
+        {
+            assert(scene->RemoveWallObject({40, 41, 0}));
+            assert(scene->RemoveWallObject({42, 41, 0}));
+        }
+    }
+
+    bool IsComplete(const osrssim::EncounterContext&) const override
+    {
+        return false;
+    }
+};
 }  // namespace
 
 int main()
@@ -520,5 +593,147 @@ int main()
         playbackActors = nlohmann::json::parse(playback.GetActorsJson());
         assert(playbackActors.size() == 1);
         assert(playbackActors.at(0).at("id") == encounterPtr->GetNpcId());
+    }
+
+    {
+        osrssim::recording::EncounterRecorder recorder("Scene Entities", 0.6);
+        osrssim::encounter::EncounterRunner runner(
+            std::make_unique<SceneEntityEncounter>());
+
+        assert(runner.AttachRecorder(recorder));
+        runner.Start();
+        assert(runner.Step());
+        assert(runner.Step());
+
+        const nlohmann::json recording =
+            nlohmann::json::parse(recorder.ExportJson());
+        const nlohmann::json& initialSceneEntities =
+            recording.at("initialState").at("sceneEntities");
+
+        assert(initialSceneEntities.size() == 3);
+        assert(initialSceneEntities.at(0).at("kind") == "GameObject");
+        assert(initialSceneEntities.at(0).at("sceneId") == 1);
+        assert(initialSceneEntities.at(0).at("id") == 2001);
+        assert(initialSceneEntities.at(0).at("coordinate").at("x") == 30);
+        assert(initialSceneEntities.at(0).at("coordinate").at("y") == 31);
+        assert(initialSceneEntities.at(0).at("coordinate").at("plane") == 0);
+        assert(initialSceneEntities.at(0).at("direction") == "East");
+        assert(initialSceneEntities.at(0).at("sizeX") == 2);
+        assert(initialSceneEntities.at(0).at("sizeY") == 1);
+        assert(
+            initialSceneEntities.at(0).at("collision").at("blocksMovement") ==
+            true);
+        assert(
+            initialSceneEntities.at(0)
+                .at("collision")
+                .at("blocksLineOfSight") == true);
+        assert(!initialSceneEntities.at(0).contains("flags"));
+        assert(initialSceneEntities.at(1).at("kind") == "WallObject");
+        assert(initialSceneEntities.at(1).at("id") == 3001);
+        assert(initialSceneEntities.at(1).at("direction") == "North");
+        assert(initialSceneEntities.at(2).at("kind") == "WallObject");
+        assert(initialSceneEntities.at(2).at("id") == 3002);
+        assert(initialSceneEntities.at(2).at("directions").size() == 2);
+        assert(
+            initialSceneEntities.at(2)
+                .at("directions")
+                .at(1)
+                .at("direction") == "East");
+
+        const nlohmann::json& tickOneChanges =
+            recording.at("ticks").at(0).at("sceneChanges");
+        assert(tickOneChanges.size() == 2);
+        assert(tickOneChanges.at(0).at("present") == false);
+        assert(tickOneChanges.at(0).at("kind") == "GameObject");
+        assert(tickOneChanges.at(0).at("id") == 2001);
+        assert(tickOneChanges.at(1).at("present") == true);
+        assert(tickOneChanges.at(1).at("kind") == "GameObject");
+        assert(tickOneChanges.at(1).at("id") == 2002);
+
+        const nlohmann::json& tickTwoChanges =
+            recording.at("ticks").at(1).at("sceneChanges");
+        assert(tickTwoChanges.size() == 2);
+        assert(tickTwoChanges.at(0).at("present") == false);
+        assert(tickTwoChanges.at(0).at("kind") == "WallObject");
+        assert(tickTwoChanges.at(0).at("id") == 3001);
+        assert(tickTwoChanges.at(1).at("present") == false);
+        assert(tickTwoChanges.at(1).at("id") == 3002);
+
+        osrssim::recording::RecordingPlayback playback =
+            osrssim::recording::RecordingPlayback::LoadFromJson(
+                recorder.ExportJson());
+        nlohmann::json playbackSceneEntities =
+            nlohmann::json::parse(playback.GetSceneEntitiesJson());
+
+        assert(playbackSceneEntities == initialSceneEntities);
+
+        assert(playback.GoToTick(1));
+        playbackSceneEntities =
+            nlohmann::json::parse(playback.GetSceneEntitiesJson());
+        assert(playbackSceneEntities.size() == 3);
+        assert(playbackSceneEntities.at(0).at("id") == 3001);
+        assert(playbackSceneEntities.at(1).at("id") == 3002);
+        assert(playbackSceneEntities.at(2).at("id") == 2002);
+
+        assert(playback.GoToTick(2));
+        playbackSceneEntities =
+            nlohmann::json::parse(playback.GetSceneEntitiesJson());
+        assert(playbackSceneEntities.size() == 1);
+        assert(playbackSceneEntities.at(0).at("id") == 2002);
+    }
+
+    {
+        bool threw = false;
+
+        try
+        {
+            osrssim::recording::RecordingPlayback::LoadFromJson(R"({
+                "version": 1,
+                "metadata": {
+                    "encounterName": "Invalid Scene Entity",
+                    "secondsPerTick": 0.6
+                },
+                "initialState": {
+                    "tick": 0,
+                    "actors": [],
+                    "sceneEntities": [
+                        {
+                            "kind": "GameObject",
+                            "sceneId": 1,
+                            "id": 1,
+                            "coordinate": { "x": 10, "y": 10, "plane": 0 },
+                            "direction": "North",
+                            "sizeX": 1,
+                            "sizeY": 1,
+                            "collision": {
+                                "blocksMovement": true,
+                                "blocksLineOfSight": false
+                            }
+                        },
+                        {
+                            "kind": "GameObject",
+                            "sceneId": 1,
+                            "id": 2,
+                            "coordinate": { "x": 10, "y": 10, "plane": 0 },
+                            "direction": "North",
+                            "sizeX": 1,
+                            "sizeY": 1,
+                            "collision": {
+                                "blocksMovement": true,
+                                "blocksLineOfSight": false
+                            }
+                        }
+                    ],
+                    "projectiles": []
+                },
+                "ticks": []
+            })");
+        }
+        catch (const std::invalid_argument&)
+        {
+            threw = true;
+        }
+
+        assert(threw);
     }
 }

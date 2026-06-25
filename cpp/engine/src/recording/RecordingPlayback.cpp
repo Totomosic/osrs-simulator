@@ -1,7 +1,11 @@
 #include "recording/RecordingPlayback.h"
 
+#include "Scene.h"
+
 #include <algorithm>
 #include <stdexcept>
+#include <tuple>
+#include <unordered_map>
 #include <vector>
 
 namespace osrssim::recording
@@ -15,7 +19,8 @@ enum class RequiredJsonKind
     Array,
     String,
     Integer,
-    Number
+    Number,
+    Boolean
 };
 
 bool HasRequiredKind(const nlohmann::json& value, RequiredJsonKind kind)
@@ -32,6 +37,8 @@ bool HasRequiredKind(const nlohmann::json& value, RequiredJsonKind kind)
             return value.is_number_integer() || value.is_number_unsigned();
         case RequiredJsonKind::Number:
             return value.is_number();
+        case RequiredJsonKind::Boolean:
+            return value.is_boolean();
     }
 
     return false;
@@ -59,6 +66,127 @@ std::string ActorKey(const nlohmann::json& actor)
 std::string ActorKey(int actorId)
 {
     return std::to_string(actorId);
+}
+
+CardinalDirection ParseCardinalDirection(const nlohmann::json& value)
+{
+    const std::string direction = value.get<std::string>();
+
+    if (direction == "North")
+    {
+        return CardinalDirection::North;
+    }
+
+    if (direction == "East")
+    {
+        return CardinalDirection::East;
+    }
+
+    if (direction == "South")
+    {
+        return CardinalDirection::South;
+    }
+
+    if (direction == "West")
+    {
+        return CardinalDirection::West;
+    }
+
+    throw std::invalid_argument("Unknown Scene Entity direction");
+}
+
+CollisionProfile ParseCollisionProfile(const nlohmann::json& value)
+{
+    RequireObjectField(value, "blocksMovement", RequiredJsonKind::Boolean);
+    RequireObjectField(value, "blocksLineOfSight", RequiredJsonKind::Boolean);
+
+    CollisionProfile collisionProfile;
+    collisionProfile.blocksMovement = value.at("blocksMovement").get<bool>();
+    collisionProfile.blocksLineOfSight =
+        value.at("blocksLineOfSight").get<bool>();
+    return collisionProfile;
+}
+
+CardinalDirection ParseWallDirectionEntryDirection(const nlohmann::json& value)
+{
+    RequireObjectField(value, "direction", RequiredJsonKind::String);
+    return ParseCardinalDirection(value.at("direction"));
+}
+
+CollisionProfile ParseWallDirectionEntryCollision(const nlohmann::json& value)
+{
+    RequireObjectField(value, "collision", RequiredJsonKind::Object);
+    return ParseCollisionProfile(value.at("collision"));
+}
+
+SceneCoordinate ParseSceneCoordinate(const nlohmann::json& value)
+{
+    RequireObjectField(value, "x", RequiredJsonKind::Integer);
+    RequireObjectField(value, "y", RequiredJsonKind::Integer);
+    RequireObjectField(value, "plane", RequiredJsonKind::Integer);
+
+    return SceneCoordinate{
+        value.at("x").get<int>(),
+        value.at("y").get<int>(),
+        value.at("plane").get<int>()};
+}
+
+std::string SceneEntityKey(const nlohmann::json& sceneEntity)
+{
+    const nlohmann::json& coordinate = sceneEntity.at("coordinate");
+
+    return sceneEntity.at("kind").get<std::string>() + "|" +
+           std::to_string(sceneEntity.at("sceneId").get<int>()) + "|" +
+           std::to_string(coordinate.at("plane").get<int>()) + "|" +
+           std::to_string(coordinate.at("x").get<int>()) + "|" +
+           std::to_string(coordinate.at("y").get<int>()) + "|" +
+           std::to_string(sceneEntity.at("id").get<int>());
+}
+
+std::vector<std::string> GetSortedSceneEntityKeys(
+    const nlohmann::json& sceneEntities)
+{
+    std::vector<std::string> keys;
+    keys.reserve(sceneEntities.size());
+
+    for (auto iterator = sceneEntities.begin();
+         iterator != sceneEntities.end();
+         ++iterator)
+    {
+        keys.push_back(iterator.key());
+    }
+
+    std::sort(
+        keys.begin(),
+        keys.end(),
+        [&sceneEntities](const std::string& lhs, const std::string& rhs)
+        {
+            const nlohmann::json& left = sceneEntities.at(lhs);
+            const nlohmann::json& right = sceneEntities.at(rhs);
+            const nlohmann::json& leftCoordinate = left.at("coordinate");
+            const nlohmann::json& rightCoordinate = right.at("coordinate");
+            const int leftKind =
+                left.at("kind").get<std::string>() == "GameObject" ? 0 : 1;
+            const int rightKind =
+                right.at("kind").get<std::string>() == "GameObject" ? 0 : 1;
+
+            return std::tuple{
+                       left.at("sceneId").get<int>(),
+                       leftCoordinate.at("plane").get<int>(),
+                       leftCoordinate.at("x").get<int>(),
+                       leftCoordinate.at("y").get<int>(),
+                       leftKind,
+                       left.at("id").get<int>()} <
+                   std::tuple{
+                       right.at("sceneId").get<int>(),
+                       rightCoordinate.at("plane").get<int>(),
+                       rightCoordinate.at("x").get<int>(),
+                       rightCoordinate.at("y").get<int>(),
+                       rightKind,
+                       right.at("id").get<int>()};
+        });
+
+    return keys;
 }
 
 void ApplyActorChange(nlohmann::json& actors, const nlohmann::json& change)
@@ -108,6 +236,171 @@ void ApplyActorChange(nlohmann::json& actors, const nlohmann::json& change)
     actors[key] = actor;
 }
 
+void ValidateSceneEntityShape(const nlohmann::json& sceneEntity)
+{
+    RequireObjectField(sceneEntity, "kind", RequiredJsonKind::String);
+    RequireObjectField(sceneEntity, "sceneId", RequiredJsonKind::Integer);
+    RequireObjectField(sceneEntity, "id", RequiredJsonKind::Integer);
+    RequireObjectField(sceneEntity, "coordinate", RequiredJsonKind::Object);
+    ParseSceneCoordinate(sceneEntity.at("coordinate"));
+    RequireObjectField(sceneEntity, "direction", RequiredJsonKind::String);
+    ParseCardinalDirection(sceneEntity.at("direction"));
+    RequireObjectField(sceneEntity, "collision", RequiredJsonKind::Object);
+    ParseCollisionProfile(sceneEntity.at("collision"));
+
+    const std::string kind = sceneEntity.at("kind").get<std::string>();
+
+    if (kind == "GameObject")
+    {
+        RequireObjectField(sceneEntity, "sizeX", RequiredJsonKind::Integer);
+        RequireObjectField(sceneEntity, "sizeY", RequiredJsonKind::Integer);
+        return;
+    }
+
+    if (kind != "WallObject")
+    {
+        throw std::invalid_argument("Unknown Scene Entity kind");
+    }
+
+    if (sceneEntity.contains("directions"))
+    {
+        RequireObjectField(sceneEntity, "directions", RequiredJsonKind::Array);
+
+        if (sceneEntity.at("directions").size() != 2)
+        {
+            throw std::invalid_argument(
+                "Recorded Wall Object directions must contain two entries");
+        }
+
+        for (const nlohmann::json& direction : sceneEntity.at("directions"))
+        {
+            ParseWallDirectionEntryDirection(direction);
+            ParseWallDirectionEntryCollision(direction);
+        }
+    }
+}
+
+Scene& GetPlaybackScene(
+    std::unordered_map<SceneId, Scene>& scenes,
+    SceneId sceneId)
+{
+    auto [iterator, inserted] = scenes.try_emplace(sceneId);
+    return iterator->second;
+}
+
+void ApplySceneEntityPlacementToScene(
+    std::unordered_map<SceneId, Scene>& scenes,
+    const nlohmann::json& sceneEntity)
+{
+    ValidateSceneEntityShape(sceneEntity);
+
+    Scene& scene = GetPlaybackScene(
+        scenes,
+        sceneEntity.at("sceneId").get<SceneId>());
+    const std::string kind = sceneEntity.at("kind").get<std::string>();
+    const SceneCoordinate coordinate =
+        ParseSceneCoordinate(sceneEntity.at("coordinate"));
+    const EntityId id = sceneEntity.at("id").get<EntityId>();
+    const CardinalDirection direction =
+        ParseCardinalDirection(sceneEntity.at("direction"));
+    const CollisionProfile collisionProfile =
+        ParseCollisionProfile(sceneEntity.at("collision"));
+
+    if (kind == "GameObject")
+    {
+        const bool placed = scene.PlaceGameObject(
+            coordinate,
+            id,
+            direction,
+            sceneEntity.at("sizeX").get<int>(),
+            sceneEntity.at("sizeY").get<int>(),
+            collisionProfile);
+
+        if (!placed)
+        {
+            throw std::invalid_argument(
+                "Recorded Game Object placement cannot be applied");
+        }
+
+        return;
+    }
+
+    bool placed = false;
+
+    if (sceneEntity.contains("directions"))
+    {
+        const nlohmann::json& directions = sceneEntity.at("directions");
+        placed = scene.PlaceWallObject(
+            coordinate,
+            id,
+            ParseWallDirectionEntryDirection(directions.at(0)),
+            ParseWallDirectionEntryCollision(directions.at(0)),
+            ParseWallDirectionEntryDirection(directions.at(1)),
+            ParseWallDirectionEntryCollision(directions.at(1)));
+    }
+    else
+    {
+        placed = scene.PlaceWallObject(coordinate, id, direction, collisionProfile);
+    }
+
+    if (!placed)
+    {
+        throw std::invalid_argument(
+            "Recorded Wall Object placement cannot be applied");
+    }
+}
+
+void ApplySceneEntityRemovalToScene(
+    std::unordered_map<SceneId, Scene>& scenes,
+    const nlohmann::json& sceneEntity)
+{
+    ValidateSceneEntityShape(sceneEntity);
+
+    Scene& scene = GetPlaybackScene(
+        scenes,
+        sceneEntity.at("sceneId").get<SceneId>());
+    const SceneCoordinate coordinate =
+        ParseSceneCoordinate(sceneEntity.at("coordinate"));
+    const std::string kind = sceneEntity.at("kind").get<std::string>();
+    bool removed = false;
+
+    if (kind == "GameObject")
+    {
+        removed = scene.RemoveGameObject(coordinate);
+    }
+    else
+    {
+        removed = scene.RemoveWallObject(coordinate);
+    }
+
+    if (!removed)
+    {
+        throw std::invalid_argument(
+            "Recorded Scene Entity removal cannot be applied");
+    }
+}
+
+void ApplySceneEntityChange(
+    nlohmann::json& sceneEntities,
+    std::unordered_map<SceneId, Scene>& scenes,
+    const nlohmann::json& change)
+{
+    const std::string key = SceneEntityKey(change);
+
+    if (change.contains("present") && change.at("present").is_boolean() &&
+        !change.at("present").get<bool>())
+    {
+        ApplySceneEntityRemovalToScene(scenes, change);
+        sceneEntities.erase(key);
+        return;
+    }
+
+    ApplySceneEntityPlacementToScene(scenes, change);
+    nlohmann::json sceneEntity = change;
+    sceneEntity.erase("present");
+    sceneEntities[key] = sceneEntity;
+}
+
 nlohmann::json ActorsObjectToSortedArray(const nlohmann::json& actors)
 {
     std::vector<int> actorIds;
@@ -128,6 +421,19 @@ nlohmann::json ActorsObjectToSortedArray(const nlohmann::json& actors)
     }
 
     return actorArray;
+}
+
+nlohmann::json SceneEntitiesObjectToSortedArray(
+    const nlohmann::json& sceneEntities)
+{
+    nlohmann::json sceneEntityArray = nlohmann::json::array();
+
+    for (const std::string& key : GetSortedSceneEntityKeys(sceneEntities))
+    {
+        sceneEntityArray.push_back(sceneEntities.at(key));
+    }
+
+    return sceneEntityArray;
 }
 }  // namespace
 
@@ -163,7 +469,17 @@ void RecordingPlayback::Validate(const nlohmann::json& recording)
         recording.at("initialState"),
         "actors",
         RequiredJsonKind::Array);
+    RequireObjectField(
+        recording.at("initialState"),
+        "sceneEntities",
+        RequiredJsonKind::Array);
     RequireObjectField(recording, "ticks", RequiredJsonKind::Array);
+
+    for (const nlohmann::json& sceneEntity :
+         recording.at("initialState").at("sceneEntities"))
+    {
+        ValidateSceneEntityShape(sceneEntity);
+    }
 
     int expectedTick = recording.at("initialState").at("tick").get<int>() + 1;
 
@@ -171,6 +487,16 @@ void RecordingPlayback::Validate(const nlohmann::json& recording)
     {
         RequireObjectField(tick, "tick", RequiredJsonKind::Integer);
         RequireObjectField(tick, "actors", RequiredJsonKind::Array);
+        RequireObjectField(tick, "sceneChanges", RequiredJsonKind::Array);
+
+        for (const nlohmann::json& sceneChange : tick.at("sceneChanges"))
+        {
+            ValidateSceneEntityShape(sceneChange);
+            RequireObjectField(
+                sceneChange,
+                "present",
+                RequiredJsonKind::Boolean);
+        }
 
         if (tick.at("tick").get<int>() != expectedTick)
         {
@@ -185,10 +511,18 @@ void RecordingPlayback::Validate(const nlohmann::json& recording)
 void RecordingPlayback::RebuildToCurrentTick()
 {
     m_Actors = nlohmann::json::object();
+    m_SceneEntities = nlohmann::json::object();
+    std::unordered_map<SceneId, Scene> scenes;
 
     for (const nlohmann::json& actor : m_Recording.at("initialState").at("actors"))
     {
         ApplyActorChange(m_Actors, actor);
+    }
+
+    for (const nlohmann::json& sceneEntity :
+         m_Recording.at("initialState").at("sceneEntities"))
+    {
+        ApplySceneEntityChange(m_SceneEntities, scenes, sceneEntity);
     }
 
     for (const nlohmann::json& tick : m_Recording.at("ticks"))
@@ -201,6 +535,11 @@ void RecordingPlayback::RebuildToCurrentTick()
         for (const nlohmann::json& actorChange : tick.at("actors"))
         {
             ApplyActorChange(m_Actors, actorChange);
+        }
+
+        for (const nlohmann::json& sceneChange : tick.at("sceneChanges"))
+        {
+            ApplySceneEntityChange(m_SceneEntities, scenes, sceneChange);
         }
     }
 }
@@ -249,6 +588,11 @@ int RecordingPlayback::GetLastTick() const
 std::string RecordingPlayback::GetActorsJson() const
 {
     return ActorsObjectToSortedArray(m_Actors).dump();
+}
+
+std::string RecordingPlayback::GetSceneEntitiesJson() const
+{
+    return SceneEntitiesObjectToSortedArray(m_SceneEntities).dump();
 }
 
 bool RecordingPlayback::PreviousTick()

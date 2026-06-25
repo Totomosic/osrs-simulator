@@ -19,6 +19,7 @@ export interface RecordingPlayback {
     GetCurrentTick(): number;
     GetLastTick(): number;
     GetActorsJson(): string;
+    GetSceneEntitiesJson(): string;
     PreviousTick(): boolean;
     NextTick(): boolean;
     GoToTick(tick: number): boolean;

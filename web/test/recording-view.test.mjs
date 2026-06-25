@@ -26,8 +26,15 @@ assert.deepEqual(
         { slot: "Weapon", pieceId: 2002 },
     ],
 );
+assert.equal(sampleJson.initialState.sceneEntities.length, 1);
+assert.equal(sampleJson.initialState.sceneEntities[0].kind, "GameObject");
+assert.equal(sampleJson.initialState.sceneEntities[0].id, 5001);
+assert.equal(sampleJson.initialState.sceneEntities[0].coordinate.x, 11);
 assert.equal(sampleJson.ticks[0].actors.length, 2);
 assert.equal(sampleJson.ticks[0].actors[0].currentHitpoints, 77);
+assert.equal(sampleJson.ticks[0].sceneChanges.length, 1);
+assert.equal(sampleJson.ticks[0].sceneChanges[0].kind, "WallObject");
+assert.equal(sampleJson.ticks[0].sceneChanges[0].present, true);
 assert.deepEqual(Object.keys(sampleJson.ticks[0]), [
     "tick",
     "actors",
@@ -46,6 +53,8 @@ assert.match(viewSource, /aria-label="Tick navigation"/);
 assert.match(viewSource, /aria-label="Actor inspector"/);
 assert.match(viewSource, /aria-label="Recording scene"/);
 assert.match(viewSource, /GetActorsJson/);
+assert.match(viewSource, /GetSceneEntitiesJson/);
+assert.match(viewSource, /sceneEntityAtCell/);
 assert.match(viewSource, /Hitpoints/);
 assert.match(viewSource, /Combat Composition/);
 assert.match(viewSource, /Equipment Provenance/);
