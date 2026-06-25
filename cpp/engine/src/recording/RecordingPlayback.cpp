@@ -473,6 +473,10 @@ void RecordingPlayback::Validate(const nlohmann::json& recording)
         recording.at("initialState"),
         "sceneEntities",
         RequiredJsonKind::Array);
+    RequireObjectField(
+        recording.at("initialState"),
+        "projectiles",
+        RequiredJsonKind::Array);
     RequireObjectField(recording, "ticks", RequiredJsonKind::Array);
 
     for (const nlohmann::json& sceneEntity :
@@ -487,7 +491,13 @@ void RecordingPlayback::Validate(const nlohmann::json& recording)
     {
         RequireObjectField(tick, "tick", RequiredJsonKind::Integer);
         RequireObjectField(tick, "actors", RequiredJsonKind::Array);
+        RequireObjectField(tick, "attacks", RequiredJsonKind::Array);
+        RequireObjectField(
+            tick,
+            "damageApplications",
+            RequiredJsonKind::Array);
         RequireObjectField(tick, "sceneChanges", RequiredJsonKind::Array);
+        RequireObjectField(tick, "projectiles", RequiredJsonKind::Array);
 
         for (const nlohmann::json& sceneChange : tick.at("sceneChanges"))
         {
@@ -512,6 +522,9 @@ void RecordingPlayback::RebuildToCurrentTick()
 {
     m_Actors = nlohmann::json::object();
     m_SceneEntities = nlohmann::json::object();
+    m_Attacks = nlohmann::json::array();
+    m_DamageApplications = nlohmann::json::array();
+    m_Projectiles = m_Recording.at("initialState").at("projectiles");
     std::unordered_map<SceneId, Scene> scenes;
 
     for (const nlohmann::json& actor : m_Recording.at("initialState").at("actors"))
@@ -540,6 +553,13 @@ void RecordingPlayback::RebuildToCurrentTick()
         for (const nlohmann::json& sceneChange : tick.at("sceneChanges"))
         {
             ApplySceneEntityChange(m_SceneEntities, scenes, sceneChange);
+        }
+
+        if (tick.at("tick").get<int>() == m_CurrentTick)
+        {
+            m_Attacks = tick.at("attacks");
+            m_DamageApplications = tick.at("damageApplications");
+            m_Projectiles = tick.at("projectiles");
         }
     }
 }
@@ -593,6 +613,21 @@ std::string RecordingPlayback::GetActorsJson() const
 std::string RecordingPlayback::GetSceneEntitiesJson() const
 {
     return SceneEntitiesObjectToSortedArray(m_SceneEntities).dump();
+}
+
+std::string RecordingPlayback::GetAttacksJson() const
+{
+    return m_Attacks.dump();
+}
+
+std::string RecordingPlayback::GetDamageApplicationsJson() const
+{
+    return m_DamageApplications.dump();
+}
+
+std::string RecordingPlayback::GetProjectilesJson() const
+{
+    return m_Projectiles.dump();
 }
 
 bool RecordingPlayback::PreviousTick()

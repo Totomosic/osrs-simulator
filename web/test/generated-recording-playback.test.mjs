@@ -75,7 +75,31 @@ const playback = engineModule.RecordingPlayback.LoadFromJson(
                         debug: { attackTimer: 6 },
                     },
                 ],
-                attacks: [],
+                attacks: [
+                    {
+                        id: 1,
+                        tick: 1,
+                        attackerId: 1,
+                        targetId: 2,
+                        callback: "standard_attack",
+                        queuedDamageEvents: [
+                            {
+                                id: 1,
+                                attackId: 1,
+                                targetId: 2,
+                                damage: 7,
+                                delayTicks: 1,
+                            },
+                        ],
+                        projectile: {
+                            projectileId: 88,
+                            source: { x: 10.5, y: 11.5, plane: 0 },
+                            targetActorId: 2,
+                            lastKnownTargetCenter: { x: 13.5, y: 13.5, plane: 0 },
+                            totalTicks: 1,
+                        },
+                    },
+                ],
                 damageApplications: [],
                 sceneChanges: [
                     {
@@ -91,6 +115,38 @@ const playback = engineModule.RecordingPlayback.LoadFromJson(
                         present: true,
                     },
                 ],
+                projectiles: [
+                    {
+                        projectileId: 88,
+                        source: { x: 10.5, y: 11.5, plane: 0 },
+                        targetActorId: 2,
+                        lastKnownTargetCenter: { x: 13.5, y: 13.5, plane: 0 },
+                        elapsedTicks: 0,
+                        totalTicks: 1,
+                    },
+                ],
+            },
+            {
+                tick: 2,
+                actors: [
+                    {
+                        id: 1,
+                        currentHitpoints: 75,
+                        debug: { attackTimer: 5 },
+                    },
+                ],
+                attacks: [],
+                damageApplications: [
+                    {
+                        damageEventId: 1,
+                        attackId: 1,
+                        tick: 2,
+                        targetId: 2,
+                        queuedDamage: 7,
+                        appliedDamage: 7,
+                    },
+                ],
+                sceneChanges: [],
                 projectiles: [],
             },
         ],
@@ -101,9 +157,12 @@ assert.equal(playback.GetEncounterName(), "Generated Recording Playback");
 assert.equal(playback.GetSecondsPerTick(), 0.6);
 assert.equal(playback.GetInitialTick(), 0);
 assert.equal(playback.GetCurrentTick(), 0);
-assert.equal(playback.GetLastTick(), 1);
+assert.equal(playback.GetLastTick(), 2);
 assert.equal(JSON.parse(playback.GetActorsJson())[0].kind, "Player");
 assert.equal(JSON.parse(playback.GetSceneEntitiesJson())[0].id, 5001);
+assert.deepEqual(JSON.parse(playback.GetAttacksJson()), []);
+assert.deepEqual(JSON.parse(playback.GetDamageApplicationsJson()), []);
+assert.deepEqual(JSON.parse(playback.GetProjectilesJson()), []);
 assert.equal(playback.NextTick(), true);
 assert.equal(playback.GetCurrentTick(), 1);
 assert.equal(
@@ -113,6 +172,17 @@ assert.equal(
 assert.equal(JSON.parse(playback.GetActorsJson())[0].debug.attackTimer, 6);
 assert.equal(JSON.parse(playback.GetSceneEntitiesJson()).length, 2);
 assert.equal(JSON.parse(playback.GetSceneEntitiesJson())[1].id, 6001);
+assert.equal(JSON.parse(playback.GetAttacksJson())[0].callback, "standard_attack");
+assert.equal(
+    JSON.parse(playback.GetAttacksJson())[0].queuedDamageEvents[0].attackId,
+    1,
+);
+assert.equal(JSON.parse(playback.GetProjectilesJson())[0].projectileId, 88);
+assert.equal(playback.NextTick(), true);
+assert.equal(playback.GetCurrentTick(), 2);
+assert.deepEqual(JSON.parse(playback.GetAttacksJson()), []);
+assert.equal(JSON.parse(playback.GetDamageApplicationsJson())[0].attackId, 1);
+assert.deepEqual(JSON.parse(playback.GetProjectilesJson()), []);
 assert.equal(playback.NextTick(), false);
 
 playback.delete?.();

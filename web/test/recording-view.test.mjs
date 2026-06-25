@@ -32,9 +32,13 @@ assert.equal(sampleJson.initialState.sceneEntities[0].id, 5001);
 assert.equal(sampleJson.initialState.sceneEntities[0].coordinate.x, 11);
 assert.equal(sampleJson.ticks[0].actors.length, 2);
 assert.equal(sampleJson.ticks[0].actors[0].currentHitpoints, 77);
+assert.equal(sampleJson.ticks[0].attacks[0].callback, "standard_attack");
+assert.equal(sampleJson.ticks[0].attacks[0].queuedDamageEvents[0].attackId, 1);
+assert.equal(sampleJson.ticks[0].projectiles[0].projectileId, 88);
 assert.equal(sampleJson.ticks[0].sceneChanges.length, 1);
 assert.equal(sampleJson.ticks[0].sceneChanges[0].kind, "WallObject");
 assert.equal(sampleJson.ticks[0].sceneChanges[0].present, true);
+assert.equal(sampleJson.ticks[1].damageApplications[0].attackId, 1);
 assert.deepEqual(Object.keys(sampleJson.ticks[0]), [
     "tick",
     "actors",
@@ -54,13 +58,20 @@ assert.match(viewSource, /aria-label="Actor inspector"/);
 assert.match(viewSource, /aria-label="Recording scene"/);
 assert.match(viewSource, /GetActorsJson/);
 assert.match(viewSource, /GetSceneEntitiesJson/);
+assert.match(viewSource, /GetAttacksJson/);
+assert.match(viewSource, /GetDamageApplicationsJson/);
+assert.match(viewSource, /GetProjectilesJson/);
 assert.match(viewSource, /sceneEntityAtCell/);
+assert.match(viewSource, /projectileAtCell/);
 assert.match(viewSource, /Hitpoints/);
 assert.match(viewSource, /Combat Composition/);
 assert.match(viewSource, /Equipment Provenance/);
 assert.match(viewSource, /equipmentProvenanceText/);
 assert.match(viewSource, /Movement Target/);
 assert.match(viewSource, /Attack Timer/);
+assert.match(viewSource, /Current Tick Events/);
+assert.match(viewSource, /Attack #/);
+assert.match(viewSource, /Damage #/);
 assert.match(viewSource, /Previous/);
 assert.match(viewSource, /Next/);
 assert.match(viewSource, /Current Tick/);

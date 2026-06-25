@@ -41,6 +41,7 @@ bool EncounterRunner::AttachRecorder(recording::EncounterRecorder& recorder)
     }
 
     m_Recorder = &recorder;
+    m_Engine.GetCombatService().AddObserver(recorder);
     return true;
 }
 

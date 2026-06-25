@@ -790,6 +790,15 @@ EMSCRIPTEN_BINDINGS(osrssim_engine)
             "GetSceneEntitiesJson",
             &osrssim::recording::RecordingPlayback::GetSceneEntitiesJson)
         .function(
+            "GetAttacksJson",
+            &osrssim::recording::RecordingPlayback::GetAttacksJson)
+        .function(
+            "GetDamageApplicationsJson",
+            &osrssim::recording::RecordingPlayback::GetDamageApplicationsJson)
+        .function(
+            "GetProjectilesJson",
+            &osrssim::recording::RecordingPlayback::GetProjectilesJson)
+        .function(
             "PreviousTick",
             &osrssim::recording::RecordingPlayback::PreviousTick)
         .function(

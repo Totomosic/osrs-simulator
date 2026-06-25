@@ -20,6 +20,9 @@ export interface RecordingPlayback {
     GetLastTick(): number;
     GetActorsJson(): string;
     GetSceneEntitiesJson(): string;
+    GetAttacksJson(): string;
+    GetDamageApplicationsJson(): string;
+    GetProjectilesJson(): string;
     PreviousTick(): boolean;
     NextTick(): boolean;
     GoToTick(tick: number): boolean;

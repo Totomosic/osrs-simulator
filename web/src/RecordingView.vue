@@ -66,6 +66,48 @@ interface RecordingSceneEntity {
     };
 }
 
+interface RecordingQueuedDamageEvent {
+    id: number;
+    attackId: number;
+    targetId: number;
+    damage: number;
+    delayTicks: number;
+}
+
+interface RecordingAttack {
+    id: number;
+    tick: number;
+    attackerId: number;
+    targetId: number;
+    callback: string;
+    queuedDamageEvents: RecordingQueuedDamageEvent[];
+    projectile?: {
+        projectileId: number;
+        targetActorId: number;
+    };
+}
+
+interface RecordingDamageApplication {
+    damageEventId: number;
+    attackId: number;
+    tick: number;
+    targetId: number;
+    queuedDamage: number;
+    appliedDamage: number;
+}
+
+interface RecordingProjectile {
+    projectileId: number;
+    targetActorId: number;
+    lastKnownTargetCenter: {
+        x: number;
+        y: number;
+        plane: number;
+    };
+    elapsedTicks: number;
+    totalTicks: number;
+}
+
 const bundledSamples = [
     {
         label: "Minimal Encounter Recording",
@@ -106,6 +148,35 @@ const sceneEntities = computed<RecordingSceneEntity[]>(() => {
 
     return JSON.parse(playback.value.GetSceneEntitiesJson()) as RecordingSceneEntity[];
 });
+const attacks = computed<RecordingAttack[]>(() => {
+    void actorJsonRevision.value;
+
+    if (playback.value === null) {
+        return [];
+    }
+
+    return JSON.parse(playback.value.GetAttacksJson()) as RecordingAttack[];
+});
+const damageApplications = computed<RecordingDamageApplication[]>(() => {
+    void actorJsonRevision.value;
+
+    if (playback.value === null) {
+        return [];
+    }
+
+    return JSON.parse(
+        playback.value.GetDamageApplicationsJson(),
+    ) as RecordingDamageApplication[];
+});
+const projectiles = computed<RecordingProjectile[]>(() => {
+    void actorJsonRevision.value;
+
+    if (playback.value === null) {
+        return [];
+    }
+
+    return JSON.parse(playback.value.GetProjectilesJson()) as RecordingProjectile[];
+});
 const selectedActor = computed(
     () => actors.value.find((actor) => actor.id === selectedActorId.value) ?? null,
 );
@@ -117,10 +188,16 @@ const visibleSceneBounds = computed(() => {
     const xs = [
         ...actors.value.map((actor) => actor.sceneMembership.coordinate.x),
         ...sceneEntities.value.map((sceneEntity) => sceneEntity.coordinate.x),
+        ...projectiles.value.map((projectile) =>
+            Math.floor(projectile.lastKnownTargetCenter.x),
+        ),
     ];
     const ys = [
         ...actors.value.map((actor) => actor.sceneMembership.coordinate.y),
         ...sceneEntities.value.map((sceneEntity) => sceneEntity.coordinate.y),
+        ...projectiles.value.map((projectile) =>
+            Math.floor(projectile.lastKnownTargetCenter.y),
+        ),
     ];
 
     return {
@@ -169,6 +246,21 @@ function sceneEntityAtCell(x: number, y: number): RecordingSceneEntity | null {
                 sceneEntity.coordinate.x === x && sceneEntity.coordinate.y === y,
         ) ?? null
     );
+}
+
+function projectileAtCell(x: number, y: number): RecordingProjectile | null {
+    return (
+        projectiles.value.find(
+            (projectile) =>
+                Math.floor(projectile.lastKnownTargetCenter.x) === x &&
+                Math.floor(projectile.lastKnownTargetCenter.y) === y,
+        ) ?? null
+    );
+}
+
+function actorName(actorId: number): string {
+    const actor = actors.value.find((candidate) => candidate.id === actorId);
+    return actor === undefined ? `Actor #${actorId}` : actorLabel(actor);
 }
 
 function equipmentProvenanceText(actor: RecordingActor): string {
@@ -309,7 +401,14 @@ onUnmounted(() => {
               {{ actorAtCell(cell.x, cell.y)?.kind === "Player" ? "P" : "N" }}
             </span>
             <span
-              v-else-if="sceneEntityAtCell(cell.x, cell.y)"
+              v-if="projectileAtCell(cell.x, cell.y)"
+              class="projectile-token"
+              :title="`Projectile #${projectileAtCell(cell.x, cell.y)?.projectileId}`"
+            >
+              *
+            </span>
+            <span
+              v-if="!actorAtCell(cell.x, cell.y) && sceneEntityAtCell(cell.x, cell.y)"
               class="scene-entity-token"
               :title="`${sceneEntityAtCell(cell.x, cell.y)?.kind} #${sceneEntityAtCell(cell.x, cell.y)?.id}`"
             >
@@ -386,6 +485,30 @@ onUnmounted(() => {
         </dl>
       </div>
     </section>
+
+    <section class="recording-events" aria-label="Current Tick events">
+      <h2>Current Tick Events</h2>
+      <ol>
+        <li v-for="attack in attacks" :key="`attack-${attack.id}`">
+          Attack #{{ attack.id }}:
+          {{ actorName(attack.attackerId) }} -> {{ actorName(attack.targetId) }},
+          {{ attack.callback }},
+          damage event #{{ attack.queuedDamageEvents[0]?.id ?? "n/a" }}
+        </li>
+        <li
+          v-for="damageApplication in damageApplications"
+          :key="`damage-${damageApplication.damageEventId}`"
+        >
+          Damage #{{ damageApplication.damageEventId }}:
+          attack #{{ damageApplication.attackId }},
+          {{ actorName(damageApplication.targetId) }},
+          {{ damageApplication.appliedDamage }}/{{ damageApplication.queuedDamage }}
+        </li>
+      </ol>
+      <p v-if="attacks.length === 0 && damageApplications.length === 0">
+        No combat events.
+      </p>
+    </section>
   </main>
 </template>
 
@@ -439,6 +562,7 @@ onUnmounted(() => {
     height: 32px;
     justify-content: center;
     padding: 0;
+    position: relative;
     width: 32px;
 }
 
@@ -468,6 +592,22 @@ onUnmounted(() => {
     height: 18px;
     justify-content: center;
     width: 18px;
+}
+
+.projectile-token {
+    align-items: center;
+    background: #c43c35;
+    border-radius: 999px;
+    color: white;
+    display: flex;
+    font-size: 0.78rem;
+    font-weight: 900;
+    height: 14px;
+    justify-content: center;
+    position: absolute;
+    right: 2px;
+    top: 2px;
+    width: 14px;
 }
 
 .actor-panel {
@@ -511,6 +651,23 @@ onUnmounted(() => {
     font-weight: 800;
     line-height: 1.35;
     margin: 2px 0 0;
+}
+
+.recording-events {
+    display: grid;
+    gap: 8px;
+}
+
+.recording-events h2 {
+    font-size: 1rem;
+    margin: 0;
+}
+
+.recording-events ol {
+    display: grid;
+    gap: 6px;
+    margin: 0;
+    padding-left: 20px;
 }
 
 @media (max-width: 760px) {

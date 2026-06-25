@@ -1,3 +1,12 @@
+2026-06-25 #112 Record standard Attacks, damage applications, and Projectiles
+- Selected issue: #112, ready-for-agent and unblocked because #109 is closed. Parent PRD: #107.
+- Docs read: docs/adr/0013-structured-damage-events-for-recordable-combat.md, docs/adr/0014-engine-owned-recording-playback.md, docs/architecture/simulation-model.md, docs/osrs/combat-rolls.md, PRD #107, feature #112.
+- Plan: TDD native standard attack recording first, then playback/projectile exposure, WASM/web viewer current-Tick display, and focused validation/build loops. Scope guard: only #112; do not start custom callbacks (#113), hardening/random access (#114), or full viewer workflow (#115).
+- Completed: PRD #107 stories 21, 23, 26, 28-34, 56-57 and feature #112 acceptance for standard attack records, structured queued damage IDs, launch-time HP clamping, linked damage applications, projectile metadata/snapshots, playback current-Tick buckets, and web event/projectile display.
+- Decisions: CombatService owns observation IDs and observer notifications so callbacks stay behavior-only; EncounterRecorder buckets notifications on completed Tick; RecordingPlayback exposes current-Tick attacks/damage/projectiles as observation buckets, not reconstructed queue state.
+- Files changed: CombatService/EncounterRunner recording observer path, EncounterRecorder/RecordingPlayback, EngineBindings/TS WASM contract, RecordingView/sample/web tests, Recording/Engine tests, progress.txt.
+- Validation: red native recording test first; cmake --build build --target osrssim_engine_recording_test && ./build/cpp/engine/osrssim_engine_recording_test; node web/test/recording-view.test.mjs; yarn --cwd web typecheck; tools/build_wasm.sh; node web/test/generated-recording-playback.test.mjs; cmake --build build; ctest --test-dir build --output-on-failure; yarn --cwd web test; yarn --cwd web build; git diff --check. No blockers.
+
 2026-06-24 #108 Load a minimal Encounter Recording in the web viewer
 - Selected issue: #108, ready-for-agent and unblocked. Parent PRD: #107.
 - Docs read: docs/adr/0012-encounter-recordings-are-observation-logs.md, docs/adr/0014-engine-owned-recording-playback.md, docs/adr/0011-encounter-runner-orchestrates-active-encounters.md, docs/adr/0006-web-development-viewer.md.

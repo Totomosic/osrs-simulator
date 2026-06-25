@@ -159,6 +159,14 @@ nlohmann::json CreateWeaponJson(const WeaponDefinition& weapon)
         {"projectileId", weapon.projectileId}};
 }
 
+nlohmann::json CreateScenePositionJson(ScenePosition position)
+{
+    return nlohmann::json{
+        {"x", position.x},
+        {"y", position.y},
+        {"plane", position.plane}};
+}
+
 nlohmann::json CreateEquipmentProvenanceJson(
     const std::vector<EquipmentPieceProvenance>& provenance)
 {
@@ -511,6 +519,63 @@ nlohmann::json EncounterRecorder::CreateSceneEntityChanges(
     return changes;
 }
 
+nlohmann::json EncounterRecorder::CreateProjectileJson(
+    const ProjectileMetadata& projectile)
+{
+    return nlohmann::json{
+        {"projectileId", projectile.projectileId},
+        {"source", CreateScenePositionJson(projectile.source)},
+        {"targetActorId", projectile.targetActorId},
+        {"lastKnownTargetCenter",
+         CreateScenePositionJson(projectile.lastKnownTargetCenter)},
+        {"totalTicks", projectile.totalTicks}};
+}
+
+nlohmann::json EncounterRecorder::CreateProjectileSnapshotJson(
+    const ProjectileSnapshot& projectile)
+{
+    return nlohmann::json{
+        {"projectileId", projectile.projectileId},
+        {"source", CreateScenePositionJson(projectile.source)},
+        {"targetActorId", projectile.targetActorId},
+        {"lastKnownTargetCenter",
+         CreateScenePositionJson(projectile.lastKnownTargetCenter)},
+        {"elapsedTicks", projectile.elapsedTicks},
+        {"totalTicks", projectile.totalTicks}};
+}
+
+nlohmann::json EncounterRecorder::CreateProjectileSnapshots(const World& world)
+{
+    std::vector<ProjectileSnapshot> projectiles = world.GetProjectileSnapshots();
+    std::sort(
+        projectiles.begin(),
+        projectiles.end(),
+        [](const ProjectileSnapshot& left, const ProjectileSnapshot& right)
+        {
+            return std::tuple{
+                       left.targetActorId,
+                       left.projectileId,
+                       left.source.plane,
+                       left.source.x,
+                       left.source.y} <
+                   std::tuple{
+                       right.targetActorId,
+                       right.projectileId,
+                       right.source.plane,
+                       right.source.x,
+                       right.source.y};
+        });
+
+    nlohmann::json projectileJson = nlohmann::json::array();
+
+    for (const ProjectileSnapshot& projectile : projectiles)
+    {
+        projectileJson.push_back(CreateProjectileSnapshotJson(projectile));
+    }
+
+    return projectileJson;
+}
+
 EncounterRecorder::EncounterRecorder(
     std::string encounterName,
     double secondsPerTick)
@@ -555,7 +620,7 @@ void EncounterRecorder::RecordInitialState(const Engine& engine)
          {{"tick", static_cast<int>(engine.GetCurrentTick())},
           {"actors", actors},
           {"sceneEntities", sceneEntities},
-          {"projectiles", nlohmann::json::array()}}},
+          {"projectiles", CreateProjectileSnapshots(engine.GetWorld())}}},
         {"ticks", nlohmann::json::array()}};
 }
 
@@ -573,10 +638,15 @@ void EncounterRecorder::RecordCompletedTick(const Engine& engine)
         CreateSceneEntities(engine.GetWorld());
     nlohmann::json tick = CreateEmptyTick(static_cast<int>(engine.GetCurrentTick()));
     tick["actors"] = CreateActorChanges(m_PreviousActors, currentActors);
+    tick["attacks"] = m_PendingAttacks;
+    tick["damageApplications"] = m_PendingDamageApplications;
     tick["sceneChanges"] =
         CreateSceneEntityChanges(m_PreviousSceneEntities, currentSceneEntities);
+    tick["projectiles"] = CreateProjectileSnapshots(engine.GetWorld());
     m_PreviousActors = currentActors;
     m_PreviousSceneEntities = currentSceneEntities;
+    m_PendingAttacks = nlohmann::json::array();
+    m_PendingDamageApplications = nlohmann::json::array();
     m_Recording["ticks"].push_back(tick);
 }
 
@@ -589,6 +659,50 @@ std::string EncounterRecorder::ExportJson() const
     }
 
     return m_Recording.dump();
+}
+
+void EncounterRecorder::OnAttackQueued(
+    const CombatService::AttackObservation& attack)
+{
+    nlohmann::json queuedDamageEvents = nlohmann::json::array();
+
+    for (const CombatService::QueuedDamageEventObservation& damageEvent :
+         attack.queuedDamageEvents)
+    {
+        queuedDamageEvents.push_back(
+            {{"id", damageEvent.id},
+             {"attackId", damageEvent.attackId},
+             {"targetId", damageEvent.targetId},
+             {"damage", damageEvent.damage},
+             {"delayTicks", damageEvent.delayTicks}});
+    }
+
+    nlohmann::json attackJson = {
+        {"id", attack.id},
+        {"tick", attack.tick},
+        {"attackerId", attack.attackerId},
+        {"targetId", attack.targetId},
+        {"callback", attack.callback},
+        {"queuedDamageEvents", queuedDamageEvents}};
+
+    if (attack.projectile.has_value())
+    {
+        attackJson["projectile"] = CreateProjectileJson(attack.projectile.value());
+    }
+
+    m_PendingAttacks.push_back(attackJson);
+}
+
+void EncounterRecorder::OnDamageApplied(
+    const CombatService::DamageApplicationObservation& damageApplication)
+{
+    m_PendingDamageApplications.push_back(
+        {{"damageEventId", damageApplication.damageEventId},
+         {"attackId", damageApplication.attackId},
+         {"tick", damageApplication.tick},
+         {"targetId", damageApplication.targetId},
+         {"queuedDamage", damageApplication.queuedDamage},
+         {"appliedDamage", damageApplication.appliedDamage}});
 }
 
 }  // namespace osrssim::recording

@@ -71,6 +71,22 @@ void CombatService::BindWeaponAttackCallbackName(
     m_WeaponAttackCallbacks[weaponId] = callback->second;
 }
 
+void CombatService::AddObserver(Observer& observer)
+{
+    if (std::find(m_Observers.begin(), m_Observers.end(), &observer) ==
+        m_Observers.end())
+    {
+        m_Observers.push_back(&observer);
+    }
+}
+
+void CombatService::RemoveObserver(Observer& observer)
+{
+    m_Observers.erase(
+        std::remove(m_Observers.begin(), m_Observers.end(), &observer),
+        m_Observers.end());
+}
+
 void CombatService::SetDpsSeed(unsigned int seed)
 {
     m_DpsService.SetSeed(seed);
@@ -209,6 +225,12 @@ bool CombatService::DefaultStandardAttack(
         targetId,
         attackWeapon);
     const DpsSampleResult damageRoll = m_DpsService.SampleSingleAttack(request);
+    const int queuedDamage = ClampDamageToCurrentHitpoints(
+        world,
+        targetId,
+        damageRoll.sampledDamage);
+    const std::uint64_t attackId = m_NextAttackId++;
+    const std::uint64_t damageEventId = m_NextDamageEventId++;
     const ScenePosition source = world.GetActorFootprintCenter(attackerId);
     const ScenePosition targetCenter = world.GetActorFootprintCenter(targetId);
     const ProjectileMetadata projectile{
@@ -217,26 +239,54 @@ bool CombatService::DefaultStandardAttack(
         targetId,
         targetCenter,
         applyDamageDelay};
+    const QueuedDamageEventObservation queuedDamageEvent{
+        damageEventId,
+        attackId,
+        targetId,
+        queuedDamage,
+        applyDamageDelay};
+    AttackObservation attack;
+    attack.id = attackId;
+    attack.tick = world.GetCurrentTick().value_or(0);
+    attack.attackerId = attackerId;
+    attack.targetId = targetId;
+    attack.callback = "standard_attack";
+    attack.queuedDamageEvents.push_back(queuedDamageEvent);
 
     if (attackWeapon.projectileId > 0)
     {
-        return world.QueueActorCombatEvent(
+        attack.projectile = projectile;
+        const bool queued = world.QueueActorCombatEvent(
             targetId,
             applyDamageDelay,
-            [&world, targetId, damage = damageRoll.sampledDamage]()
+            [this, &world, targetId, damage = queuedDamage, damageEventId, attackId]()
             {
-                CombatService::ApplyDamage(world, targetId, damage);
+                ApplyDamage(world, targetId, damage, damageEventId, attackId);
             },
             projectile);
+
+        if (queued)
+        {
+            NotifyAttackQueued(attack);
+        }
+
+        return queued;
     }
 
-    return world.QueueActorCombatEvent(
+    const bool queued = world.QueueActorCombatEvent(
         targetId,
         applyDamageDelay,
-        [&world, targetId, damage = damageRoll.sampledDamage]()
+        [this, &world, targetId, damage = queuedDamage, damageEventId, attackId]()
         {
-            CombatService::ApplyDamage(world, targetId, damage);
+            ApplyDamage(world, targetId, damage, damageEventId, attackId);
         });
+
+    if (queued)
+    {
+        NotifyAttackQueued(attack);
+    }
+
+    return queued;
 }
 
 DpsRequest CombatService::BuildStandardDpsRequest(
@@ -313,10 +363,30 @@ int CombatService::CalculateApplyDamageDelay(
     return 1 + (3 + tileDistance) / 6;
 }
 
+int CombatService::ClampDamageToCurrentHitpoints(
+    const World& world,
+    ActorId targetId,
+    int damage)
+{
+    const CombatComposition* currentComposition =
+        world.GetActorCombatComposition(targetId);
+
+    if (currentComposition == nullptr)
+    {
+        return 0;
+    }
+
+    return std::min(
+        std::max(0, currentComposition->stats.hitpoints),
+        std::max(0, damage));
+}
+
 void CombatService::ApplyDamage(
     World& world,
     ActorId targetId,
-    int damage)
+    int damage,
+    std::uint64_t damageEventId,
+    std::uint64_t attackId) const
 {
     const CombatComposition* currentComposition =
         world.GetActorCombatComposition(targetId);
@@ -331,10 +401,22 @@ void CombatService::ApplyDamage(
         0,
         updatedComposition.stats.hitpoints);
     const int positiveDamage = std::max(0, damage);
-    updatedComposition.stats.hitpoints -= std::min(
+    const int appliedDamage = std::min(
         currentHitpoints,
         positiveDamage);
+    updatedComposition.stats.hitpoints -= appliedDamage;
     world.SetActorCombatComposition(targetId, updatedComposition);
+
+    if (damageEventId != 0 && attackId != 0)
+    {
+        NotifyDamageApplied(
+            {damageEventId,
+             attackId,
+             world.GetCurrentTick().value_or(0),
+             targetId,
+             positiveDamage,
+             appliedDamage});
+    }
 
     if (currentHitpoints > 0 && updatedComposition.stats.hitpoints <= 0)
     {
@@ -359,6 +441,23 @@ void CombatService::QueueDeath(
         {
             world.QueueActorRemoval(targetId);
         });
+}
+
+void CombatService::NotifyAttackQueued(const AttackObservation& attack) const
+{
+    for (Observer* observer : m_Observers)
+    {
+        observer->OnAttackQueued(attack);
+    }
+}
+
+void CombatService::NotifyDamageApplied(
+    const DamageApplicationObservation& damageApplication) const
+{
+    for (Observer* observer : m_Observers)
+    {
+        observer->OnDamageApplied(damageApplication);
+    }
 }
 
 }  // namespace osrssim

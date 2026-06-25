@@ -196,7 +196,39 @@
           }
         }
       ],
-      "attacks": [],
+      "attacks": [
+        {
+          "id": 1,
+          "tick": 1,
+          "attackerId": 1,
+          "targetId": 2,
+          "callback": "standard_attack",
+          "queuedDamageEvents": [
+            {
+              "id": 1,
+              "attackId": 1,
+              "targetId": 2,
+              "damage": 7,
+              "delayTicks": 1
+            }
+          ],
+          "projectile": {
+            "projectileId": 88,
+            "source": {
+              "x": 12.5,
+              "y": 13.5,
+              "plane": 0
+            },
+            "targetActorId": 2,
+            "lastKnownTargetCenter": {
+              "x": 20.5,
+              "y": 21.5,
+              "plane": 0
+            },
+            "totalTicks": 1
+          }
+        }
+      ],
       "damageApplications": [],
       "sceneChanges": [
         {
@@ -216,7 +248,24 @@
           "present": true
         }
       ],
-      "projectiles": []
+      "projectiles": [
+        {
+          "projectileId": 88,
+          "source": {
+            "x": 12.5,
+            "y": 13.5,
+            "plane": 0
+          },
+          "targetActorId": 2,
+          "lastKnownTargetCenter": {
+            "x": 20.5,
+            "y": 21.5,
+            "plane": 0
+          },
+          "elapsedTicks": 0,
+          "totalTicks": 1
+        }
+      ]
     },
     {
       "tick": 2,
@@ -282,7 +331,16 @@
         }
       ],
       "attacks": [],
-      "damageApplications": [],
+      "damageApplications": [
+        {
+          "damageEventId": 1,
+          "attackId": 1,
+          "tick": 2,
+          "targetId": 2,
+          "queuedDamage": 7,
+          "appliedDamage": 7
+        }
+      ],
       "sceneChanges": [],
       "projectiles": []
     }

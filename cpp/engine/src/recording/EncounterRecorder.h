@@ -10,7 +10,7 @@
 namespace osrssim::recording
 {
 
-class EncounterRecorder
+class EncounterRecorder : public CombatService::Observer
 {
 private:
     std::string m_EncounterName;
@@ -18,6 +18,8 @@ private:
     nlohmann::json m_Recording;
     std::unordered_map<ActorId, nlohmann::json> m_PreviousActors;
     std::unordered_map<std::string, nlohmann::json> m_PreviousSceneEntities;
+    nlohmann::json m_PendingAttacks = nlohmann::json::array();
+    nlohmann::json m_PendingDamageApplications = nlohmann::json::array();
 
     static nlohmann::json CreateEmptyTick(int tick);
     static nlohmann::json CreateActorSnapshot(
@@ -33,6 +35,11 @@ private:
     static nlohmann::json CreateSceneEntityChanges(
         const std::unordered_map<std::string, nlohmann::json>& previousSceneEntities,
         const std::unordered_map<std::string, nlohmann::json>& currentSceneEntities);
+    static nlohmann::json CreateProjectileJson(
+        const ProjectileMetadata& projectile);
+    static nlohmann::json CreateProjectileSnapshotJson(
+        const ProjectileSnapshot& projectile);
+    static nlohmann::json CreateProjectileSnapshots(const World& world);
 
 public:
     EncounterRecorder(std::string encounterName, double secondsPerTick);
@@ -40,6 +47,11 @@ public:
     void RecordInitialState(const Engine& engine);
     void RecordCompletedTick(const Engine& engine);
     std::string ExportJson() const;
+    void OnAttackQueued(
+        const CombatService::AttackObservation& attack) override;
+    void OnDamageApplied(
+        const CombatService::DamageApplicationObservation& damageApplication)
+        override;
 };
 
 }  // namespace osrssim::recording
