@@ -47,6 +47,7 @@ public:
     void RecordInitialState(const Engine& engine);
     void RecordCompletedTick(const Engine& engine);
     std::string ExportJson() const;
+    std::string ExportVersion2Json() const;
     void OnAttackQueued(
         const CombatService::AttackObservation& attack) override;
     void OnDamageApplied(

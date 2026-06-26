@@ -105,6 +105,170 @@ const char* AttackTypeName(AttackType attackType)
     return "Unknown";
 }
 
+std::string ToSnakeCaseEnum(std::string value)
+{
+    if (value == "Player")
+    {
+        return "player";
+    }
+
+    if (value == "Npc")
+    {
+        return "npc";
+    }
+
+    if (value == "Stab")
+    {
+        return "stab";
+    }
+
+    if (value == "Slash")
+    {
+        return "slash";
+    }
+
+    if (value == "Crush")
+    {
+        return "crush";
+    }
+
+    if (value == "Magic")
+    {
+        return "magic";
+    }
+
+    if (value == "RangedLight")
+    {
+        return "ranged_light";
+    }
+
+    if (value == "RangedStandard")
+    {
+        return "ranged_standard";
+    }
+
+    if (value == "RangedHeavy")
+    {
+        return "ranged_heavy";
+    }
+
+    if (value == "SceneCoordinate")
+    {
+        return "scene_coordinate";
+    }
+
+    if (value == "Actor")
+    {
+        return "actor";
+    }
+
+    return value;
+}
+
+nlohmann::json CreateVersion2MovementTargetJson(
+    const nlohmann::json& movementTarget)
+{
+    if (movementTarget.is_null())
+    {
+        return nullptr;
+    }
+
+    nlohmann::json target = movementTarget;
+    target["kind"] = ToSnakeCaseEnum(target.at("kind").get<std::string>());
+    return target;
+}
+
+nlohmann::json CreateVersion2CombatCompositionJson(
+    nlohmann::json composition)
+{
+    composition["attackType"] =
+        ToSnakeCaseEnum(composition.at("attackType").get<std::string>());
+    return composition;
+}
+
+nlohmann::json CreateVersion2ActorFact(const nlohmann::json& actor)
+{
+    nlohmann::json fact = {
+        {"id", actor.at("id")},
+        {"present", actor.value("present", true)}};
+
+    if (!fact.at("present").get<bool>())
+    {
+        return fact;
+    }
+
+    if (actor.contains("kind"))
+    {
+        fact["kind"] = ToSnakeCaseEnum(actor.at("kind").get<std::string>());
+    }
+
+    if (actor.contains("playerIndex"))
+    {
+        fact["playerIndex"] = actor.at("playerIndex");
+    }
+
+    if (actor.contains("npcIndex"))
+    {
+        fact["npcIndex"] = actor.at("npcIndex");
+    }
+
+    if (actor.contains("sceneMembership"))
+    {
+        fact["sceneMembership"] = actor.at("sceneMembership");
+    }
+
+    if (actor.contains("size"))
+    {
+        fact["size"] = actor.at("size");
+    }
+
+    if (actor.contains("speed"))
+    {
+        fact["speed"] = actor.at("speed");
+    }
+
+    if (actor.contains("combatComposition"))
+    {
+        fact["combatComposition"] =
+            CreateVersion2CombatCompositionJson(actor.at("combatComposition"));
+        fact["currentHitpoints"] =
+            actor.at("combatComposition").at("stats").at("hitpoints");
+    }
+
+    if (actor.contains("currentHitpoints"))
+    {
+        fact["currentHitpoints"] = actor.at("currentHitpoints");
+    }
+
+    if (actor.contains("debug"))
+    {
+        if (actor.at("debug").contains("movementTarget"))
+        {
+            fact["movementTarget"] = CreateVersion2MovementTargetJson(
+                actor.at("debug").at("movementTarget"));
+        }
+
+        if (actor.at("debug").contains("attackTimer"))
+        {
+            fact["attackTimer"] = actor.at("debug").at("attackTimer");
+        }
+    }
+
+    return fact;
+}
+
+nlohmann::json CreateVersion2ActorFacts(const nlohmann::json& actors)
+{
+    nlohmann::json actorFacts = nlohmann::json::array();
+
+    for (const nlohmann::json& actor : actors)
+    {
+        actorFacts.push_back(CreateVersion2ActorFact(actor));
+    }
+
+    return actorFacts;
+}
+
 const char* CardinalDirectionName(CardinalDirection direction)
 {
     switch (direction)
@@ -659,6 +823,41 @@ std::string EncounterRecorder::ExportJson() const
     }
 
     return m_Recording.dump();
+}
+
+std::string EncounterRecorder::ExportVersion2Json() const
+{
+    if (m_Recording.is_null())
+    {
+        throw std::logic_error(
+            "Encounter Recording cannot export before initial state");
+    }
+
+    nlohmann::json completedTicks = nlohmann::json::array();
+
+    for (const nlohmann::json& tick : m_Recording.at("ticks"))
+    {
+        completedTicks.push_back(
+            {{"tick", tick.at("tick")},
+             {"actorFacts", CreateVersion2ActorFacts(tick.at("actors"))},
+             {"sceneEntityFacts", nlohmann::json::array()},
+             {"attacks", nlohmann::json::array()},
+             {"damageApplications", nlohmann::json::array()},
+             {"visibleProjectiles", nlohmann::json::array()}});
+    }
+
+    return nlohmann::json{
+        {"version", 2},
+        {"metadata", m_Recording.at("metadata")},
+        {"initialTick", m_Recording.at("initialState").at("tick")},
+        {"initialFacts",
+         {{"actorFacts",
+           CreateVersion2ActorFacts(
+               m_Recording.at("initialState").at("actors"))},
+          {"sceneEntityFacts", nlohmann::json::array()},
+          {"visibleProjectiles", nlohmann::json::array()}}},
+        {"completedTicks", completedTicks}}
+        .dump();
 }
 
 void EncounterRecorder::OnAttackQueued(

@@ -207,14 +207,64 @@ const versionTwoPlayback = engineModule.RecordingPlayback.LoadFromJson(
         },
         initialTick: 4,
         initialFacts: {
-            actorFacts: [],
+            actorFacts: [
+                {
+                    id: 1,
+                    present: true,
+                    kind: "player",
+                    playerIndex: 0,
+                    sceneMembership: {
+                        sceneId: 1,
+                        coordinate: { x: 10, y: 10, plane: 0 },
+                    },
+                    size: 1,
+                    speed: 2,
+                    currentHitpoints: 82,
+                    combatComposition: {
+                        stats: {
+                            attack: 70,
+                            strength: 71,
+                            defence: 72,
+                            ranged: 73,
+                            magic: 74,
+                            hitpoints: 1,
+                        },
+                        baseStats: {
+                            attack: 70,
+                            strength: 71,
+                            defence: 72,
+                            ranged: 73,
+                            magic: 74,
+                            hitpoints: 99,
+                        },
+                        bonuses: {},
+                        attackType: "slash",
+                        magicBaseMaximumHit: 9,
+                        weapon: {
+                            id: 12,
+                            range: 4,
+                            speed: 6,
+                            projectileId: 88,
+                        },
+                    },
+                    movementTarget: null,
+                    attackTimer: 0,
+                },
+            ],
             sceneEntityFacts: [],
             visibleProjectiles: [],
         },
         completedTicks: [
             {
                 tick: 5,
-                actorFacts: [],
+                actorFacts: [
+                    {
+                        id: 1,
+                        present: true,
+                        currentHitpoints: 77,
+                        attackTimer: 6,
+                    },
+                ],
                 sceneEntityFacts: [],
                 attacks: [],
                 damageApplications: [],
@@ -232,17 +282,28 @@ assert.equal(versionTwoPlayback.GetInitialTick(), 4);
 assert.equal(versionTwoPlayback.GetCurrentTick(), 4);
 assert.equal(versionTwoPlayback.GetLastTick(), 5);
 assert.equal(versionTwoPlayback.IsComplete(), false);
-assert.deepEqual(JSON.parse(versionTwoPlayback.GetCurrentSnapshotJson()), {
-    tick: 4,
-    actors: [],
-    sceneEntities: [],
-    attacks: [],
-    damageApplications: [],
-    visibleProjectiles: [],
-});
+const versionTwoInitialSnapshot = JSON.parse(
+    versionTwoPlayback.GetCurrentSnapshotJson(),
+);
+assert.equal(versionTwoInitialSnapshot.tick, 4);
+assert.equal(versionTwoInitialSnapshot.actors.length, 1);
+assert.equal(versionTwoInitialSnapshot.actors[0].kind, "player");
+assert.equal(
+    versionTwoInitialSnapshot.actors[0].combatComposition.stats.hitpoints,
+    82,
+);
+assert.equal(versionTwoInitialSnapshot.actors[0].currentHitpoints, 82);
 assert.equal(versionTwoPlayback.Advance(), true);
 assert.equal(versionTwoPlayback.GetCurrentTick(), 5);
 assert.equal(versionTwoPlayback.IsComplete(), true);
+const versionTwoCompletedSnapshot = JSON.parse(
+    versionTwoPlayback.GetCurrentSnapshotJson(),
+);
+assert.equal(
+    versionTwoCompletedSnapshot.actors[0].combatComposition.stats.hitpoints,
+    77,
+);
+assert.equal(versionTwoCompletedSnapshot.actors[0].attackTimer, 6);
 assert.equal(versionTwoPlayback.Advance(), false);
 versionTwoPlayback.Reset();
 assert.equal(versionTwoPlayback.GetCurrentTick(), 4);

@@ -111,7 +111,10 @@ bool IsKnownAttackType(const std::string& value)
 {
     return value == "Stab" || value == "Slash" || value == "Crush" ||
            value == "Magic" || value == "RangedLight" ||
-           value == "RangedStandard" || value == "RangedHeavy";
+           value == "RangedStandard" || value == "RangedHeavy" ||
+           value == "stab" || value == "slash" || value == "crush" ||
+           value == "magic" || value == "ranged_light" ||
+           value == "ranged_standard" || value == "ranged_heavy";
 }
 
 bool IsKnownEquipmentSlot(const std::string& value)
@@ -124,7 +127,8 @@ bool IsKnownEquipmentSlot(const std::string& value)
 
 bool IsKnownActorKind(const std::string& value)
 {
-    return value == "Player" || value == "Npc";
+    return value == "Player" || value == "Npc" ||
+           value == "player" || value == "npc";
 }
 
 void RequireKnownStringValue(
@@ -284,13 +288,14 @@ void ValidateMovementTargetShape(const nlohmann::json& value)
         "kind",
         [](const std::string& kind)
         {
-            return kind == "SceneCoordinate" || kind == "Actor";
+            return kind == "SceneCoordinate" || kind == "Actor" ||
+                   kind == "scene_coordinate" || kind == "actor";
         },
         "Unknown Movement Target kind");
 
     const std::string kind = value.at("kind").get<std::string>();
 
-    if (kind == "SceneCoordinate")
+    if (kind == "SceneCoordinate" || kind == "scene_coordinate")
     {
         RequireObjectField(value, "coordinate", RequiredJsonKind::Object);
         ValidateSceneCoordinateShape(value.at("coordinate"));
@@ -396,6 +401,84 @@ void ValidateActorShape(const nlohmann::json& actor)
     {
         RequireObjectField(actor, "debug", RequiredJsonKind::Object);
         ValidateActorDebugShape(actor.at("debug"));
+    }
+}
+
+void ValidateRecordedActorFactShape(const nlohmann::json& actor)
+{
+    RequireObjectField(actor, "id", RequiredJsonKind::Integer);
+    RequireObjectField(actor, "present", RequiredJsonKind::Boolean);
+
+    if (!actor.at("present").get<bool>())
+    {
+        return;
+    }
+
+    if (actor.contains("kind"))
+    {
+        RequireKnownStringValue(
+            actor,
+            "kind",
+            IsKnownActorKind,
+            "Unknown Actor kind");
+
+        if (actor.at("kind").get<std::string>() == "player" ||
+            actor.at("kind").get<std::string>() == "Player")
+        {
+            RequireObjectField(actor, "playerIndex", RequiredJsonKind::Integer);
+        }
+        else
+        {
+            RequireObjectField(actor, "npcIndex", RequiredJsonKind::Integer);
+        }
+
+        RequireObjectField(actor, "size", RequiredJsonKind::Integer);
+        RequireObjectField(actor, "speed", RequiredJsonKind::Integer);
+        RequireObjectField(
+            actor,
+            "sceneMembership",
+            RequiredJsonKind::Object);
+        RequireObjectField(
+            actor,
+            "combatComposition",
+            RequiredJsonKind::Object);
+        RequireObjectField(
+            actor,
+            "currentHitpoints",
+            RequiredJsonKind::Integer);
+    }
+
+    if (actor.contains("sceneMembership"))
+    {
+        ValidateSceneMembershipShape(actor.at("sceneMembership"));
+
+        if (actor.contains("size") && actor.at("size").is_number_integer())
+        {
+            ValidateActorFootprintShape(
+                ParseSceneCoordinate(
+                    actor.at("sceneMembership").at("coordinate")),
+                actor.at("size").get<int>());
+        }
+    }
+
+    if (actor.contains("currentHitpoints"))
+    {
+        RequireObjectField(actor, "currentHitpoints", RequiredJsonKind::Integer);
+    }
+
+    if (actor.contains("combatComposition"))
+    {
+        ValidateCombatCompositionShape(actor.at("combatComposition"));
+    }
+
+    if (actor.contains("movementTarget"))
+    {
+        ValidateMovementTargetShape(actor.at("movementTarget"));
+    }
+
+    if (actor.contains("attackTimer"))
+    {
+        RequireObjectField(actor, "attackTimer", RequiredJsonKind::Integer);
     }
 }
 
@@ -570,6 +653,7 @@ void ApplyActorChange(nlohmann::json& actors, const nlohmann::json& change)
         {
             actor["combatComposition"]["stats"]["hitpoints"] =
                 iterator.value();
+            actor["currentHitpoints"] = iterator.value();
             continue;
         }
 
@@ -577,6 +661,97 @@ void ApplyActorChange(nlohmann::json& actors, const nlohmann::json& change)
     }
 
     actors[key] = actor;
+}
+
+bool IsFullRecordedActorFact(const nlohmann::json& fact)
+{
+    return fact.contains("present") &&
+           fact.at("present").is_boolean() &&
+           fact.at("present").get<bool>() &&
+           fact.contains("kind");
+}
+
+void ApplyRecordedActorFact(nlohmann::json& actors, const nlohmann::json& fact)
+{
+    ApplyActorChange(actors, fact);
+}
+
+void ValidateNoDuplicateActorFacts(const nlohmann::json& actorFacts)
+{
+    std::vector<int> actorIds;
+
+    for (const nlohmann::json& actorFact : actorFacts)
+    {
+        ValidateRecordedActorFactShape(actorFact);
+        actorIds.push_back(actorFact.at("id").get<int>());
+    }
+
+    std::sort(actorIds.begin(), actorIds.end());
+
+    for (std::size_t index = 1; index < actorIds.size(); ++index)
+    {
+        if (actorIds[index - 1] == actorIds[index])
+        {
+            throw std::invalid_argument(
+                "Projection Validity failed: duplicate actor facts in tick");
+        }
+    }
+}
+
+void ValidateVersion2ActorProjection(const EncounterRecording& recording)
+{
+    nlohmann::json actors = nlohmann::json::object();
+
+    ValidateNoDuplicateActorFacts(
+        recording.GetInitialFacts().at("actorFacts"));
+
+    for (const nlohmann::json& actorFact :
+         recording.GetInitialFacts().at("actorFacts"))
+    {
+        if (!IsFullRecordedActorFact(actorFact))
+        {
+            throw std::invalid_argument(
+                "Projection Validity failed: initial actor facts must be full");
+        }
+
+        ApplyRecordedActorFact(actors, actorFact);
+    }
+
+    for (const CompletedRecordingTick& completedTick :
+         recording.GetCompletedTicks())
+    {
+        ValidateNoDuplicateActorFacts(
+            completedTick.facts.at("actorFacts"));
+
+        for (const nlohmann::json& actorFact :
+             completedTick.facts.at("actorFacts"))
+        {
+            const std::string key = ActorKey(actorFact);
+            const bool actorIsPresent = actors.contains(key);
+            const bool factIsPresence =
+                actorFact.at("present").get<bool>();
+
+            if (!factIsPresence)
+            {
+                if (!actorIsPresent)
+                {
+                    throw std::invalid_argument(
+                        "Projection Validity failed: actor absence before presence");
+                }
+
+                ApplyRecordedActorFact(actors, actorFact);
+                continue;
+            }
+
+            if (!actorIsPresent && !IsFullRecordedActorFact(actorFact))
+            {
+                throw std::invalid_argument(
+                    "Projection Validity failed: actor reappearance must be full");
+            }
+
+            ApplyRecordedActorFact(actors, actorFact);
+        }
+    }
 }
 
 void ValidateSceneEntityShape(const nlohmann::json& sceneEntity)
@@ -961,6 +1136,12 @@ void RecordingPlayback::RebuildVersion2Snapshot()
 
     const EncounterRecording& recording = m_Version2Recording.value();
 
+    for (const nlohmann::json& actorFact :
+         recording.GetInitialFacts().at("actorFacts"))
+    {
+        ApplyRecordedActorFact(m_Actors, actorFact);
+    }
+
     if (m_CurrentTick == recording.GetInitialTick())
     {
         m_Projectiles =
@@ -971,6 +1152,17 @@ void RecordingPlayback::RebuildVersion2Snapshot()
         for (const CompletedRecordingTick& completedTick :
              recording.GetCompletedTicks())
         {
+            if (completedTick.tick > m_CurrentTick)
+            {
+                break;
+            }
+
+            for (const nlohmann::json& actorFact :
+                 completedTick.facts.at("actorFacts"))
+            {
+                ApplyRecordedActorFact(m_Actors, actorFact);
+            }
+
             if (completedTick.tick == m_CurrentTick)
             {
                 m_Attacks = completedTick.facts.at("attacks");
@@ -985,7 +1177,7 @@ void RecordingPlayback::RebuildVersion2Snapshot()
 
     m_CurrentSnapshot = {
         {"tick", m_CurrentTick},
-        {"actors", nlohmann::json::array()},
+        {"actors", ActorsObjectToSortedArray(m_Actors)},
         {"sceneEntities", nlohmann::json::array()},
         {"attacks", m_Attacks},
         {"damageApplications", m_DamageApplications},
@@ -1004,6 +1196,7 @@ RecordingPlayback RecordingPlayback::LoadFromJson(const std::string& jsonText)
     {
         playback.m_Version2Recording =
             EncounterRecording::LoadFromJson(playback.m_Recording);
+        ValidateVersion2ActorProjection(playback.m_Version2Recording.value());
         playback.m_CurrentTick =
             playback.m_Version2Recording->GetInitialTick();
         playback.RebuildVersion2Snapshot();
