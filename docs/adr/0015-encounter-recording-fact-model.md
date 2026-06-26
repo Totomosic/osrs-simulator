@@ -1,0 +1,9 @@
+# Encounter Recording Fact Model
+
+Encounter recordings should be represented inside the engine as a typed recorded fact model, with JSON import/export treated as an adapter around that model. The next recording JSON format may break version 1 compatibility so the persisted shape can use recording language such as actor facts, scene entity facts, recorded combat facts, and visible projectile observations rather than exposing playback patch mechanics.
+
+## Consequences
+
+Recording playback projects recording snapshots from the fact model instead of rebuilding JSON maps as its core state. Playback is sequential-first rather than random-access-first; a projection cursor validates projection coherence up front, advances through recorded ticks, and can be reset to the beginning. Random access can be added later as an indexing or caching feature if needed. Version 1 sample recordings and tests can be migrated or replaced rather than preserved as a compatibility constraint. Linked combat facts must be internally complete within the recording window; damage applications without a recorded queued damage event are represented only by the resulting observed actor facts.
+
+Version 2 recording JSON should use grouped fact categories, camelCase field names, and snake_case enum values. Initial facts establish the initial tick and contain actor facts, scene entity facts, and visible projectile observations; completed tick entries are contiguous and may add attacks and damage applications. Actor and scene entity facts carry explicit presence. Actor facts may be sparse while an actor remains present, but absence facts contain only identity and reappearing actors require full present facts. Scene entity facts are full placement presence or placement-identity absence, not sparse property updates.

@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted
+Accepted; random-access playback superseded by ADR-0015
 
 Recording playback should apply recorded encounter facts through engine world and actor APIs rather than reimplementing playback semantics in the web app. The web recording viewer will load recordings through engine WebAssembly and render recording-specific snapshots.
 

@@ -26,11 +26,43 @@ _Avoid_: Room instance, encounter definition
 
 **Encounter Recording**:
 An observation log of one active encounter over time. An encounter recording captures the initial scene and actor state plus the absolute facts that changed on each tick, rather than the player inputs, random seed, or state deltas needed to re-run the encounter.
-_Avoid_: Replay log, input log, delta log
+_Avoid_: Replay log, input log, delta log, EncounterRecording
+
+**Recorded Fact**:
+An observed piece of encounter history stored in an encounter recording. Recorded facts are absolute observations at a point in recorded time, not commands to re-run simulation behavior.
+_Avoid_: Delta, replay command, simulation input
+
+**Recorded Actor Fact**:
+An observed actor fact stored in an encounter recording. A recorded actor fact may describe a full placed actor, a sparse set of changed absolute actor facts on a later tick, or an actor's absence from the scene.
+_Avoid_: Actor delta, movement command
+
+**Recorded Scene Entity Fact**:
+An observed scene entity fact stored in an encounter recording. A recorded scene entity fact may describe a scene entity's presence with its placement attributes or its absence from the scene.
+_Avoid_: Scene change, tile flag change
+
+**Recorded Combat Fact**:
+An observed combat fact stored in an encounter recording, such as an attack, queued damage event, damage application, or visible projectile observation. Recorded combat facts explain observed combat timing and outcomes without replaying combat behavior.
+_Avoid_: Combat replay event, inferred hitpoint change
 
 **Recording Playback**:
 A presentation of an encounter recording by applying the recorded facts directly. Recording playback is a view of observed encounter history, not a resumed active encounter.
 _Avoid_: Simulation replay, encounter resume
+
+**Recording Snapshot**:
+A projected view of an encounter recording at one recorded tick, including the observed actors, scene entities, attacks, damage applications, and projectiles visible at that point in recorded history.
+_Avoid_: World snapshot, simulation state
+
+**Recording Projection**:
+The act of deriving a recording snapshot from the recorded facts in an encounter recording. Recording projection is inert and does not resume or step an active world.
+_Avoid_: Simulation replay, world reconstruction
+
+**Recording Validity**:
+The property that an encounter recording is well-formed as an observation log, including its recorded tick order and recorded facts. Recording validity does not prove that the encounter could be re-simulated from inputs.
+_Avoid_: Playback validity, JSON validity
+
+**Projection Validity**:
+The property that the recorded facts in an encounter recording can be coherently projected into recording snapshots. Projection validity rejects contradictions in recorded history, not every impossible active-simulation outcome.
+_Avoid_: Schema validity, replay success, simulation legality
 
 **Scene Coordinate**:
 A tile position inside the loaded scene, identified by plane, x, and y. Scene coordinates currently follow OSRS scene bounds, but they are distinct from persistent world coordinates.
@@ -47,6 +79,10 @@ _Avoid_: Scale, pixel zoom
 **Tick**:
 A discrete simulation step. A tick is distinct from a rendered frame or real-time playback interval.
 _Avoid_: Frame, update loop
+
+**Initial Tick**:
+The tick associated with the initial recorded facts in an encounter recording. The initial tick is the start of the recording, not necessarily tick zero of the active encounter.
+_Avoid_: Start tick, first frame
 
 **Seconds Per Tick**:
 The real-time duration represented by one OSRS simulation tick. OSRS combat timing uses 0.6 seconds per tick.
