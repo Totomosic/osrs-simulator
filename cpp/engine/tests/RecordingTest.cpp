@@ -581,6 +581,20 @@ nlohmann::json CreateVersion2ActorFact(int actorId)
         {"attackTimer", 0}};
 }
 
+nlohmann::json CreateVersion2ProjectileObservation(
+    int projectileId,
+    int targetActorId,
+    int elapsedTicks)
+{
+    return {
+        {"projectileId", projectileId},
+        {"source", {{"x", 10.5}, {"y", 10.5}, {"plane", 0}}},
+        {"targetActorId", targetActorId},
+        {"lastKnownTargetCenter", {{"x", 11.5}, {"y", 10.5}, {"plane", 0}}},
+        {"elapsedTicks", elapsedTicks},
+        {"totalTicks", 2}};
+}
+
 nlohmann::json CreateVersion2ActorRecording()
 {
     return {
@@ -811,6 +825,63 @@ int main()
                    {"damageApplications", nlohmann::json::array()},
                    {"visibleProjectiles", nlohmann::json::array()}}})}};
 
+        assert(PlaybackLoadThrows(document));
+    }
+
+    {
+        nlohmann::json document = {
+            {"version", 2},
+            {"metadata",
+             {{"encounterName", "Version 2 Visible Projectiles"},
+              {"secondsPerTick", 0.6}}},
+            {"initialTick", 4},
+            {"initialFacts",
+             {{"actorFacts", nlohmann::json::array()},
+              {"sceneEntityFacts", nlohmann::json::array()},
+              {"visibleProjectiles",
+               nlohmann::json::array(
+                   {CreateVersion2ProjectileObservation(88, 2, 1)})}}},
+            {"completedTicks",
+             nlohmann::json::array(
+                 {{{"tick", 5},
+                   {"actorFacts", nlohmann::json::array()},
+                   {"sceneEntityFacts", nlohmann::json::array()},
+                   {"attacks", nlohmann::json::array()},
+                   {"damageApplications", nlohmann::json::array()},
+                   {"visibleProjectiles",
+                    nlohmann::json::array(
+                        {CreateVersion2ProjectileObservation(99, 3, 0)})}},
+                  {{"tick", 6},
+                   {"actorFacts", nlohmann::json::array()},
+                   {"sceneEntityFacts", nlohmann::json::array()},
+                   {"attacks", nlohmann::json::array()},
+                   {"damageApplications", nlohmann::json::array()},
+                   {"visibleProjectiles", nlohmann::json::array()}}})}};
+
+        osrssim::recording::RecordingPlayback playback =
+            osrssim::recording::RecordingPlayback::LoadFromJson(
+                document.dump());
+
+        nlohmann::json snapshot =
+            nlohmann::json::parse(playback.GetCurrentSnapshotJson());
+        assert(snapshot.at("tick") == 4);
+        assert(snapshot.at("visibleProjectiles").size() == 1);
+        assert(snapshot.at("visibleProjectiles").at(0).at("projectileId") == 88);
+        assert(nlohmann::json::parse(playback.GetProjectilesJson()) ==
+               snapshot.at("visibleProjectiles"));
+
+        assert(playback.Advance());
+        snapshot = nlohmann::json::parse(playback.GetCurrentSnapshotJson());
+        assert(snapshot.at("tick") == 5);
+        assert(snapshot.at("visibleProjectiles").size() == 1);
+        assert(snapshot.at("visibleProjectiles").at(0).at("projectileId") == 99);
+
+        assert(playback.Advance());
+        snapshot = nlohmann::json::parse(playback.GetCurrentSnapshotJson());
+        assert(snapshot.at("tick") == 6);
+        assert(snapshot.at("visibleProjectiles").empty());
+
+        document["completedTicks"][0].erase("visibleProjectiles");
         assert(PlaybackLoadThrows(document));
     }
 
@@ -1513,6 +1584,31 @@ int main()
         assert(nlohmann::json::parse(playback.GetDamageApplicationsJson()) ==
                tickTwo.at("damageApplications"));
         assert(nlohmann::json::parse(playback.GetProjectilesJson()).empty());
+
+        const nlohmann::json versionTwoRecording =
+            nlohmann::json::parse(recorder.ExportVersion2Json());
+        const nlohmann::json& tickOneProjectiles =
+            versionTwoRecording.at("completedTicks")
+                .at(0)
+                .at("visibleProjectiles");
+        assert(tickOneProjectiles.size() == 1);
+        assert(tickOneProjectiles.at(0).at("projectileId") == 88);
+        assert(tickOneProjectiles.at(0).at("targetActorId") ==
+               encounterPtr->GetNpcId());
+        assert(versionTwoRecording.at("completedTicks")
+                   .at(1)
+                   .at("visibleProjectiles")
+                   .empty());
+
+        osrssim::recording::RecordingPlayback versionTwoPlayback =
+            osrssim::recording::RecordingPlayback::LoadFromJson(
+                recorder.ExportVersion2Json());
+        assert(versionTwoPlayback.Advance());
+        assert(nlohmann::json::parse(versionTwoPlayback.GetProjectilesJson()) ==
+               tickOneProjectiles);
+        assert(versionTwoPlayback.Advance());
+        assert(nlohmann::json::parse(versionTwoPlayback.GetProjectilesJson())
+                   .empty());
     }
 
     {

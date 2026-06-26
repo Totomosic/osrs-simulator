@@ -843,7 +843,7 @@ std::string EncounterRecorder::ExportVersion2Json() const
              {"sceneEntityFacts", nlohmann::json::array()},
              {"attacks", nlohmann::json::array()},
              {"damageApplications", nlohmann::json::array()},
-             {"visibleProjectiles", nlohmann::json::array()}});
+             {"visibleProjectiles", tick.at("projectiles")}});
     }
 
     return nlohmann::json{
@@ -855,7 +855,8 @@ std::string EncounterRecorder::ExportVersion2Json() const
            CreateVersion2ActorFacts(
                m_Recording.at("initialState").at("actors"))},
           {"sceneEntityFacts", nlohmann::json::array()},
-          {"visibleProjectiles", nlohmann::json::array()}}},
+          {"visibleProjectiles",
+           m_Recording.at("initialState").at("projectiles")}}},
         {"completedTicks", completedTicks}}
         .dump();
 }

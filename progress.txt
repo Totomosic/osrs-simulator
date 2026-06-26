@@ -1,3 +1,12 @@
+2026-06-27 #120 Project visible projectile observations per tick
+- Selected issue: #120, ready-for-agent and unblocked because #117 is closed. Parent PRD: #116.
+- Docs read: CONTEXT.md, docs/agents/domain.md, docs/adr/0012-encounter-recordings-are-observation-logs.md, docs/adr/0014-engine-owned-recording-playback.md, docs/adr/0015-encounter-recording-fact-model.md, PRD #116, feature #120, blockers #117/#118/#119/#120 checked.
+- Plan: TDD native visible projectile observations: v2 JSON initial/projectile-only tick projection, required completed-tick visibleProjectiles field, live recorder v2 export from World projectile snapshots, focused native/build/web checks. Scope guard: only #120; no scene entity or combat linked facts.
+- Completed: PRD #116 stories 13-14, 31, 36-38 and feature #120 acceptance for initial visible projectiles, required per-completed-tick visibleProjectiles, full per-tick replacement/empty semantics, recorder v2 projectile emission, playback snapshot exposure, and omitted-field rejection.
+- Decisions: reuse existing projectile snapshot JSON shape as the v2 visible projectile observation because semantics match; keep projectiles as a full current-tick observation bucket with no identity lifecycle or carry-forward.
+- Files changed: cpp/engine/src/recording/EncounterRecorder.cpp, cpp/engine/tests/RecordingTest.cpp, progress.txt.
+- Validation: red native recording test failed on empty recorder v2 visibleProjectiles; cmake --build build --target osrssim_engine_recording_test && ./build/cpp/engine/osrssim_engine_recording_test; cmake --build build; ctest --test-dir build --output-on-failure; ./tools/build_wasm.sh; yarn --cwd web test; yarn --cwd web typecheck; yarn --cwd web build; git diff --check. No blockers.
+
 2026-06-27 #117 Introduce minimal version 2 Encounter Recording snapshot path
 - Selected issue: #117, ready-for-agent and unblocked. Parent PRD: #116.
 - Docs read: CONTEXT.md, docs/agents/domain.md, docs/adr/0012-encounter-recordings-are-observation-logs.md, docs/adr/0014-engine-owned-recording-playback.md, docs/adr/0015-encounter-recording-fact-model.md, docs/architecture/simulation-model.md, PRD #116, feature #117.
