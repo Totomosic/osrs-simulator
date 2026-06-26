@@ -198,6 +198,58 @@ assert.equal(
 
 playback.delete?.();
 
+const versionTwoPlayback = engineModule.RecordingPlayback.LoadFromJson(
+    JSON.stringify({
+        version: 2,
+        metadata: {
+            encounterName: "Generated Version 2 Recording Playback",
+            secondsPerTick: 0.6,
+        },
+        initialTick: 4,
+        initialFacts: {
+            actorFacts: [],
+            sceneEntityFacts: [],
+            visibleProjectiles: [],
+        },
+        completedTicks: [
+            {
+                tick: 5,
+                actorFacts: [],
+                sceneEntityFacts: [],
+                attacks: [],
+                damageApplications: [],
+                visibleProjectiles: [],
+            },
+        ],
+    }),
+);
+
+assert.equal(
+    versionTwoPlayback.GetEncounterName(),
+    "Generated Version 2 Recording Playback",
+);
+assert.equal(versionTwoPlayback.GetInitialTick(), 4);
+assert.equal(versionTwoPlayback.GetCurrentTick(), 4);
+assert.equal(versionTwoPlayback.GetLastTick(), 5);
+assert.equal(versionTwoPlayback.IsComplete(), false);
+assert.deepEqual(JSON.parse(versionTwoPlayback.GetCurrentSnapshotJson()), {
+    tick: 4,
+    actors: [],
+    sceneEntities: [],
+    attacks: [],
+    damageApplications: [],
+    visibleProjectiles: [],
+});
+assert.equal(versionTwoPlayback.Advance(), true);
+assert.equal(versionTwoPlayback.GetCurrentTick(), 5);
+assert.equal(versionTwoPlayback.IsComplete(), true);
+assert.equal(versionTwoPlayback.Advance(), false);
+versionTwoPlayback.Reset();
+assert.equal(versionTwoPlayback.GetCurrentTick(), 4);
+assert.equal(versionTwoPlayback.IsComplete(), false);
+
+versionTwoPlayback.delete?.();
+
 assert.throws(() =>
     engineModule.RecordingPlayback.LoadFromJson(
         JSON.stringify({

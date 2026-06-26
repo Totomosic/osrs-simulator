@@ -799,6 +799,14 @@ EMSCRIPTEN_BINDINGS(osrssim_engine)
             "GetProjectilesJson",
             &osrssim::recording::RecordingPlayback::GetProjectilesJson)
         .function(
+            "GetCurrentSnapshotJson",
+            &osrssim::recording::RecordingPlayback::GetCurrentSnapshotJson)
+        .function("Advance", &osrssim::recording::RecordingPlayback::Advance)
+        .function("Reset", &osrssim::recording::RecordingPlayback::Reset)
+        .function(
+            "IsComplete",
+            &osrssim::recording::RecordingPlayback::IsComplete)
+        .function(
             "PreviousTick",
             &osrssim::recording::RecordingPlayback::PreviousTick)
         .function(

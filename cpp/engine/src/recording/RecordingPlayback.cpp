@@ -896,6 +896,12 @@ void RecordingPlayback::Validate(const nlohmann::json& recording)
 
 void RecordingPlayback::RebuildToCurrentTick()
 {
+    if (m_Version2Recording.has_value())
+    {
+        RebuildVersion2Snapshot();
+        return;
+    }
+
     m_Actors = nlohmann::json::object();
     m_SceneEntities = nlohmann::json::object();
     m_Attacks = nlohmann::json::array();
@@ -940,10 +946,70 @@ void RecordingPlayback::RebuildToCurrentTick()
     }
 }
 
+void RecordingPlayback::RebuildVersion2Snapshot()
+{
+    m_Actors = nlohmann::json::object();
+    m_SceneEntities = nlohmann::json::object();
+    m_Attacks = nlohmann::json::array();
+    m_DamageApplications = nlohmann::json::array();
+    m_Projectiles = nlohmann::json::array();
+
+    if (!m_Version2Recording.has_value())
+    {
+        return;
+    }
+
+    const EncounterRecording& recording = m_Version2Recording.value();
+
+    if (m_CurrentTick == recording.GetInitialTick())
+    {
+        m_Projectiles =
+            recording.GetInitialFacts().at("visibleProjectiles");
+    }
+    else
+    {
+        for (const CompletedRecordingTick& completedTick :
+             recording.GetCompletedTicks())
+        {
+            if (completedTick.tick == m_CurrentTick)
+            {
+                m_Attacks = completedTick.facts.at("attacks");
+                m_DamageApplications =
+                    completedTick.facts.at("damageApplications");
+                m_Projectiles =
+                    completedTick.facts.at("visibleProjectiles");
+                break;
+            }
+        }
+    }
+
+    m_CurrentSnapshot = {
+        {"tick", m_CurrentTick},
+        {"actors", nlohmann::json::array()},
+        {"sceneEntities", nlohmann::json::array()},
+        {"attacks", m_Attacks},
+        {"damageApplications", m_DamageApplications},
+        {"visibleProjectiles", m_Projectiles}};
+}
+
 RecordingPlayback RecordingPlayback::LoadFromJson(const std::string& jsonText)
 {
     RecordingPlayback playback;
     playback.m_Recording = nlohmann::json::parse(jsonText);
+
+    if (playback.m_Recording.is_object() &&
+        playback.m_Recording.contains("version") &&
+        playback.m_Recording.at("version").is_number_integer() &&
+        playback.m_Recording.at("version").get<int>() == 2)
+    {
+        playback.m_Version2Recording =
+            EncounterRecording::LoadFromJson(playback.m_Recording);
+        playback.m_CurrentTick =
+            playback.m_Version2Recording->GetInitialTick();
+        playback.RebuildVersion2Snapshot();
+        return playback;
+    }
+
     Validate(playback.m_Recording);
     playback.m_CurrentTick =
         playback.m_Recording.at("initialState").at("tick").get<int>();
@@ -953,16 +1019,31 @@ RecordingPlayback RecordingPlayback::LoadFromJson(const std::string& jsonText)
 
 std::string RecordingPlayback::GetEncounterName() const
 {
+    if (m_Version2Recording.has_value())
+    {
+        return m_Version2Recording->GetEncounterName();
+    }
+
     return m_Recording.at("metadata").at("encounterName").get<std::string>();
 }
 
 double RecordingPlayback::GetSecondsPerTick() const
 {
+    if (m_Version2Recording.has_value())
+    {
+        return m_Version2Recording->GetSecondsPerTick();
+    }
+
     return m_Recording.at("metadata").at("secondsPerTick").get<double>();
 }
 
 int RecordingPlayback::GetInitialTick() const
 {
+    if (m_Version2Recording.has_value())
+    {
+        return m_Version2Recording->GetInitialTick();
+    }
+
     return m_Recording.at("initialState").at("tick").get<int>();
 }
 
@@ -973,6 +1054,11 @@ int RecordingPlayback::GetCurrentTick() const
 
 int RecordingPlayback::GetLastTick() const
 {
+    if (m_Version2Recording.has_value())
+    {
+        return m_Version2Recording->GetLastTick();
+    }
+
     if (m_Recording.at("ticks").empty())
     {
         return GetInitialTick();
@@ -1004,6 +1090,39 @@ std::string RecordingPlayback::GetDamageApplicationsJson() const
 std::string RecordingPlayback::GetProjectilesJson() const
 {
     return m_Projectiles.dump();
+}
+
+std::string RecordingPlayback::GetCurrentSnapshotJson() const
+{
+    if (m_Version2Recording.has_value())
+    {
+        return m_CurrentSnapshot.dump();
+    }
+
+    return nlohmann::json{
+        {"tick", m_CurrentTick},
+        {"actors", ActorsObjectToSortedArray(m_Actors)},
+        {"sceneEntities", SceneEntitiesObjectToSortedArray(m_SceneEntities)},
+        {"attacks", m_Attacks},
+        {"damageApplications", m_DamageApplications},
+        {"visibleProjectiles", m_Projectiles}}
+        .dump();
+}
+
+bool RecordingPlayback::Advance()
+{
+    return GoToTick(m_CurrentTick + 1);
+}
+
+void RecordingPlayback::Reset()
+{
+    m_CurrentTick = GetInitialTick();
+    RebuildToCurrentTick();
+}
+
+bool RecordingPlayback::IsComplete() const
+{
+    return m_CurrentTick == GetLastTick();
 }
 
 bool RecordingPlayback::PreviousTick()

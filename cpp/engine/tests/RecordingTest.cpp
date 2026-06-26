@@ -2,6 +2,7 @@
 #include "encounter/EncounterRunner.h"
 #include "EquipmentSet.h"
 #include "recording/EncounterRecorder.h"
+#include "recording/EncounterRecording.h"
 #include "recording/RecordingPlayback.h"
 #include "WeaponDatabase.h"
 
@@ -562,6 +563,142 @@ bool PlaybackLoadThrows(const nlohmann::json& recording)
 
 int main()
 {
+    {
+        osrssim::recording::EncounterRecording recording =
+            osrssim::recording::EncounterRecording::Create(
+                {"Version 2 Minimal", 0.6},
+                12,
+                {osrssim::recording::EncounterRecording::
+                     CreateEmptyCompletedTick(13)});
+
+        assert(recording.GetEncounterName() == "Version 2 Minimal");
+        assert(recording.GetSecondsPerTick() == 0.6);
+        assert(recording.GetInitialTick() == 12);
+        assert(recording.GetLastTick() == 13);
+        assert(recording.GetCompletedTicks().size() == 1);
+        assert(recording.GetInitialFacts().at("actorFacts").empty());
+        assert(recording.GetInitialFacts().at("sceneEntityFacts").empty());
+        assert(recording.GetInitialFacts().at("visibleProjectiles").empty());
+        assert(
+            recording.GetCompletedTicks()
+                .at(0)
+                .facts.at("actorFacts")
+                .empty());
+
+        const nlohmann::json exported =
+            nlohmann::json::parse(recording.ExportJson());
+        assert(exported.at("version") == 2);
+        assert(exported.at("metadata").at("encounterName") ==
+               "Version 2 Minimal");
+        assert(exported.at("initialTick") == 12);
+        assert(exported.at("initialFacts").at("actorFacts").empty());
+        assert(exported.at("initialFacts").at("sceneEntityFacts").empty());
+        assert(exported.at("initialFacts").at("visibleProjectiles").empty());
+        assert(exported.at("completedTicks").at(0).at("tick") == 13);
+        assert(exported.at("completedTicks").at(0).at("actorFacts").empty());
+
+        osrssim::recording::EncounterRecording loaded =
+            osrssim::recording::EncounterRecording::LoadFromJson(
+                recording.ExportJson());
+        assert(loaded.ExportJson() == recording.ExportJson());
+    }
+
+    {
+        nlohmann::json document = {
+            {"version", 2},
+            {"metadata",
+             {{"encounterName", "Version 2 Empty Ticks"},
+              {"secondsPerTick", 0.6}}},
+            {"initialTick", 4},
+            {"initialFacts",
+             {{"actorFacts", nlohmann::json::array()},
+              {"sceneEntityFacts", nlohmann::json::array()},
+              {"visibleProjectiles", nlohmann::json::array()}}},
+            {"completedTicks",
+             nlohmann::json::array(
+                 {{{"tick", 5},
+                   {"actorFacts", nlohmann::json::array()},
+                   {"sceneEntityFacts", nlohmann::json::array()},
+                   {"attacks", nlohmann::json::array()},
+                   {"damageApplications", nlohmann::json::array()},
+                   {"visibleProjectiles", nlohmann::json::array()}},
+                  {{"tick", 6},
+                   {"actorFacts", nlohmann::json::array()},
+                   {"sceneEntityFacts", nlohmann::json::array()},
+                   {"attacks", nlohmann::json::array()},
+                   {"damageApplications", nlohmann::json::array()},
+                   {"visibleProjectiles", nlohmann::json::array()}}})}};
+
+        osrssim::recording::EncounterRecording recording =
+            osrssim::recording::EncounterRecording::LoadFromJson(
+                document.dump());
+        assert(recording.GetInitialTick() == 4);
+        assert(recording.GetLastTick() == 6);
+        assert(recording.GetCompletedTicks().size() == 2);
+
+        osrssim::recording::RecordingPlayback playback =
+            osrssim::recording::RecordingPlayback::LoadFromJson(
+                document.dump());
+
+        assert(playback.GetEncounterName() == "Version 2 Empty Ticks");
+        assert(playback.GetSecondsPerTick() == 0.6);
+        assert(playback.GetInitialTick() == 4);
+        assert(playback.GetCurrentTick() == 4);
+        assert(playback.GetLastTick() == 6);
+        assert(!playback.IsComplete());
+
+        nlohmann::json snapshot =
+            nlohmann::json::parse(playback.GetCurrentSnapshotJson());
+        assert(snapshot.at("tick") == 4);
+        assert(snapshot.at("actors").empty());
+        assert(snapshot.at("sceneEntities").empty());
+        assert(snapshot.at("attacks").empty());
+        assert(snapshot.at("damageApplications").empty());
+        assert(snapshot.at("visibleProjectiles").empty());
+
+        assert(playback.Advance());
+        assert(playback.GetCurrentTick() == 5);
+        assert(!playback.IsComplete());
+        assert(playback.Advance());
+        assert(playback.GetCurrentTick() == 6);
+        assert(playback.IsComplete());
+        assert(!playback.Advance());
+
+        playback.Reset();
+        assert(playback.GetCurrentTick() == 4);
+        assert(!playback.IsComplete());
+        snapshot = nlohmann::json::parse(playback.GetCurrentSnapshotJson());
+        assert(snapshot.at("tick") == 4);
+        assert(snapshot.at("attacks").empty());
+        assert(snapshot.at("damageApplications").empty());
+    }
+
+    {
+        assert(PlaybackLoadThrows(std::string(
+            R"({"version":3,"metadata":{"encounterName":"Bad","secondsPerTick":0.6},"initialTick":0,"initialFacts":{"actorFacts":[],"sceneEntityFacts":[],"visibleProjectiles":[]},"completedTicks":[]})")));
+
+        nlohmann::json document = {
+            {"version", 2},
+            {"metadata",
+             {{"encounterName", "Non Contiguous"},
+              {"secondsPerTick", 0.6}}},
+            {"initialTick", 4},
+            {"initialFacts",
+             {{"actorFacts", nlohmann::json::array()},
+              {"sceneEntityFacts", nlohmann::json::array()},
+              {"visibleProjectiles", nlohmann::json::array()}}},
+            {"completedTicks",
+             nlohmann::json::array(
+                 {{{"tick", 6},
+                   {"actorFacts", nlohmann::json::array()},
+                   {"sceneEntityFacts", nlohmann::json::array()},
+                   {"attacks", nlohmann::json::array()},
+                   {"damageApplications", nlohmann::json::array()},
+                   {"visibleProjectiles", nlohmann::json::array()}}})}};
+
+        assert(PlaybackLoadThrows(document));
+    }
+
     {
         osrssim::recording::EncounterRecorder recorder("Minimal Sample", 0.6);
         osrssim::encounter::EncounterRunner runner(

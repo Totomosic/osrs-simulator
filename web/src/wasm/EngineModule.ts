@@ -23,6 +23,10 @@ export interface RecordingPlayback {
     GetAttacksJson(): string;
     GetDamageApplicationsJson(): string;
     GetProjectilesJson(): string;
+    GetCurrentSnapshotJson(): string;
+    Advance(): boolean;
+    Reset(): void;
+    IsComplete(): boolean;
     PreviousTick(): boolean;
     NextTick(): boolean;
     GoToTick(tick: number): boolean;

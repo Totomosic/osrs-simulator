@@ -1,3 +1,12 @@
+2026-06-27 #117 Introduce minimal version 2 Encounter Recording snapshot path
+- Selected issue: #117, ready-for-agent and unblocked. Parent PRD: #116.
+- Docs read: CONTEXT.md, docs/agents/domain.md, docs/adr/0012-encounter-recordings-are-observation-logs.md, docs/adr/0014-engine-owned-recording-playback.md, docs/adr/0015-encounter-recording-fact-model.md, docs/architecture/simulation-model.md, PRD #116, feature #117.
+- Plan: TDD native minimal v2 path: typed EncounterRecording envelope with Initial Tick and empty fact categories, v2 JSON adapter, Recording Playback sequential snapshot facade, then focused native/build/web contract checks. Scope guard: only #117; do not implement actor, scene entity, projectile, or combat fact projection from #118-#121.
+- Completed: PRD #116 stories 1-2, 5-8, 31-35 and feature #117 acceptance for minimal version 2 Encounter Recording creation/import/export, Initial Tick, empty initial facts, contiguous empty completed ticks, sequential current snapshot, advance/reset/completion, tick metadata, and unsupported version failure.
+- Decisions: keep existing version 1 playback path until #124 because current samples/viewer tests still use it; add `EncounterRecording` as a valid-by-construction typed envelope and use JSON v2 as an adapter shape; expose new sequential methods through WASM without migrating the viewer yet.
+- Files changed: cpp/engine/src/recording/EncounterRecording.*, cpp/engine/src/recording/RecordingPlayback.*, cpp/engine/src/EngineBindings.cpp, cpp/engine/CMakeLists.txt, cpp/engine/tests/RecordingTest.cpp, web/src/wasm/EngineModule.ts, web/test/generated-recording-playback.test.mjs, progress.txt.
+- Validation: red native recording test failed on missing EncounterRecording; cmake --build build --target osrssim_engine_recording_test && ./build/cpp/engine/osrssim_engine_recording_test; cmake --build build; ctest --test-dir build --output-on-failure; ./tools/build_wasm.sh; yarn --cwd web test; yarn --cwd web typecheck; yarn --cwd web build; git diff --check. No blockers.
+
 2026-06-25 #115 Finish the Recording Playback viewer workflow
 - Selected issue: #115, ready-for-agent and unblocked because #109/#111/#112/#114 are closed. Parent PRD: #107.
 - Docs read: CONTEXT.md, docs/adr/0012-encounter-recordings-are-observation-logs.md, docs/adr/0013-structured-damage-events-for-recordable-combat.md, docs/adr/0014-engine-owned-recording-playback.md, docs/adr/0006-web-development-viewer.md, PRD #107, feature #115, blockers #109/#111/#112/#114.

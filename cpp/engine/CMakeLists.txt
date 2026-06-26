@@ -13,6 +13,7 @@ add_library(osrssim_engine
   src/debug/DevelopmentPlayerChaseScenario.cpp
   src/encounter/ActiveEncounter.cpp
   src/encounter/EncounterRunner.cpp
+  src/recording/EncounterRecording.cpp
   src/recording/EncounterRecorder.cpp
   src/recording/RecordingPlayback.cpp
   src/LineOfSight.cpp
