@@ -93,6 +93,11 @@ void CombatService::RemoveObserver(Observer& observer)
         m_Observers.end());
 }
 
+void CombatService::SetDamageTakenCallback(DamageTakenCallback callback)
+{
+    m_DamageTakenCallback = std::move(callback);
+}
+
 void CombatService::SetDpsSeed(unsigned int seed)
 {
     m_DpsService.SetSeed(seed);
@@ -135,9 +140,21 @@ bool CombatService::QueueStructuredDamageEvent(
     const bool queued = world.QueueActorCombatEvent(
         targetId,
         delayTicks,
-        [this, &world, targetId, damage = queuedDamage, damageEventId, attackId = attack.id]()
+        [this,
+         &world,
+         targetId,
+         sourceActorId = attack.attackerId,
+         damage = queuedDamage,
+         damageEventId,
+         attackId = attack.id]()
         {
-            ApplyDamage(world, targetId, damage, damageEventId, attackId);
+            ApplyDamage(
+                world,
+                targetId,
+                sourceActorId,
+                damage,
+                damageEventId,
+                attackId);
         });
 
     if (queued)
@@ -170,9 +187,21 @@ bool CombatService::QueueStructuredDamageEvent(
     const bool queued = world.QueueActorCombatEvent(
         targetId,
         delayTicks,
-        [this, &world, targetId, damage = queuedDamage, damageEventId, attackId = attack.id]()
+        [this,
+         &world,
+         targetId,
+         sourceActorId = attack.attackerId,
+         damage = queuedDamage,
+         damageEventId,
+         attackId = attack.id]()
         {
-            ApplyDamage(world, targetId, damage, damageEventId, attackId);
+            ApplyDamage(
+                world,
+                targetId,
+                sourceActorId,
+                damage,
+                damageEventId,
+                attackId);
         },
         projectile);
 
@@ -376,9 +405,21 @@ bool CombatService::DefaultStandardAttack(
         const bool queued = world.QueueActorCombatEvent(
             targetId,
             applyDamageDelay,
-            [this, &world, targetId, damage = queuedDamage, damageEventId, attackId]()
+            [this,
+             &world,
+             targetId,
+             sourceActorId = attackerId,
+             damage = queuedDamage,
+             damageEventId,
+             attackId]()
             {
-                ApplyDamage(world, targetId, damage, damageEventId, attackId);
+                ApplyDamage(
+                    world,
+                    targetId,
+                    sourceActorId,
+                    damage,
+                    damageEventId,
+                    attackId);
             },
             projectile);
 
@@ -393,9 +434,21 @@ bool CombatService::DefaultStandardAttack(
     const bool queued = world.QueueActorCombatEvent(
         targetId,
         applyDamageDelay,
-        [this, &world, targetId, damage = queuedDamage, damageEventId, attackId]()
+        [this,
+         &world,
+         targetId,
+         sourceActorId = attackerId,
+         damage = queuedDamage,
+         damageEventId,
+         attackId]()
         {
-            ApplyDamage(world, targetId, damage, damageEventId, attackId);
+            ApplyDamage(
+                world,
+                targetId,
+                sourceActorId,
+                damage,
+                damageEventId,
+                attackId);
         });
 
     if (queued)
@@ -501,6 +554,7 @@ int CombatService::ClampDamageToCurrentHitpoints(
 void CombatService::ApplyDamage(
     World& world,
     ActorId targetId,
+    ActorId sourceActorId,
     int damage,
     std::uint64_t damageEventId,
     std::uint64_t attackId) const
@@ -523,6 +577,11 @@ void CombatService::ApplyDamage(
         positiveDamage);
     updatedComposition.stats.hitpoints -= appliedDamage;
     world.SetActorCombatComposition(targetId, updatedComposition);
+
+    if (m_DamageTakenCallback)
+    {
+        m_DamageTakenCallback(world, targetId, sourceActorId, appliedDamage);
+    }
 
     if (damageEventId != 0 && attackId != 0)
     {

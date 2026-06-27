@@ -34,7 +34,7 @@ private:
     CombatService m_CombatService;
     std::vector<NpcBehaviorSlot> m_NpcBehaviors;
     std::vector<QueuedPlayerMovementAction> m_QueuedPlayerMovementActions;
-    std::optional<NpcBehaviorId> m_UpdatingNpcBehaviorId;
+    std::vector<NpcBehaviorId> m_UpdatingNpcBehaviorIds;
 
 public:
     Engine();
@@ -93,6 +93,13 @@ private:
         bool dedicated);
     void ReleaseNpcBehaviorAssignment(NpcBehaviorId behaviorId);
     void DestroyNpcBehaviorWhenSafe(NpcBehaviorId behaviorId);
+    bool IsNpcBehaviorUpdating(NpcBehaviorId behaviorId) const;
+    behavior::NpcBehavior* GetNpcBehaviorForActor(ActorId actorId);
+    behavior::NpcBehaviorContext CreateNpcBehaviorContext();
+    void NotifyNpcDamageTaken(
+        ActorId actorId,
+        ActorId sourceActorId,
+        int damage);
     bool TryHandleActorTargetCombat(ActorId actorId);
     bool IsOverlappingActorMovementTarget(ActorId actorId) const;
     void UpdateNpcBehavior(ActorId actorId);

@@ -16,14 +16,12 @@ void DefaultNpcBehavior::Update(
 {
     if (!context.TryHandleActorTargetCombat(actorId))
     {
-        const bool startedFromOverlap =
-            context.IsOverlappingActorMovementTarget(actorId);
         const bool moved =
             context.GetWorld().UpdateActorMovement(
                 actorId,
                 context.GetCurrentTick());
 
-        if (moved && !startedFromOverlap)
+        if (moved)
         {
             context.TryHandleActorTargetCombat(actorId);
         }

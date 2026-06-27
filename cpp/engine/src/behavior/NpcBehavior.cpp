@@ -116,4 +116,12 @@ bool NpcBehavior::CanBeShared() const
     return false;
 }
 
+void NpcBehavior::OnAttack(NpcBehaviorContext&, ActorId)
+{
+}
+
+void NpcBehavior::OnDamageTaken(NpcBehaviorContext&, ActorId, ActorId, int)
+{
+}
+
 }  // namespace osrssim::behavior

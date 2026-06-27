@@ -127,6 +127,50 @@ public:
     }
 };
 
+struct BehaviorHookObservation
+{
+    std::vector<osrssim::ActorId> attack_actor_ids;
+    std::vector<osrssim::ActorId> damage_actor_ids;
+    std::vector<osrssim::ActorId> damage_source_actor_ids;
+    std::vector<int> damage_amounts;
+};
+
+class HookRecordingBehavior : public osrssim::behavior::NpcBehavior
+{
+private:
+    BehaviorHookObservation* m_Observation = nullptr;
+
+public:
+    explicit HookRecordingBehavior(BehaviorHookObservation& observation)
+        : m_Observation(&observation)
+    {
+    }
+
+    void OnAttack(
+        osrssim::behavior::NpcBehaviorContext&,
+        osrssim::ActorId actorId) override
+    {
+        m_Observation->attack_actor_ids.push_back(actorId);
+    }
+
+    void OnDamageTaken(
+        osrssim::behavior::NpcBehaviorContext&,
+        osrssim::ActorId actorId,
+        osrssim::ActorId sourceActorId,
+        int damage) override
+    {
+        m_Observation->damage_actor_ids.push_back(actorId);
+        m_Observation->damage_source_actor_ids.push_back(sourceActorId);
+        m_Observation->damage_amounts.push_back(damage);
+    }
+
+    void Update(
+        osrssim::behavior::NpcBehaviorContext&,
+        osrssim::ActorId) override
+    {
+    }
+};
+
 class SpawningBehavior : public osrssim::behavior::NpcBehavior
 {
 private:
@@ -376,6 +420,30 @@ int main()
         assert(world.GetActorAttackTimer(playerId) == 2);
         assert(world.GetActorAttackTimer(npcId) == -1);
         assert(world.GetActorAttackTimer(unplacedNpcId) == -3);
+    }
+
+    {
+        osrssim::Engine engine;
+        osrssim::World& world = engine.GetWorld();
+        BehaviorHookObservation observation;
+        const osrssim::ActorId npcId =
+            engine.CreateNpc(
+                1,
+                1,
+                osrssim::CombatComposition{},
+                std::make_unique<HookRecordingBehavior>(observation))
+                .value();
+
+        assert(world.SetActorAttackTimer(npcId, 2));
+
+        engine.Step();
+
+        assert(observation.attack_actor_ids.empty());
+
+        engine.Step();
+
+        assert(observation.attack_actor_ids.size() == 1);
+        assert(observation.attack_actor_ids[0] == npcId);
     }
 
     {
@@ -1185,6 +1253,82 @@ int main()
     {
         osrssim::Engine engine;
         osrssim::World& world = engine.GetWorld();
+        osrssim::CombatService& combatService = engine.GetCombatService();
+        BehaviorHookObservation observation;
+        osrssim::CombatComposition defenderComposition;
+        defenderComposition.stats.hitpoints = 20;
+        defenderComposition.baseStats = defenderComposition.stats;
+        const osrssim::ActorId attackerId =
+            world.CreatePlayer(
+                1,
+                1,
+                CombatCompositionWithWeapon({42, 1, 5}))
+                .value();
+        const osrssim::ActorId targetId =
+            engine.CreateNpc(
+                1,
+                1,
+                defenderComposition,
+                std::make_unique<HookRecordingBehavior>(observation))
+                .value();
+
+        combatService.RegisterGenericAttackCallback(
+            [&combatService](
+                osrssim::World& callbackWorld,
+                osrssim::ActorId attacker,
+                osrssim::ActorId target,
+                osrssim::Tick currentTick,
+                const osrssim::WeaponDefinition&)
+            {
+                osrssim::CombatService::AttackObservation attack =
+                    combatService.CreateAttackObservation(
+                        callbackWorld,
+                        attacker,
+                        target,
+                        currentTick);
+                const bool firstQueued =
+                    combatService.QueueStructuredDamageEvent(
+                        callbackWorld,
+                        attack,
+                        target,
+                        7,
+                        1);
+                const bool secondQueued =
+                    combatService.QueueStructuredDamageEvent(
+                        callbackWorld,
+                        attack,
+                        target,
+                        5,
+                        1);
+
+                if (firstQueued && secondQueued)
+                {
+                    combatService.RecordAttackObservation(attack);
+                }
+
+                return firstQueued && secondQueued;
+            });
+
+        assert(combatService.DispatchAttack(world, attackerId, targetId, 1));
+
+        engine.Step();
+
+        assert(observation.damage_actor_ids.size() == 2);
+        assert(observation.damage_actor_ids[0] == targetId);
+        assert(observation.damage_actor_ids[1] == targetId);
+        assert(observation.damage_source_actor_ids.size() == 2);
+        assert(observation.damage_source_actor_ids[0] == attackerId);
+        assert(observation.damage_source_actor_ids[1] == attackerId);
+        assert(observation.damage_amounts.size() == 2);
+        assert(observation.damage_amounts[0] == 7);
+        assert(observation.damage_amounts[1] == 5);
+        assert(
+            world.GetActorCombatComposition(targetId)->stats.hitpoints == 8);
+    }
+
+    {
+        osrssim::Engine engine;
+        osrssim::World& world = engine.GetWorld();
         const osrssim::WeaponDefinition weapon{42, 8, 5};
         const osrssim::CombatComposition attackerComposition =
             StandardMeleeComposition(weapon, 99);
@@ -1781,10 +1925,12 @@ int main()
 
         engine.Step();
 
-        assert(attack.count == 0);
+        assert(attack.count == 1);
+        assert(attack.attackerId == npcId);
+        assert(attack.targetId == targetId);
         assert(world.GetSceneMembership(npcId)->coordinate ==
                (osrssim::SceneCoordinate{9, 10, 0}));
-        assert(world.GetActorAttackTimer(npcId) == -1);
+        assert(world.GetActorAttackTimer(npcId) == 4);
         assert(world.GetNpc(npcId)->movementTarget.has_value());
         assert(world.GetNpc(npcId)->movementTarget->actorId == targetId);
     }

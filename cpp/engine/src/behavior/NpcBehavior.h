@@ -104,6 +104,12 @@ public:
     virtual ~NpcBehavior() = default;
 
     virtual bool CanBeShared() const;
+    virtual void OnAttack(NpcBehaviorContext& context, ActorId actorId);
+    virtual void OnDamageTaken(
+        NpcBehaviorContext& context,
+        ActorId actorId,
+        ActorId sourceActorId,
+        int damage);
     virtual void Update(NpcBehaviorContext& context, ActorId actorId) = 0;
 };
 

@@ -26,6 +26,9 @@ private:
     };
 
 public:
+    using DamageTakenCallback =
+        std::function<void(World&, ActorId, ActorId, int)>;
+
     struct QueuedDamageEventObservation
     {
         std::uint64_t id = 0;
@@ -74,6 +77,7 @@ private:
     mutable std::uint64_t m_NextDamageEventId = 1;
     mutable std::optional<std::string> m_CurrentAttackCallbackName;
     mutable bool m_CurrentDispatchRecordedAttack = false;
+    DamageTakenCallback m_DamageTakenCallback;
     std::vector<Observer*> m_Observers;
 
 public:
@@ -92,6 +96,7 @@ public:
         const std::string& callbackName);
     void AddObserver(Observer& observer);
     void RemoveObserver(Observer& observer);
+    void SetDamageTakenCallback(DamageTakenCallback callback);
     void SetDpsSeed(unsigned int seed);
     AttackObservation CreateAttackObservation(
         const World& world,
@@ -145,6 +150,7 @@ private:
     void ApplyDamage(
         World& world,
         ActorId targetId,
+        ActorId sourceActorId,
         int damage,
         std::uint64_t damageEventId = 0,
         std::uint64_t attackId = 0) const;

@@ -2,6 +2,7 @@
 
 #include "behavior/DefaultNpcBehavior.h"
 
+#include <algorithm>
 #include <optional>
 #include <stdexcept>
 
@@ -12,6 +13,15 @@ Engine::Engine()
 {
     m_NpcBehaviors.push_back(
         {std::make_unique<behavior::DefaultNpcBehavior>(), 0, false, false});
+    m_CombatService.SetDamageTakenCallback(
+        [this](
+            World&,
+            ActorId actorId,
+            ActorId sourceActorId,
+            int damage)
+        {
+            NotifyNpcDamageTaken(actorId, sourceActorId, damage);
+        });
 }
 
 std::optional<ActorId> Engine::CreatePlayer(
@@ -377,8 +387,7 @@ void Engine::DestroyNpcBehaviorWhenSafe(NpcBehaviorId behaviorId)
 {
     NpcBehaviorSlot& slot = m_NpcBehaviors[behaviorId];
 
-    if (m_UpdatingNpcBehaviorId.has_value() &&
-        m_UpdatingNpcBehaviorId.value() == behaviorId)
+    if (IsNpcBehaviorUpdating(behaviorId))
     {
         slot.destroyWhenSafe = true;
         return;
@@ -386,6 +395,126 @@ void Engine::DestroyNpcBehaviorWhenSafe(NpcBehaviorId behaviorId)
 
     slot.behavior.reset();
     slot.destroyWhenSafe = false;
+}
+
+bool Engine::IsNpcBehaviorUpdating(NpcBehaviorId behaviorId) const
+{
+    return std::find(
+               m_UpdatingNpcBehaviorIds.begin(),
+               m_UpdatingNpcBehaviorIds.end(),
+               behaviorId) != m_UpdatingNpcBehaviorIds.end();
+}
+
+behavior::NpcBehavior* Engine::GetNpcBehaviorForActor(ActorId actorId)
+{
+    const Npc* npc = m_World.GetNpc(actorId);
+
+    if (npc == nullptr)
+    {
+        return nullptr;
+    }
+
+    if (npc->behaviorId >= m_NpcBehaviors.size())
+    {
+        throw std::logic_error("NPC behavior ID is not registered");
+    }
+
+    behavior::NpcBehavior* behavior =
+        m_NpcBehaviors[npc->behaviorId].behavior.get();
+
+    if (behavior == nullptr)
+    {
+        throw std::logic_error("NPC behavior ID is not registered");
+    }
+
+    return behavior;
+}
+
+behavior::NpcBehaviorContext Engine::CreateNpcBehaviorContext()
+{
+    return behavior::NpcBehaviorContext(
+        m_World,
+        m_CombatService,
+        m_CurrentTick,
+        this,
+        [](void* owner, ActorId callbackActorId)
+        {
+            return static_cast<Engine*>(owner)->TryHandleActorTargetCombat(
+                callbackActorId);
+        },
+        [](void* owner, ActorId callbackActorId)
+        {
+            return static_cast<Engine*>(owner)
+                ->IsOverlappingActorMovementTarget(callbackActorId);
+        },
+        [this](
+            int size,
+            int speed,
+            CombatComposition combatComposition)
+        {
+            return CreateNpc(size, speed, combatComposition);
+        },
+        [this](
+            int size,
+            int speed,
+            CombatComposition combatComposition,
+            NpcBehaviorId behaviorId)
+        {
+            return CreateNpc(size, speed, combatComposition, behaviorId);
+        },
+        [this](
+            int size,
+            int speed,
+            CombatComposition combatComposition,
+            std::unique_ptr<behavior::NpcBehavior> ownedBehavior)
+        {
+            return CreateNpc(
+                size,
+                speed,
+                combatComposition,
+                std::move(ownedBehavior));
+        },
+        [this](ActorId callbackActorId)
+        {
+            return RemoveNpc(callbackActorId);
+        },
+        [this](ActorId callbackActorId, NpcBehaviorId behaviorId)
+        {
+            return SetNpcBehavior(callbackActorId, behaviorId);
+        },
+        [this](
+            ActorId callbackActorId,
+            std::unique_ptr<behavior::NpcBehavior> ownedBehavior)
+        {
+            return SetNpcBehavior(callbackActorId, std::move(ownedBehavior));
+        });
+}
+
+void Engine::NotifyNpcDamageTaken(
+    ActorId actorId,
+    ActorId sourceActorId,
+    int damage)
+{
+    const Npc* npc = m_World.GetNpc(actorId);
+
+    if (npc == nullptr)
+    {
+        return;
+    }
+
+    behavior::NpcBehavior* behavior = GetNpcBehaviorForActor(actorId);
+    behavior::NpcBehaviorContext context = CreateNpcBehaviorContext();
+    const NpcBehaviorId updatingBehaviorId = npc->behaviorId;
+
+    m_UpdatingNpcBehaviorIds.push_back(updatingBehaviorId);
+    behavior->OnDamageTaken(context, actorId, sourceActorId, damage);
+    m_UpdatingNpcBehaviorIds.pop_back();
+
+    if (updatingBehaviorId < m_NpcBehaviors.size() &&
+        m_NpcBehaviors[updatingBehaviorId].destroyWhenSafe)
+    {
+        DestroyNpcBehaviorWhenSafe(updatingBehaviorId);
+    }
 }
 
 bool Engine::TryHandleActorTargetCombat(ActorId actorId)
@@ -456,79 +585,35 @@ void Engine::UpdateNpcBehavior(ActorId actorId)
         return;
     }
 
-    behavior::NpcBehavior* behavior = nullptr;
+    behavior::NpcBehavior* behavior = GetNpcBehaviorForActor(actorId);
+    behavior::NpcBehaviorContext context = CreateNpcBehaviorContext();
 
-    if (npc->behaviorId < m_NpcBehaviors.size())
+    if (m_World.GetActorAttackTimer(actorId) <= 0)
     {
-        behavior = m_NpcBehaviors[npc->behaviorId].behavior.get();
+        const NpcBehaviorId attackBehaviorId = npc->behaviorId;
+        m_UpdatingNpcBehaviorIds.push_back(attackBehaviorId);
+        behavior->OnAttack(context, actorId);
+        m_UpdatingNpcBehaviorIds.pop_back();
+
+        if (attackBehaviorId < m_NpcBehaviors.size() &&
+            m_NpcBehaviors[attackBehaviorId].destroyWhenSafe)
+        {
+            DestroyNpcBehaviorWhenSafe(attackBehaviorId);
+        }
     }
 
-    if (behavior == nullptr)
+    npc = m_World.GetNpc(actorId);
+
+    if (npc == nullptr)
     {
-        throw std::logic_error("NPC behavior ID is not registered");
+        return;
     }
 
-    behavior::NpcBehaviorContext context(
-        m_World,
-        m_CombatService,
-        m_CurrentTick,
-        this,
-        [](void* owner, ActorId callbackActorId)
-        {
-            return static_cast<Engine*>(owner)->TryHandleActorTargetCombat(
-                callbackActorId);
-        },
-        [](void* owner, ActorId callbackActorId)
-        {
-            return static_cast<Engine*>(owner)
-                ->IsOverlappingActorMovementTarget(callbackActorId);
-        },
-        [this](
-            int size,
-            int speed,
-            CombatComposition combatComposition)
-        {
-            return CreateNpc(size, speed, combatComposition);
-        },
-        [this](
-            int size,
-            int speed,
-            CombatComposition combatComposition,
-            NpcBehaviorId behaviorId)
-        {
-            return CreateNpc(size, speed, combatComposition, behaviorId);
-        },
-        [this](
-            int size,
-            int speed,
-            CombatComposition combatComposition,
-            std::unique_ptr<behavior::NpcBehavior> ownedBehavior)
-        {
-            return CreateNpc(
-                size,
-                speed,
-                combatComposition,
-                std::move(ownedBehavior));
-        },
-        [this](ActorId callbackActorId)
-        {
-            return RemoveNpc(callbackActorId);
-        },
-        [this](ActorId callbackActorId, NpcBehaviorId behaviorId)
-        {
-            return SetNpcBehavior(callbackActorId, behaviorId);
-        },
-        [this](
-            ActorId callbackActorId,
-            std::unique_ptr<behavior::NpcBehavior> ownedBehavior)
-        {
-            return SetNpcBehavior(callbackActorId, std::move(ownedBehavior));
-        });
-
+    behavior = GetNpcBehaviorForActor(actorId);
     const NpcBehaviorId updatingBehaviorId = npc->behaviorId;
-    m_UpdatingNpcBehaviorId = updatingBehaviorId;
+    m_UpdatingNpcBehaviorIds.push_back(updatingBehaviorId);
     behavior->Update(context, actorId);
-    m_UpdatingNpcBehaviorId = std::nullopt;
+    m_UpdatingNpcBehaviorIds.pop_back();
 
     if (updatingBehaviorId < m_NpcBehaviors.size() &&
         m_NpcBehaviors[updatingBehaviorId].destroyWhenSafe)
@@ -603,12 +688,10 @@ void Engine::UpdatePlayers()
 
         if (!TryHandleActorTargetCombat(actorId))
         {
-            const bool startedFromOverlap =
-                IsOverlappingActorMovementTarget(actorId);
             const bool moved =
                 m_World.UpdatePlayerMovement(actorId, m_CurrentTick);
 
-            if (moved && !startedFromOverlap)
+            if (moved)
             {
                 TryHandleActorTargetCombat(actorId);
             }
