@@ -4,8 +4,10 @@
 
 #include <nlohmann/json.hpp>
 
+#include <cstdint>
 #include <string>
 #include <unordered_map>
+#include <unordered_set>
 
 namespace osrssim::recording
 {
@@ -20,6 +22,7 @@ private:
     std::unordered_map<std::string, nlohmann::json> m_PreviousSceneEntities;
     nlohmann::json m_PendingAttacks = nlohmann::json::array();
     nlohmann::json m_PendingDamageApplications = nlohmann::json::array();
+    std::unordered_set<std::uint64_t> m_RecordedQueuedDamageEventIds;
 
     static nlohmann::json CreateEmptyTick(int tick);
     static nlohmann::json CreateActorSnapshot(

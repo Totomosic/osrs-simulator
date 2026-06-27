@@ -934,8 +934,8 @@ std::string EncounterRecorder::ExportVersion2Json() const
              {"actorFacts", CreateVersion2ActorFacts(tick.at("actors"))},
              {"sceneEntityFacts",
               CreateVersion2SceneEntityFacts(tick.at("sceneChanges"))},
-             {"attacks", nlohmann::json::array()},
-             {"damageApplications", nlohmann::json::array()},
+             {"attacks", tick.at("attacks")},
+             {"damageApplications", tick.at("damageApplications")},
              {"visibleProjectiles", tick.at("projectiles")}});
     }
 
@@ -964,6 +964,7 @@ void EncounterRecorder::OnAttackQueued(
     for (const CombatService::QueuedDamageEventObservation& damageEvent :
          attack.queuedDamageEvents)
     {
+        m_RecordedQueuedDamageEventIds.insert(damageEvent.id);
         queuedDamageEvents.push_back(
             {{"id", damageEvent.id},
              {"attackId", damageEvent.attackId},
@@ -991,6 +992,12 @@ void EncounterRecorder::OnAttackQueued(
 void EncounterRecorder::OnDamageApplied(
     const CombatService::DamageApplicationObservation& damageApplication)
 {
+    if (!m_RecordedQueuedDamageEventIds.contains(
+            damageApplication.damageEventId))
+    {
+        return;
+    }
+
     m_PendingDamageApplications.push_back(
         {{"damageEventId", damageApplication.damageEventId},
          {"attackId", damageApplication.attackId},

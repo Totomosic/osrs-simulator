@@ -6,6 +6,7 @@
 #include <stdexcept>
 #include <tuple>
 #include <unordered_map>
+#include <unordered_set>
 #include <vector>
 
 namespace osrssim::recording
@@ -957,6 +958,78 @@ void ValidateVersion2SceneEntityProjection(const EncounterRecording& recording)
     }
 }
 
+void ValidateVersion2CombatProjection(const EncounterRecording& recording)
+{
+    std::unordered_set<unsigned long long> queuedDamageEventIds;
+
+    if (recording.GetInitialFacts().contains("attacks") ||
+        recording.GetInitialFacts().contains("damageApplications"))
+    {
+        throw std::invalid_argument(
+            "Recording Validity failed: initial facts cannot contain combat facts");
+    }
+
+    for (const CompletedRecordingTick& completedTick :
+         recording.GetCompletedTicks())
+    {
+        for (const nlohmann::json& attack :
+             completedTick.facts.at("attacks"))
+        {
+            ValidateAttackShape(attack);
+
+            if (attack.at("tick").get<int>() != completedTick.tick)
+            {
+                throw std::invalid_argument(
+                    "Recording Validity failed: attack tick does not match completed tick");
+            }
+
+            const unsigned long long attackId =
+                attack.at("id").get<unsigned long long>();
+
+            for (const nlohmann::json& damageEvent :
+                 attack.at("queuedDamageEvents"))
+            {
+                if (damageEvent.at("attackId").get<unsigned long long>() !=
+                    attackId)
+                {
+                    throw std::invalid_argument(
+                        "Recording Validity failed: queued damage attack id mismatch");
+                }
+
+                const unsigned long long damageEventId =
+                    damageEvent.at("id").get<unsigned long long>();
+
+                if (!queuedDamageEventIds.insert(damageEventId).second)
+                {
+                    throw std::invalid_argument(
+                        "Projection Validity failed: duplicate queued damage event");
+                }
+            }
+        }
+
+        for (const nlohmann::json& damageApplication :
+             completedTick.facts.at("damageApplications"))
+        {
+            ValidateDamageApplicationShape(damageApplication);
+
+            if (damageApplication.at("tick").get<int>() != completedTick.tick)
+            {
+                throw std::invalid_argument(
+                    "Recording Validity failed: damage application tick does not match completed tick");
+            }
+
+            const unsigned long long damageEventId =
+                damageApplication.at("damageEventId").get<unsigned long long>();
+
+            if (!queuedDamageEventIds.contains(damageEventId))
+            {
+                throw std::invalid_argument(
+                    "Projection Validity failed: damage application references unknown queued damage event");
+            }
+        }
+    }
+}
+
 Scene& GetPlaybackScene(
     std::unordered_map<SceneId, Scene>& scenes,
     SceneId sceneId)
@@ -1369,6 +1442,8 @@ RecordingPlayback RecordingPlayback::LoadFromJson(const std::string& jsonText)
             EncounterRecording::LoadFromJson(playback.m_Recording);
         ValidateVersion2ActorProjection(playback.m_Version2Recording.value());
         ValidateVersion2SceneEntityProjection(
+            playback.m_Version2Recording.value());
+        ValidateVersion2CombatProjection(
             playback.m_Version2Recording.value());
         playback.m_CurrentTick =
             playback.m_Version2Recording->GetInitialTick();
