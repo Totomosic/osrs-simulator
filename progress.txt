@@ -19,3 +19,14 @@ Decisions: added ActorMovementAccess as narrow scene/coordinate actor-state hand
 Files changed: cpp/engine/src/ActorMovement.h; cpp/engine/src/ActorMovement.cpp; cpp/engine/src/World.cpp; cpp/engine/tests/ActorMovementTest.cpp; progress.txt.
 Validation: cmake --build build; ctest --test-dir build --output-on-failure; 16/16 passed.
 Notes: #128-#130 still open; PRD #125 remains open.
+
+Selected issue: #128 Move scene-coordinate movement targets into actor movement
+Parent PRD: #125 PRD: Deepen actor movement module
+Docs read: CONTEXT.md; docs/architecture/simulation-model.md; docs/adr/0003-osrs-scene-model.md; docs/adr/0004-coarse-actor-occupancy.md; docs/adr/0005-world-owns-scenes-and-actors.md
+Plan: add focused ActorMovement scene-coordinate pursuit tests; move destination validation, target delta, blocked/partial movement, invalid/arrival clearing, and NPC occupancy-only keep behavior behind ActorMovement; keep World target storage/API; retain representative World facade tests; run build and CTest.
+
+Completed: #128 / PRD #125 stories 6, 14, 15, 20, 21
+Decisions: added ActorMovementTargetResult with moved/clearTarget so World keeps actor movement target storage but ActorMovement owns scene-coordinate interpretation; kept World responsible for projectile refresh after successful target movement; left actor-target pursuit in World for #129.
+Files changed: cpp/engine/src/ActorMovement.h; cpp/engine/src/ActorMovement.cpp; cpp/engine/src/World.h; cpp/engine/src/World.cpp; cpp/engine/tests/ActorMovementTest.cpp; progress.txt.
+Validation: cmake --build build; ctest --test-dir build --output-on-failure; 16/16 passed.
+Notes: #129 and #130 still open; PRD #125 remains open.

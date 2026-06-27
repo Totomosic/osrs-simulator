@@ -182,9 +182,6 @@ private:
         const Scene& scene,
         SceneCoordinate coordinate,
         int actorSize) const;
-    bool IsActorAtSceneCoordinateMovementTarget(
-        SceneCoordinate actorCoordinate,
-        SceneCoordinate target) const;
     bool AreActorFootprintsEdgeAdjacent(
         const ActorCore& mover,
         SceneCoordinate moverCoordinate,
@@ -235,11 +232,6 @@ private:
         SceneCoordinate current,
         SceneCoordinate destination,
         int actorSize) const;
-    bool IsFinalNpcOccupancyOnlyBlock(
-        const Scene& scene,
-        const ActorCore& actor,
-        SceneCoordinate current,
-        SceneCoordinate destination) const;
     bool TryResolveMovementDelta(
         const Scene& scene,
         ActorKind actorKind,

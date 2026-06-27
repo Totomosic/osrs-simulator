@@ -302,6 +302,55 @@ ActorMovementResult ActorMovement::MoveByDelta(
     return {true};
 }
 
+ActorMovementTargetResult ActorMovement::PursueSceneCoordinateTarget(
+    ActorMovementAccess& access,
+    SceneCoordinate target) const
+{
+    if (&access.GetScene() != &m_Scene)
+    {
+        return {false, true};
+    }
+
+    const SceneCoordinate current = access.GetCoordinate();
+
+    if (!m_Scene.Contains(target) || target.plane != current.plane)
+    {
+        return {false, true};
+    }
+
+    if (target.x == current.x && target.y == current.y)
+    {
+        return {false, true};
+    }
+
+    const int dx =
+        GetMovementDeltaForAxis(current.x, 1, target.x, access.GetSpeed());
+    const int dy =
+        GetMovementDeltaForAxis(current.y, 1, target.y, access.GetSpeed());
+    const ActorMovementResult movementResult = MoveByDelta(access, dx, dy);
+
+    if (!movementResult.moved)
+    {
+        const SceneCoordinate attemptedDestination{
+            current.x + dx,
+            current.y + dy,
+            current.plane};
+        const bool keepDynamicNpcTarget = IsFinalNpcOccupancyOnlyBlock(
+            access,
+            current,
+            attemptedDestination);
+
+        return {false, !keepDynamicNpcTarget};
+    }
+
+    const SceneCoordinate updated = access.GetCoordinate();
+    const bool reachedTarget =
+        target.plane == updated.plane && target.x == updated.x &&
+        target.y == updated.y;
+
+    return {true, reachedTarget};
+}
+
 bool ActorMovement::IsAdjacentStep(int dx, int dy)
 {
     return Abs(dx) <= 1 && Abs(dy) <= 1 && (dx != 0 || dy != 0);
@@ -397,6 +446,40 @@ bool ActorMovement::IsBetterResolvedDelta(
     }
 
     return Abs(candidateDx) + Abs(candidateDy) > Abs(bestDx) + Abs(bestDy);
+}
+
+int ActorMovement::ClampDelta(int delta, int speed)
+{
+    if (delta > speed)
+    {
+        return speed;
+    }
+
+    if (delta < -speed)
+    {
+        return -speed;
+    }
+
+    return delta;
+}
+
+int ActorMovement::GetMovementDeltaForAxis(
+    int anchor,
+    int size,
+    int target,
+    int speed)
+{
+    if (target < anchor)
+    {
+        return ClampDelta(target - anchor, speed);
+    }
+
+    if (target >= anchor + size)
+    {
+        return ClampDelta(target - (anchor + size - 1), speed);
+    }
+
+    return 0;
 }
 
 int ActorMovement::Sign(int value)
@@ -766,6 +849,31 @@ bool ActorMovement::HasFinalNpcOccupancyConflict(
     }
 
     return false;
+}
+
+bool ActorMovement::IsFinalNpcOccupancyOnlyBlock(
+    const ActorMovementAccess& access,
+    SceneCoordinate current,
+    SceneCoordinate destination) const
+{
+    if (access.GetKind() != ActorMovementKind::Npc)
+    {
+        return false;
+    }
+
+    const DiagonalSideFootprintRule diagonalSideFootprintRule =
+        GetDiagonalSideFootprintRule(access.GetKind(), access.GetSize());
+
+    return CanMoveIgnoringActorOccupancy(
+               current,
+               destination,
+               access.GetSpeed(),
+               access.GetSize(),
+               diagonalSideFootprintRule) &&
+           HasFinalNpcOccupancyConflict(
+               current,
+               destination,
+               access.GetSize());
 }
 
 bool ActorMovement::HasNpcDiagonalSideOccupancyConflict(

@@ -788,70 +788,99 @@ bool World::UpdateActorMovement(ActorId actorId, Tick currentTick)
         return false;
     }
 
-    const Scene* scene = TryGetScene(membership->sceneId);
+    Scene* scene = TryGetScene(membership->sceneId);
     SceneCoordinate destination;
     bool actorTargetOverlaps = false;
 
     if (movementTarget->value().kind == MovementTargetKind::SceneCoordinate)
     {
-        destination = movementTarget->value().sceneCoordinate;
-
-        if (scene == nullptr || !scene->Contains(destination) ||
-            destination.plane != membership->coordinate.plane)
+        if (scene == nullptr)
         {
             *movementTarget = std::nullopt;
             return false;
         }
 
-        if (IsActorAtSceneCoordinateMovementTarget(
-                membership->coordinate,
-                destination))
+        const ActorKind actorKind = GetActorKind(actorId);
+        ActorMovementAccess access(
+            *scene,
+            membership->coordinate,
+            actorKind == ActorKind::Player ? ActorMovementKind::Player
+                                           : ActorMovementKind::Npc,
+            actor->size,
+            actor->speed);
+        ActorMovement actorMovement(*scene);
+        const ActorMovementTargetResult result =
+            actorMovement.PursueSceneCoordinateTarget(
+                access,
+                movementTarget->value().sceneCoordinate);
+
+        if (result.clearTarget)
         {
             *movementTarget = std::nullopt;
-            return false;
         }
+
+        if (result.moved)
+        {
+            UpdateProjectilesTargetingActor(actorId);
+        }
+
+        return result.moved;
     }
-    else
+
+    const ActorCore* targetActor =
+        TryGetActorCore(movementTarget->value().actorId);
+    const SceneMembership* targetMembership =
+        GetSceneMembership(movementTarget->value().actorId);
+
+    if (scene == nullptr || targetActor == nullptr ||
+        targetMembership == nullptr ||
+        targetMembership->sceneId != membership->sceneId ||
+        targetMembership->coordinate.plane != membership->coordinate.plane)
     {
-        const ActorCore* targetActor =
-            TryGetActorCore(movementTarget->value().actorId);
-        const SceneMembership* targetMembership =
-            GetSceneMembership(movementTarget->value().actorId);
-
-        if (scene == nullptr || targetActor == nullptr ||
-            targetMembership == nullptr ||
-            targetMembership->sceneId != membership->sceneId ||
-            targetMembership->coordinate.plane != membership->coordinate.plane)
-        {
-            *movementTarget = std::nullopt;
-            return false;
-        }
-
-        if (AreActorFootprintsEdgeAdjacent(
-                *actor,
-                membership->coordinate,
-                *targetActor,
-                targetMembership->coordinate))
-        {
-            return false;
-        }
-
-        if (AreActorFootprintsOverlapping(
-                *actor,
-                membership->coordinate,
-                *targetActor,
-                targetMembership->coordinate))
-        {
-            actorTargetOverlaps = true;
-        }
-
-        destination = targetMembership->coordinate;
+        *movementTarget = std::nullopt;
+        return false;
     }
+
+    if (AreActorFootprintsEdgeAdjacent(
+            *actor,
+            membership->coordinate,
+            *targetActor,
+            targetMembership->coordinate))
+    {
+        return false;
+    }
+
+    if (AreActorFootprintsOverlapping(
+            *actor,
+            membership->coordinate,
+            *targetActor,
+            targetMembership->coordinate))
+    {
+        actorTargetOverlaps = true;
+    }
+
+    destination = targetMembership->coordinate;
 
     int dx = 0;
     int dy = 0;
 
-    if (movementTarget->value().kind == MovementTargetKind::SceneCoordinate)
+    if (actorTargetOverlaps)
+    {
+        if (scene == nullptr ||
+            !TryGetActorTargetOverlapEscapeMovementDelta(
+                *scene,
+                GetActorKind(actorId),
+                *actor,
+                membership->coordinate,
+                movementTarget->value().actorId,
+                currentTick,
+                dx,
+                dy))
+        {
+            return false;
+        }
+    }
+    else
     {
         dx = GetMovementDeltaForAxis(
             membership->coordinate.x,
@@ -863,73 +892,41 @@ bool World::UpdateActorMovement(ActorId actorId, Tick currentTick)
             1,
             destination.y,
             actor->speed);
-    }
-    else
-    {
-        if (actorTargetOverlaps)
+
+        int edgeAdjacentDx = 0;
+        int edgeAdjacentDy = 0;
+        const ActorCore* targetActor =
+            TryGetActorCore(movementTarget->value().actorId);
+        const SceneMembership* targetMembership =
+            GetSceneMembership(movementTarget->value().actorId);
+        const bool cornerContact =
+            targetActor != nullptr && targetMembership != nullptr &&
+            AreActorFootprintsCornerContact(
+                *actor,
+                membership->coordinate,
+                *targetActor,
+                targetMembership->coordinate);
+
+        if (scene != nullptr && targetActor != nullptr &&
+            targetMembership != nullptr &&
+            TryGetActorTargetEdgeAdjacentMovementDelta(
+                *scene,
+                GetActorKind(actorId),
+                *actor,
+                membership->coordinate,
+                dx,
+                dy,
+                *targetActor,
+                targetMembership->coordinate,
+                edgeAdjacentDx,
+                edgeAdjacentDy))
         {
-            if (scene == nullptr ||
-                !TryGetActorTargetOverlapEscapeMovementDelta(
-                    *scene,
-                    GetActorKind(actorId),
-                    *actor,
-                    membership->coordinate,
-                    movementTarget->value().actorId,
-                    currentTick,
-                    dx,
-                    dy))
-            {
-                return false;
-            }
+            dx = edgeAdjacentDx;
+            dy = edgeAdjacentDy;
         }
-        else
+        else if (cornerContact)
         {
-            dx = GetMovementDeltaForAxis(
-                membership->coordinate.x,
-                1,
-                destination.x,
-                actor->speed);
-            dy = GetMovementDeltaForAxis(
-                membership->coordinate.y,
-                1,
-                destination.y,
-                actor->speed);
-
-            int edgeAdjacentDx = 0;
-            int edgeAdjacentDy = 0;
-            const ActorCore* targetActor =
-                TryGetActorCore(movementTarget->value().actorId);
-            const SceneMembership* targetMembership =
-                GetSceneMembership(movementTarget->value().actorId);
-            const bool cornerContact =
-                targetActor != nullptr && targetMembership != nullptr &&
-                AreActorFootprintsCornerContact(
-                    *actor,
-                    membership->coordinate,
-                    *targetActor,
-                    targetMembership->coordinate);
-
-            if (scene != nullptr && targetActor != nullptr &&
-                targetMembership != nullptr &&
-                TryGetActorTargetEdgeAdjacentMovementDelta(
-                    *scene,
-                    GetActorKind(actorId),
-                    *actor,
-                    membership->coordinate,
-                    dx,
-                    dy,
-                    *targetActor,
-                    targetMembership->coordinate,
-                    edgeAdjacentDx,
-                    edgeAdjacentDy))
-            {
-                dx = edgeAdjacentDx;
-                dy = edgeAdjacentDy;
-            }
-            else if (cornerContact)
-            {
-                return false;
-            }
+            return false;
         }
     }
 
@@ -937,41 +934,7 @@ bool World::UpdateActorMovement(ActorId actorId, Tick currentTick)
 
     if (!moved)
     {
-        const SceneCoordinate attemptedDestination{
-            membership->coordinate.x + dx,
-            membership->coordinate.y + dy,
-            membership->coordinate.plane};
-        const bool shouldKeepDynamicSceneCoordinateTarget =
-            movementTarget->value().kind == MovementTargetKind::SceneCoordinate &&
-            GetActorKind(actorId) == ActorKind::Npc && scene != nullptr &&
-            IsFinalNpcOccupancyOnlyBlock(
-                *scene,
-                *actor,
-                membership->coordinate,
-                attemptedDestination);
-
-        if (movementTarget->value().kind == MovementTargetKind::SceneCoordinate &&
-            !shouldKeepDynamicSceneCoordinateTarget)
-        {
-            *movementTarget = std::nullopt;
-        }
-
         return false;
-    }
-
-    const SceneMembership* updatedMembership = GetSceneMembership(actorId);
-
-    if (updatedMembership != nullptr)
-    {
-        if (movementTarget->value().kind == MovementTargetKind::SceneCoordinate)
-        {
-            if (IsActorAtSceneCoordinateMovementTarget(
-                    updatedMembership->coordinate,
-                    destination))
-            {
-                *movementTarget = std::nullopt;
-            }
-        }
     }
 
     return moved;
@@ -1194,15 +1157,6 @@ bool World::CanUseSceneCoordinateMovementTarget(
     int actorSize) const
 {
     return CanStandOnMovementBlockers(scene, coordinate, actorSize);
-}
-
-bool World::IsActorAtSceneCoordinateMovementTarget(
-    SceneCoordinate actorCoordinate,
-    SceneCoordinate target) const
-{
-    return target.plane == actorCoordinate.plane &&
-           target.x == actorCoordinate.x &&
-           target.y == actorCoordinate.y;
 }
 
 bool World::AreActorFootprintsEdgeAdjacent(
@@ -1579,29 +1533,6 @@ bool World::HasFinalNpcOccupancyConflict(
     }
 
     return false;
-}
-
-bool World::IsFinalNpcOccupancyOnlyBlock(
-    const Scene& scene,
-    const ActorCore& actor,
-    SceneCoordinate current,
-    SceneCoordinate destination) const
-{
-    ActorMovement actorMovement(scene);
-    const DiagonalSideFootprintRule diagonalSideFootprintRule =
-        GetDiagonalSideFootprintRule(ActorKind::Npc, actor);
-
-    return actorMovement.CanMoveIgnoringActorOccupancy(
-               current,
-               destination,
-               actor.speed,
-               actor.size,
-               diagonalSideFootprintRule) &&
-           HasFinalNpcOccupancyConflict(
-               scene,
-               current,
-               destination,
-               actor.size);
 }
 
 bool World::TryResolveMovementDelta(

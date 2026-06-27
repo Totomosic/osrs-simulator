@@ -433,6 +433,29 @@ int main()
         osrssim::SceneCoordinate coordinate{10, 10, 0};
 
         scene.TryGetTile(coordinate)->AddFlag(osrssim::TileFlag::Occupied);
+
+        osrssim::ActorMovementAccess access(
+            scene,
+            coordinate,
+            osrssim::ActorMovementKind::Player,
+            1,
+            1);
+
+        const osrssim::ActorMovementTargetResult result =
+            actorMovement.PursueSceneCoordinateTarget(access, {104, 10, 0});
+
+        assert(!result.moved);
+        assert(result.clearTarget);
+        assert(coordinate == (osrssim::SceneCoordinate{10, 10, 0}));
+        assert(scene.TryGetTile({10, 10, 0})->IsOccupied());
+    }
+
+    {
+        osrssim::Scene scene;
+        osrssim::ActorMovement actorMovement(scene);
+        osrssim::SceneCoordinate coordinate{10, 10, 0};
+
+        scene.TryGetTile(coordinate)->AddFlag(osrssim::TileFlag::Occupied);
         scene.TryGetTile({12, 10, 0})
             ->AddFlag(osrssim::TileFlag::BlockMovementObject);
 
@@ -483,6 +506,109 @@ int main()
         assert(scene.TryGetTile({11, 10, 0})->IsOccupied());
         assert(scene.TryGetTile({20, 20, 0})->IsOccupied());
         assert(scene.TryGetTile({21, 20, 0})->IsOccupied());
+    }
+
+    {
+        osrssim::Scene scene;
+        osrssim::ActorMovement actorMovement(scene);
+        osrssim::SceneCoordinate coordinate{10, 10, 0};
+
+        scene.TryGetTile(coordinate)->AddFlag(osrssim::TileFlag::Occupied);
+
+        osrssim::ActorMovementAccess access(
+            scene,
+            coordinate,
+            osrssim::ActorMovementKind::Player,
+            1,
+            2);
+
+        const osrssim::SceneCoordinate target{12, 10, 0};
+        const osrssim::ActorMovementTargetResult result =
+            actorMovement.PursueSceneCoordinateTarget(access, target);
+
+        assert(result.moved);
+        assert(result.clearTarget);
+        assert(coordinate == target);
+        assert(!scene.TryGetTile({10, 10, 0})->IsOccupied());
+        assert(scene.TryGetTile(target)->IsOccupied());
+    }
+
+    {
+        osrssim::Scene scene;
+        osrssim::ActorMovement actorMovement(scene);
+        osrssim::SceneCoordinate coordinate{10, 10, 0};
+
+        scene.TryGetTile(coordinate)->AddFlag(osrssim::TileFlag::Occupied);
+        scene.TryGetTile({12, 10, 0})
+            ->AddFlag(osrssim::TileFlag::BlockMovementObject);
+
+        osrssim::ActorMovementAccess access(
+            scene,
+            coordinate,
+            osrssim::ActorMovementKind::Player,
+            1,
+            2);
+
+        const osrssim::ActorMovementTargetResult result =
+            actorMovement.PursueSceneCoordinateTarget(access, {12, 10, 0});
+
+        assert(result.moved);
+        assert(!result.clearTarget);
+        assert(coordinate == (osrssim::SceneCoordinate{11, 10, 0}));
+        assert(!scene.TryGetTile({10, 10, 0})->IsOccupied());
+        assert(scene.TryGetTile({11, 10, 0})->IsOccupied());
+        assert(!scene.TryGetTile({12, 10, 0})->IsOccupied());
+    }
+
+    {
+        osrssim::Scene scene;
+        osrssim::ActorMovement actorMovement(scene);
+        osrssim::SceneCoordinate coordinate{10, 10, 0};
+
+        scene.TryGetTile(coordinate)->AddFlag(osrssim::TileFlag::Occupied);
+        scene.TryGetTile({11, 10, 0})
+            ->AddFlag(osrssim::TileFlag::BlockMovementObject);
+
+        osrssim::ActorMovementAccess access(
+            scene,
+            coordinate,
+            osrssim::ActorMovementKind::Player,
+            1,
+            1);
+
+        const osrssim::ActorMovementTargetResult result =
+            actorMovement.PursueSceneCoordinateTarget(access, {12, 10, 0});
+
+        assert(!result.moved);
+        assert(result.clearTarget);
+        assert(coordinate == (osrssim::SceneCoordinate{10, 10, 0}));
+        assert(scene.TryGetTile({10, 10, 0})->IsOccupied());
+        assert(!scene.TryGetTile({11, 10, 0})->IsOccupied());
+    }
+
+    {
+        osrssim::Scene scene;
+        osrssim::ActorMovement actorMovement(scene);
+        osrssim::SceneCoordinate coordinate{10, 10, 0};
+
+        scene.TryGetTile(coordinate)->AddFlag(osrssim::TileFlag::Occupied);
+        scene.TryGetTile({11, 10, 0})->AddFlag(osrssim::TileFlag::Occupied);
+
+        osrssim::ActorMovementAccess access(
+            scene,
+            coordinate,
+            osrssim::ActorMovementKind::Npc,
+            1,
+            1);
+
+        const osrssim::ActorMovementTargetResult result =
+            actorMovement.PursueSceneCoordinateTarget(access, {11, 10, 0});
+
+        assert(!result.moved);
+        assert(!result.clearTarget);
+        assert(coordinate == (osrssim::SceneCoordinate{10, 10, 0}));
+        assert(scene.TryGetTile({10, 10, 0})->IsOccupied());
+        assert(scene.TryGetTile({11, 10, 0})->IsOccupied());
     }
 
     return 0;

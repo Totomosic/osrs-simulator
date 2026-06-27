@@ -23,6 +23,12 @@ struct ActorMovementResult
     bool moved = false;
 };
 
+struct ActorMovementTargetResult
+{
+    bool moved = false;
+    bool clearTarget = false;
+};
+
 class ActorMovementAccess
 {
 private:
@@ -81,6 +87,9 @@ public:
         ActorMovementAccess& access,
         int requestedDx,
         int requestedDy) const;
+    ActorMovementTargetResult PursueSceneCoordinateTarget(
+        ActorMovementAccess& access,
+        SceneCoordinate target) const;
 
 private:
     static bool IsAdjacentStep(int dx, int dy);
@@ -99,6 +108,12 @@ private:
         int candidateDy,
         int bestDx,
         int bestDy);
+    static int ClampDelta(int delta, int speed);
+    static int GetMovementDeltaForAxis(
+        int anchor,
+        int size,
+        int target,
+        int speed);
     static int Sign(int value);
     static TileFlag GetSourceMovementFlag(int dx, int dy);
     static TileFlag GetDestinationMovementFlag(int dx, int dy);
@@ -134,6 +149,10 @@ private:
         SceneCoordinate current,
         SceneCoordinate destination,
         int actorSize) const;
+    bool IsFinalNpcOccupancyOnlyBlock(
+        const ActorMovementAccess& access,
+        SceneCoordinate current,
+        SceneCoordinate destination) const;
     bool HasNpcDiagonalSideOccupancyConflict(
         SceneCoordinate current,
         SceneCoordinate destination,
