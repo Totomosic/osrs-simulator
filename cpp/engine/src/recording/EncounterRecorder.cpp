@@ -162,6 +162,36 @@ std::string ToSnakeCaseEnum(std::string value)
         return "actor";
     }
 
+    if (value == "GameObject")
+    {
+        return "game_object";
+    }
+
+    if (value == "WallObject")
+    {
+        return "wall_object";
+    }
+
+    if (value == "North")
+    {
+        return "north";
+    }
+
+    if (value == "East")
+    {
+        return "east";
+    }
+
+    if (value == "South")
+    {
+        return "south";
+    }
+
+    if (value == "West")
+    {
+        return "west";
+    }
+
     return value;
 }
 
@@ -267,6 +297,68 @@ nlohmann::json CreateVersion2ActorFacts(const nlohmann::json& actors)
     }
 
     return actorFacts;
+}
+
+nlohmann::json CreateVersion2WallDirectionFacts(
+    const nlohmann::json& directions)
+{
+    nlohmann::json directionFacts = nlohmann::json::array();
+
+    for (const nlohmann::json& direction : directions)
+    {
+        directionFacts.push_back(
+            {{"direction",
+              ToSnakeCaseEnum(direction.at("direction").get<std::string>())},
+             {"collision", direction.at("collision")}});
+    }
+
+    return directionFacts;
+}
+
+nlohmann::json CreateVersion2SceneEntityFact(
+    const nlohmann::json& sceneEntity)
+{
+    nlohmann::json fact = {
+        {"kind", ToSnakeCaseEnum(sceneEntity.at("kind").get<std::string>())},
+        {"sceneId", sceneEntity.at("sceneId")},
+        {"id", sceneEntity.at("id")},
+        {"coordinate", sceneEntity.at("coordinate")},
+        {"present", sceneEntity.value("present", true)}};
+
+    if (!fact.at("present").get<bool>())
+    {
+        return fact;
+    }
+
+    fact["direction"] =
+        ToSnakeCaseEnum(sceneEntity.at("direction").get<std::string>());
+    fact["collision"] = sceneEntity.at("collision");
+
+    if (sceneEntity.at("kind").get<std::string>() == "GameObject")
+    {
+        fact["sizeX"] = sceneEntity.at("sizeX");
+        fact["sizeY"] = sceneEntity.at("sizeY");
+    }
+    else if (sceneEntity.contains("directions"))
+    {
+        fact["directions"] =
+            CreateVersion2WallDirectionFacts(sceneEntity.at("directions"));
+    }
+
+    return fact;
+}
+
+nlohmann::json CreateVersion2SceneEntityFacts(
+    const nlohmann::json& sceneEntities)
+{
+    nlohmann::json sceneEntityFacts = nlohmann::json::array();
+
+    for (const nlohmann::json& sceneEntity : sceneEntities)
+    {
+        sceneEntityFacts.push_back(CreateVersion2SceneEntityFact(sceneEntity));
+    }
+
+    return sceneEntityFacts;
 }
 
 const char* CardinalDirectionName(CardinalDirection direction)
@@ -840,7 +932,8 @@ std::string EncounterRecorder::ExportVersion2Json() const
         completedTicks.push_back(
             {{"tick", tick.at("tick")},
              {"actorFacts", CreateVersion2ActorFacts(tick.at("actors"))},
-             {"sceneEntityFacts", nlohmann::json::array()},
+             {"sceneEntityFacts",
+              CreateVersion2SceneEntityFacts(tick.at("sceneChanges"))},
              {"attacks", nlohmann::json::array()},
              {"damageApplications", nlohmann::json::array()},
              {"visibleProjectiles", tick.at("projectiles")}});
@@ -854,7 +947,9 @@ std::string EncounterRecorder::ExportVersion2Json() const
          {{"actorFacts",
            CreateVersion2ActorFacts(
                m_Recording.at("initialState").at("actors"))},
-          {"sceneEntityFacts", nlohmann::json::array()},
+          {"sceneEntityFacts",
+           CreateVersion2SceneEntityFacts(
+               m_Recording.at("initialState").at("sceneEntities"))},
           {"visibleProjectiles",
            m_Recording.at("initialState").at("projectiles")}}},
         {"completedTicks", completedTicks}}

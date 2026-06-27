@@ -72,22 +72,22 @@ CardinalDirection ParseCardinalDirection(const nlohmann::json& value)
 {
     const std::string direction = value.get<std::string>();
 
-    if (direction == "North")
+    if (direction == "North" || direction == "north")
     {
         return CardinalDirection::North;
     }
 
-    if (direction == "East")
+    if (direction == "East" || direction == "east")
     {
         return CardinalDirection::East;
     }
 
-    if (direction == "South")
+    if (direction == "South" || direction == "south")
     {
         return CardinalDirection::South;
     }
 
-    if (direction == "West")
+    if (direction == "West" || direction == "west")
     {
         return CardinalDirection::West;
     }
@@ -129,6 +129,21 @@ bool IsKnownActorKind(const std::string& value)
 {
     return value == "Player" || value == "Npc" ||
            value == "player" || value == "npc";
+}
+
+bool IsGameObjectKind(const std::string& value)
+{
+    return value == "GameObject" || value == "game_object";
+}
+
+bool IsWallObjectKind(const std::string& value)
+{
+    return value == "WallObject" || value == "wall_object";
+}
+
+int SceneEntityKindSortRank(const nlohmann::json& sceneEntity)
+{
+    return IsGameObjectKind(sceneEntity.at("kind").get<std::string>()) ? 0 : 1;
 }
 
 void RequireKnownStringValue(
@@ -591,10 +606,8 @@ std::vector<std::string> GetSortedSceneEntityKeys(
             const nlohmann::json& right = sceneEntities.at(rhs);
             const nlohmann::json& leftCoordinate = left.at("coordinate");
             const nlohmann::json& rightCoordinate = right.at("coordinate");
-            const int leftKind =
-                left.at("kind").get<std::string>() == "GameObject" ? 0 : 1;
-            const int rightKind =
-                right.at("kind").get<std::string>() == "GameObject" ? 0 : 1;
+            const int leftKind = SceneEntityKindSortRank(left);
+            const int rightKind = SceneEntityKindSortRank(right);
 
             return std::tuple{
                        left.at("sceneId").get<int>(),
@@ -794,6 +807,152 @@ void ValidateSceneEntityShape(const nlohmann::json& sceneEntity)
         {
             ParseWallDirectionEntryDirection(direction);
             ParseWallDirectionEntryCollision(direction);
+        }
+    }
+}
+
+bool IsFullRecordedSceneEntityFact(const nlohmann::json& fact)
+{
+    return fact.contains("present") &&
+           fact.at("present").is_boolean() &&
+           fact.at("present").get<bool>() &&
+           fact.contains("direction") &&
+           fact.contains("collision");
+}
+
+void ValidateRecordedSceneEntityFactShape(const nlohmann::json& fact)
+{
+    RequireObjectField(fact, "kind", RequiredJsonKind::String);
+    RequireObjectField(fact, "sceneId", RequiredJsonKind::Integer);
+    RequireObjectField(fact, "id", RequiredJsonKind::Integer);
+    RequireObjectField(fact, "coordinate", RequiredJsonKind::Object);
+    ValidateSceneCoordinateShape(fact.at("coordinate"));
+    RequireObjectField(fact, "present", RequiredJsonKind::Boolean);
+
+    const std::string kind = fact.at("kind").get<std::string>();
+
+    if (!IsGameObjectKind(kind) && !IsWallObjectKind(kind))
+    {
+        throw std::invalid_argument("Unknown Recorded Scene Entity kind");
+    }
+
+    if (!fact.at("present").get<bool>())
+    {
+        return;
+    }
+
+    RequireObjectField(fact, "direction", RequiredJsonKind::String);
+    ParseCardinalDirection(fact.at("direction"));
+    RequireObjectField(fact, "collision", RequiredJsonKind::Object);
+    ParseCollisionProfile(fact.at("collision"));
+
+    if (IsGameObjectKind(kind))
+    {
+        RequireObjectField(fact, "sizeX", RequiredJsonKind::Integer);
+        RequireObjectField(fact, "sizeY", RequiredJsonKind::Integer);
+        return;
+    }
+
+    if (fact.contains("directions"))
+    {
+        RequireObjectField(fact, "directions", RequiredJsonKind::Array);
+
+        if (fact.at("directions").size() != 2)
+        {
+            throw std::invalid_argument(
+                "Recorded Wall Object directions must contain two entries");
+        }
+
+        for (const nlohmann::json& direction : fact.at("directions"))
+        {
+            ParseWallDirectionEntryDirection(direction);
+            ParseWallDirectionEntryCollision(direction);
+        }
+    }
+}
+
+void ApplyRecordedSceneEntityFact(
+    nlohmann::json& sceneEntities,
+    const nlohmann::json& fact)
+{
+    ValidateRecordedSceneEntityFactShape(fact);
+
+    const std::string key = SceneEntityKey(fact);
+
+    if (!fact.at("present").get<bool>())
+    {
+        if (!sceneEntities.contains(key))
+        {
+            throw std::invalid_argument(
+                "Projection Validity failed: scene entity absence before placement");
+        }
+
+        sceneEntities.erase(key);
+        return;
+    }
+
+    sceneEntities[key] = fact;
+}
+
+void ValidateNoDuplicateSceneEntityFacts(const nlohmann::json& sceneEntityFacts)
+{
+    std::vector<std::string> keys;
+    keys.reserve(sceneEntityFacts.size());
+
+    for (const nlohmann::json& sceneEntityFact : sceneEntityFacts)
+    {
+        ValidateRecordedSceneEntityFactShape(sceneEntityFact);
+        keys.push_back(SceneEntityKey(sceneEntityFact));
+    }
+
+    std::sort(keys.begin(), keys.end());
+
+    for (std::size_t index = 1; index < keys.size(); ++index)
+    {
+        if (keys[index - 1] == keys[index])
+        {
+            throw std::invalid_argument(
+                "Projection Validity failed: duplicate scene entity facts in tick");
+        }
+    }
+}
+
+void ValidateVersion2SceneEntityProjection(const EncounterRecording& recording)
+{
+    nlohmann::json sceneEntities = nlohmann::json::object();
+
+    ValidateNoDuplicateSceneEntityFacts(
+        recording.GetInitialFacts().at("sceneEntityFacts"));
+
+    for (const nlohmann::json& sceneEntityFact :
+         recording.GetInitialFacts().at("sceneEntityFacts"))
+    {
+        if (!IsFullRecordedSceneEntityFact(sceneEntityFact))
+        {
+            throw std::invalid_argument(
+                "Projection Validity failed: initial scene entity facts must be full placements");
+        }
+
+        ApplyRecordedSceneEntityFact(sceneEntities, sceneEntityFact);
+    }
+
+    for (const CompletedRecordingTick& completedTick :
+         recording.GetCompletedTicks())
+    {
+        ValidateNoDuplicateSceneEntityFacts(
+            completedTick.facts.at("sceneEntityFacts"));
+
+        for (const nlohmann::json& sceneEntityFact :
+             completedTick.facts.at("sceneEntityFacts"))
+        {
+            if (sceneEntityFact.at("present").get<bool>() &&
+                !IsFullRecordedSceneEntityFact(sceneEntityFact))
+            {
+                throw std::invalid_argument(
+                    "Projection Validity failed: scene entity placement facts must be full");
+            }
+
+            ApplyRecordedSceneEntityFact(sceneEntities, sceneEntityFact);
         }
     }
 }
@@ -1142,6 +1301,12 @@ void RecordingPlayback::RebuildVersion2Snapshot()
         ApplyRecordedActorFact(m_Actors, actorFact);
     }
 
+    for (const nlohmann::json& sceneEntityFact :
+         recording.GetInitialFacts().at("sceneEntityFacts"))
+    {
+        ApplyRecordedSceneEntityFact(m_SceneEntities, sceneEntityFact);
+    }
+
     if (m_CurrentTick == recording.GetInitialTick())
     {
         m_Projectiles =
@@ -1163,6 +1328,12 @@ void RecordingPlayback::RebuildVersion2Snapshot()
                 ApplyRecordedActorFact(m_Actors, actorFact);
             }
 
+            for (const nlohmann::json& sceneEntityFact :
+                 completedTick.facts.at("sceneEntityFacts"))
+            {
+                ApplyRecordedSceneEntityFact(m_SceneEntities, sceneEntityFact);
+            }
+
             if (completedTick.tick == m_CurrentTick)
             {
                 m_Attacks = completedTick.facts.at("attacks");
@@ -1178,7 +1349,7 @@ void RecordingPlayback::RebuildVersion2Snapshot()
     m_CurrentSnapshot = {
         {"tick", m_CurrentTick},
         {"actors", ActorsObjectToSortedArray(m_Actors)},
-        {"sceneEntities", nlohmann::json::array()},
+        {"sceneEntities", SceneEntitiesObjectToSortedArray(m_SceneEntities)},
         {"attacks", m_Attacks},
         {"damageApplications", m_DamageApplications},
         {"visibleProjectiles", m_Projectiles}};
@@ -1197,6 +1368,8 @@ RecordingPlayback RecordingPlayback::LoadFromJson(const std::string& jsonText)
         playback.m_Version2Recording =
             EncounterRecording::LoadFromJson(playback.m_Recording);
         ValidateVersion2ActorProjection(playback.m_Version2Recording.value());
+        ValidateVersion2SceneEntityProjection(
+            playback.m_Version2Recording.value());
         playback.m_CurrentTick =
             playback.m_Version2Recording->GetInitialTick();
         playback.RebuildVersion2Snapshot();

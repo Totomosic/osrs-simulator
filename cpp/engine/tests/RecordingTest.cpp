@@ -595,6 +595,87 @@ nlohmann::json CreateVersion2ProjectileObservation(
         {"totalTicks", 2}};
 }
 
+nlohmann::json CreateVersion2GameObjectFact(
+    int id,
+    int x,
+    int y,
+    bool present = true)
+{
+    nlohmann::json fact = {
+        {"kind", "game_object"},
+        {"sceneId", 1},
+        {"id", id},
+        {"coordinate", {{"x", x}, {"y", y}, {"plane", 0}}},
+        {"present", present}};
+
+    if (present)
+    {
+        fact["direction"] = "east";
+        fact["sizeX"] = 2;
+        fact["sizeY"] = 1;
+        fact["collision"] =
+            {{"blocksMovement", true}, {"blocksLineOfSight", false}};
+    }
+
+    return fact;
+}
+
+nlohmann::json CreateVersion2WallObjectFact()
+{
+    return {
+        {"kind", "wall_object"},
+        {"sceneId", 1},
+        {"id", 3001},
+        {"coordinate", {{"x", 40}, {"y", 41}, {"plane", 0}}},
+        {"present", true},
+        {"direction", "north"},
+        {"collision", {{"blocksMovement", true}, {"blocksLineOfSight", false}}},
+        {"directions",
+         nlohmann::json::array(
+             {{{"direction", "north"},
+               {"collision",
+                {{"blocksMovement", true}, {"blocksLineOfSight", false}}}},
+              {{"direction", "east"},
+               {"collision",
+                {{"blocksMovement", false}, {"blocksLineOfSight", true}}}}})}};
+}
+
+nlohmann::json CreateVersion2SceneEntityRecording()
+{
+    return {
+        {"version", 2},
+        {"metadata",
+         {{"encounterName", "Version 2 Scene Entity Facts"},
+          {"secondsPerTick", 0.6}}},
+        {"initialTick", 4},
+        {"initialFacts",
+         {{"actorFacts", nlohmann::json::array()},
+          {"sceneEntityFacts",
+           nlohmann::json::array(
+               {CreateVersion2GameObjectFact(2001, 30, 31),
+                CreateVersion2WallObjectFact()})},
+          {"visibleProjectiles", nlohmann::json::array()}}},
+        {"completedTicks",
+         nlohmann::json::array(
+             {{{"tick", 5},
+               {"actorFacts", nlohmann::json::array()},
+               {"sceneEntityFacts",
+                nlohmann::json::array(
+                    {CreateVersion2GameObjectFact(2001, 30, 31, false),
+                     CreateVersion2GameObjectFact(2002, 50, 51)})},
+               {"attacks", nlohmann::json::array()},
+               {"damageApplications", nlohmann::json::array()},
+               {"visibleProjectiles", nlohmann::json::array()}},
+              {{"tick", 6},
+               {"actorFacts", nlohmann::json::array()},
+               {"sceneEntityFacts",
+                nlohmann::json::array(
+                    {CreateVersion2GameObjectFact(2002, 50, 51, false)})},
+               {"attacks", nlohmann::json::array()},
+               {"damageApplications", nlohmann::json::array()},
+               {"visibleProjectiles", nlohmann::json::array()}}})}};
+}
+
 nlohmann::json CreateVersion2ActorRecording()
 {
     return {
@@ -968,6 +1049,44 @@ int main()
              {"attacks", nlohmann::json::array()},
              {"damageApplications", nlohmann::json::array()},
              {"visibleProjectiles", nlohmann::json::array()}});
+        assert(PlaybackLoadThrows(recording));
+    }
+
+    {
+        osrssim::recording::RecordingPlayback playback =
+            osrssim::recording::RecordingPlayback::LoadFromJson(
+                CreateVersion2SceneEntityRecording().dump());
+
+        nlohmann::json snapshot =
+            nlohmann::json::parse(playback.GetCurrentSnapshotJson());
+        assert(snapshot.at("tick") == 4);
+        assert(snapshot.at("sceneEntities").size() == 2);
+        assert(snapshot.at("sceneEntities").at(0).at("kind") == "game_object");
+        assert(snapshot.at("sceneEntities").at(0).at("id") == 2001);
+        assert(snapshot.at("sceneEntities").at(0).at("present") == true);
+        assert(snapshot.at("sceneEntities").at(0).at("direction") == "east");
+        assert(snapshot.at("sceneEntities").at(1).at("kind") == "wall_object");
+        assert(snapshot.at("sceneEntities").at(1).at("directions").size() == 2);
+        assert(nlohmann::json::parse(playback.GetSceneEntitiesJson()) ==
+               snapshot.at("sceneEntities"));
+
+        assert(playback.Advance());
+        snapshot = nlohmann::json::parse(playback.GetCurrentSnapshotJson());
+        assert(snapshot.at("tick") == 5);
+        assert(snapshot.at("sceneEntities").size() == 2);
+        assert(snapshot.at("sceneEntities").at(0).at("id") == 3001);
+        assert(snapshot.at("sceneEntities").at(1).at("id") == 2002);
+
+        assert(playback.Advance());
+        snapshot = nlohmann::json::parse(playback.GetCurrentSnapshotJson());
+        assert(snapshot.at("tick") == 6);
+        assert(snapshot.at("sceneEntities").size() == 1);
+        assert(snapshot.at("sceneEntities").at(0).at("id") == 3001);
+    }
+
+    {
+        nlohmann::json recording = CreateVersion2SceneEntityRecording();
+        recording["initialFacts"]["sceneEntityFacts"] = nlohmann::json::array();
         assert(PlaybackLoadThrows(recording));
     }
 
@@ -1459,6 +1578,47 @@ int main()
             nlohmann::json::parse(playback.GetSceneEntitiesJson());
         assert(playbackSceneEntities.size() == 1);
         assert(playbackSceneEntities.at(0).at("id") == 2002);
+
+        const nlohmann::json versionTwoRecording =
+            nlohmann::json::parse(recorder.ExportVersion2Json());
+        const nlohmann::json& initialSceneEntityFacts =
+            versionTwoRecording.at("initialFacts").at("sceneEntityFacts");
+        assert(versionTwoRecording.at("version") == 2);
+        assert(initialSceneEntityFacts.size() == 3);
+        assert(initialSceneEntityFacts.at(0).at("kind") == "game_object");
+        assert(initialSceneEntityFacts.at(0).at("present") == true);
+        assert(initialSceneEntityFacts.at(0).at("direction") == "east");
+        assert(initialSceneEntityFacts.at(1).at("kind") == "wall_object");
+        assert(initialSceneEntityFacts.at(2).at("directions").size() == 2);
+        assert(
+            initialSceneEntityFacts.at(2)
+                .at("directions")
+                .at(1)
+                .at("direction") == "east");
+
+        const nlohmann::json& tickOneSceneEntityFacts =
+            versionTwoRecording.at("completedTicks").at(0).at("sceneEntityFacts");
+        assert(tickOneSceneEntityFacts.size() == 2);
+        assert(tickOneSceneEntityFacts.at(0).at("present") == false);
+        assert(!tickOneSceneEntityFacts.at(0).contains("direction"));
+        assert(!tickOneSceneEntityFacts.at(0).contains("collision"));
+        assert(tickOneSceneEntityFacts.at(1).at("present") == true);
+        assert(tickOneSceneEntityFacts.at(1).at("id") == 2002);
+
+        osrssim::recording::RecordingPlayback versionTwoPlayback =
+            osrssim::recording::RecordingPlayback::LoadFromJson(
+                recorder.ExportVersion2Json());
+        nlohmann::json versionTwoSceneEntities =
+            nlohmann::json::parse(versionTwoPlayback.GetSceneEntitiesJson());
+        assert(versionTwoSceneEntities == initialSceneEntityFacts);
+
+        assert(versionTwoPlayback.Advance());
+        versionTwoSceneEntities =
+            nlohmann::json::parse(versionTwoPlayback.GetSceneEntitiesJson());
+        assert(versionTwoSceneEntities.size() == 3);
+        assert(versionTwoSceneEntities.at(0).at("id") == 3001);
+        assert(versionTwoSceneEntities.at(1).at("id") == 3002);
+        assert(versionTwoSceneEntities.at(2).at("id") == 2002);
     }
 
     {

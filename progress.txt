@@ -1,3 +1,12 @@
+2026-06-27 #119 Project Recorded Scene Entity Facts through Recording Playback
+- Selected issue: #119, ready-for-agent and unblocked because #117 is closed. Parent PRD: #116.
+- Docs read: CONTEXT.md, docs/agents/domain.md, docs/adr/0003-osrs-scene-model.md, docs/adr/0012-encounter-recordings-are-observation-logs.md, docs/adr/0014-engine-owned-recording-playback.md, docs/adr/0015-encounter-recording-fact-model.md, PRD #116, feature #119, blockers #117/#118 checked.
+- Plan: TDD native scene entity facts: v2 initial placement projection, completed-tick placement/removal projection, invalid absence rejection, live recorder v2 sceneEntityFacts emission, focused native/build/web checks. Scope guard: only #119; no combat facts, web facade migration, or v1 retirement.
+- Completed: PRD #116 stories 25-26, 31-32, 37-38 and feature #119 acceptance for initial scene entity facts, full placement presence facts, placement-identity absence facts, derived placement identity projection, no sparse scene entity updates, recorder v2 sceneEntityFacts, playback snapshot exposure, invalid absence rejection, and native coverage.
+- Decisions: keep v2 scene entity projection inert as JSON facts keyed by placement identity; emit absence facts with kind/sceneId/id/coordinate/present only; support v2 snake_case kind/direction while keeping v1 scene entity validation on legacy enum strings.
+- Files changed: cpp/engine/src/recording/EncounterRecorder.cpp, cpp/engine/src/recording/RecordingPlayback.cpp, cpp/engine/tests/RecordingTest.cpp, progress.txt.
+- Validation: red native recording test failed on empty v2 sceneEntities; red recorder test failed on empty v2 sceneEntityFacts; cmake --build build --target osrssim_engine_recording_test && ./build/cpp/engine/osrssim_engine_recording_test; cmake --build build; ctest --test-dir build --output-on-failure; ./tools/build_wasm.sh; yarn --cwd web test; yarn --cwd web typecheck; yarn --cwd web build; git diff --check. No blockers.
+
 2026-06-27 #120 Project visible projectile observations per tick
 - Selected issue: #120, ready-for-agent and unblocked because #117 is closed. Parent PRD: #116.
 - Docs read: CONTEXT.md, docs/agents/domain.md, docs/adr/0012-encounter-recordings-are-observation-logs.md, docs/adr/0014-engine-owned-recording-playback.md, docs/adr/0015-encounter-recording-fact-model.md, PRD #116, feature #120, blockers #117/#118/#119/#120 checked.
