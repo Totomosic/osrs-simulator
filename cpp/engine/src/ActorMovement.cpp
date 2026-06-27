@@ -1,4 +1,4 @@
-#include "Pathing.h"
+#include "ActorMovement.h"
 
 namespace osrssim
 {
@@ -10,12 +10,12 @@ int Abs(int value)
 }
 }  // namespace
 
-Pathing::Pathing(const Scene& scene)
+ActorMovement::ActorMovement(const Scene& scene)
     : m_Scene(scene)
 {
 }
 
-bool Pathing::CanMove(SceneCoordinate from, SceneCoordinate to) const
+bool ActorMovement::CanMove(SceneCoordinate from, SceneCoordinate to) const
 {
     if (!m_Scene.Contains(from) || !m_Scene.Contains(to) || from.plane != to.plane)
     {
@@ -38,7 +38,7 @@ bool Pathing::CanMove(SceneCoordinate from, SceneCoordinate to) const
     return CanMoveCardinal(from, to);
 }
 
-bool Pathing::CanMove(
+bool ActorMovement::CanMove(
     SceneCoordinate from,
     SceneCoordinate to,
     int actorSpeed,
@@ -72,7 +72,7 @@ bool Pathing::CanMove(
         DiagonalSideFootprintRule::RequireClear);
 }
 
-bool Pathing::CanMoveIgnoringActorOccupancy(
+bool ActorMovement::CanMoveIgnoringActorOccupancy(
     SceneCoordinate from,
     SceneCoordinate to,
     int actorSpeed,
@@ -105,7 +105,7 @@ bool Pathing::CanMoveIgnoringActorOccupancy(
         DiagonalSideFootprintRule::RequireClear);
 }
 
-bool Pathing::CanMoveIgnoringActorOccupancy(
+bool ActorMovement::CanMoveIgnoringActorOccupancy(
     SceneCoordinate from,
     SceneCoordinate to,
     int actorSpeed,
@@ -140,17 +140,17 @@ bool Pathing::CanMoveIgnoringActorOccupancy(
         diagonalSideFootprintRule);
 }
 
-bool Pathing::IsAdjacentStep(int dx, int dy)
+bool ActorMovement::IsAdjacentStep(int dx, int dy)
 {
     return Abs(dx) <= 1 && Abs(dy) <= 1 && (dx != 0 || dy != 0);
 }
 
-bool Pathing::IsDiagonalStep(int dx, int dy)
+bool ActorMovement::IsDiagonalStep(int dx, int dy)
 {
     return dx != 0 && dy != 0;
 }
 
-bool Pathing::IsDestinationBlocked(const Tile& tile, bool includeActorOccupancy)
+bool ActorMovement::IsDestinationBlocked(const Tile& tile, bool includeActorOccupancy)
 {
     return (includeActorOccupancy && tile.HasFlag(TileFlag::Occupied)) ||
            tile.HasFlag(TileFlag::BlockMovementFull) ||
@@ -159,7 +159,7 @@ bool Pathing::IsDestinationBlocked(const Tile& tile, bool includeActorOccupancy)
            tile.HasFlag(TileFlag::BlockMovementFloorDecoration);
 }
 
-int Pathing::Sign(int value)
+int ActorMovement::Sign(int value)
 {
     if (value < 0)
     {
@@ -174,7 +174,7 @@ int Pathing::Sign(int value)
     return 0;
 }
 
-TileFlag Pathing::GetSourceMovementFlag(int dx, int dy)
+TileFlag ActorMovement::GetSourceMovementFlag(int dx, int dy)
 {
     if (dx == -1 && dy == 1)
     {
@@ -214,12 +214,12 @@ TileFlag Pathing::GetSourceMovementFlag(int dx, int dy)
     return TileFlag::BlockMovementWest;
 }
 
-TileFlag Pathing::GetDestinationMovementFlag(int dx, int dy)
+TileFlag ActorMovement::GetDestinationMovementFlag(int dx, int dy)
 {
     return GetSourceMovementFlag(-dx, -dy);
 }
 
-bool Pathing::CanStand(
+bool ActorMovement::CanStand(
     SceneCoordinate anchor,
     int actorSize,
     bool includeActorOccupancy) const
@@ -242,7 +242,7 @@ bool Pathing::CanStand(
     return true;
 }
 
-bool Pathing::CanMoveFootprintStep(
+bool ActorMovement::CanMoveFootprintStep(
     SceneCoordinate from,
     SceneCoordinate to,
     int actorSize,
@@ -276,7 +276,7 @@ bool Pathing::CanMoveFootprintStep(
     return CanMoveFootprintCardinal(from, to, actorSize);
 }
 
-bool Pathing::CanMoveFootprintCardinal(
+bool ActorMovement::CanMoveFootprintCardinal(
     SceneCoordinate from,
     SceneCoordinate to,
     int actorSize) const
@@ -379,7 +379,7 @@ bool Pathing::CanMoveFootprintCardinal(
     return false;
 }
 
-bool Pathing::CanMoveFootprintDiagonal(
+bool ActorMovement::CanMoveFootprintDiagonal(
     SceneCoordinate from,
     SceneCoordinate to,
     int actorSize,
@@ -429,7 +429,7 @@ bool Pathing::CanMoveFootprintDiagonal(
            CanMoveFootprintCardinal(vertical, to, actorSize);
 }
 
-bool Pathing::CanMoveMonotonicRoute(
+bool ActorMovement::CanMoveMonotonicRoute(
     SceneCoordinate current,
     SceneCoordinate to,
     int remainingSteps,
@@ -491,7 +491,7 @@ bool Pathing::CanMoveMonotonicRoute(
     return false;
 }
 
-bool Pathing::CanMoveCardinal(SceneCoordinate from, SceneCoordinate to) const
+bool ActorMovement::CanMoveCardinal(SceneCoordinate from, SceneCoordinate to) const
 {
     const Tile* fromTile = m_Scene.TryGetTile(from);
     const Tile* toTile = m_Scene.TryGetTile(to);
@@ -509,7 +509,7 @@ bool Pathing::CanMoveCardinal(SceneCoordinate from, SceneCoordinate to) const
            !toTile->HasFlag(GetDestinationMovementFlag(dx, dy));
 }
 
-bool Pathing::CanMoveDiagonal(SceneCoordinate from, SceneCoordinate to) const
+bool ActorMovement::CanMoveDiagonal(SceneCoordinate from, SceneCoordinate to) const
 {
     const Tile* fromTile = m_Scene.TryGetTile(from);
     const Tile* toTile = m_Scene.TryGetTile(to);

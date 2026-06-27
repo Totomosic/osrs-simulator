@@ -2,7 +2,7 @@
 
 #include "CombatQueue.h"
 #include "DpsService.h"
-#include "Pathing.h"
+#include "ActorMovement.h"
 #include "Scene.h"
 #include "Types.h"
 

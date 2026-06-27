@@ -18,7 +18,7 @@ add_library(osrssim_engine
   src/recording/RecordingPlayback.cpp
   src/LineOfSight.cpp
   src/NpcDatabase.cpp
-  src/Pathing.cpp
+  src/ActorMovement.cpp
   src/Scene.cpp
   src/Tile.cpp
   src/WeaponDatabase.cpp
@@ -71,8 +71,8 @@ if(BUILD_TESTING)
     tests/SceneTest.cpp
   )
 
-  add_executable(osrssim_engine_pathing_test
-    tests/PathingTest.cpp
+  add_executable(osrssim_engine_actor_movement_test
+    tests/ActorMovementTest.cpp
   )
 
   add_executable(osrssim_engine_line_of_sight_test
@@ -132,7 +132,7 @@ if(BUILD_TESTING)
       osrssim::engine
   )
 
-  target_link_libraries(osrssim_engine_pathing_test
+  target_link_libraries(osrssim_engine_actor_movement_test
     PRIVATE
       osrssim::engine
   )
@@ -203,7 +203,7 @@ if(BUILD_TESTING)
   )
 
   add_test(NAME osrssim_engine_scene_test COMMAND osrssim_engine_scene_test)
-  add_test(NAME osrssim_engine_pathing_test COMMAND osrssim_engine_pathing_test)
+  add_test(NAME osrssim_engine_actor_movement_test COMMAND osrssim_engine_actor_movement_test)
   add_test(NAME osrssim_engine_line_of_sight_test COMMAND osrssim_engine_line_of_sight_test)
   add_test(NAME osrssim_engine_world_test COMMAND osrssim_engine_world_test)
   add_test(NAME osrssim_engine_engine_test COMMAND osrssim_engine_engine_test)

@@ -12,13 +12,13 @@ enum class DiagonalSideFootprintRule
     AllowBlocked,
 };
 
-class Pathing
+class ActorMovement
 {
 private:
     const Scene& m_Scene;
 
 public:
-    explicit Pathing(const Scene& scene);
+    explicit ActorMovement(const Scene& scene);
 
     bool CanMove(SceneCoordinate from, SceneCoordinate to) const;
     bool CanMove(

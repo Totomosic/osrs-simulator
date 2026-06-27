@@ -1,0 +1,10 @@
+Selected issue: #126 Introduce actor movement boundary for movement feasibility
+Parent PRD: #125 PRD: Deepen actor movement module
+Docs read: docs/architecture/simulation-model.md; docs/adr/0003-osrs-scene-model.md; docs/adr/0004-coarse-actor-occupancy.md; docs/adr/0005-world-owns-scenes-and-actors.md
+Plan: move Pathing feasibility API into top-level ActorMovement module; migrate PathingTest to ActorMovementTest; update World to include/use ActorMovement; remove standalone Pathing files from build; run C++ tests/build.
+
+Completed: #126 / PRD #125 stories 4, 20, 22, 23
+Decisions: renamed Pathing implementation/test seam to ActorMovement; kept API scene-backed/stateless and header free of World include; preserved pathing as method/domain wording only.
+Files changed: cpp/engine/src/ActorMovement.h; cpp/engine/src/ActorMovement.cpp; cpp/engine/tests/ActorMovementTest.cpp; cpp/engine/src/World.h; cpp/engine/src/World.cpp; cpp/engine/CMakeLists.txt; removed Pathing files; progress.txt.
+Validation: cmake --build build; ctest --test-dir build --output-on-failure; 16/16 passed.
+Notes: PRD #125 remains open because dependent feature issues #127-#130 are still open.

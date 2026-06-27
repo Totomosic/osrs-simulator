@@ -1360,7 +1360,7 @@ bool World::TryGetActorTargetEdgeAdjacentMovementDelta(
     const int stepY = Sign(requestedDy);
     const int absRequestedDx = Abs(requestedDx);
     const int absRequestedDy = Abs(requestedDy);
-    Pathing pathing(scene);
+    ActorMovement actorMovement(scene);
     const DiagonalSideFootprintRule diagonalSideFootprintRule =
         GetDiagonalSideFootprintRule(actorKind, actor);
     const bool canUseLargeNpcDiagonalSqueeze =
@@ -1407,7 +1407,7 @@ bool World::TryGetActorTargetEdgeAdjacentMovementDelta(
                 continue;
             }
 
-            if (!pathing.CanMoveIgnoringActorOccupancy(
+            if (!actorMovement.CanMoveIgnoringActorOccupancy(
                     current,
                     candidate,
                     actor.speed,
@@ -1496,7 +1496,7 @@ bool World::TryGetActorTargetOverlapEscapeMovementDelta(
         {0, 1}};
     const int start =
         DeterministicCardinalStart(actor.id, targetActorId, currentTick);
-    Pathing pathing(scene);
+    ActorMovement actorMovement(scene);
 
     for (int offset = 0; offset < 4; ++offset)
     {
@@ -1506,7 +1506,7 @@ bool World::TryGetActorTargetOverlapEscapeMovementDelta(
             current.y + delta.dy,
             current.plane};
 
-        if (!pathing.CanMoveIgnoringActorOccupancy(
+        if (!actorMovement.CanMoveIgnoringActorOccupancy(
                 current,
                 candidate,
                 1,
@@ -1601,11 +1601,11 @@ bool World::IsFinalNpcOccupancyOnlyBlock(
     SceneCoordinate current,
     SceneCoordinate destination) const
 {
-    Pathing pathing(scene);
+    ActorMovement actorMovement(scene);
     const DiagonalSideFootprintRule diagonalSideFootprintRule =
         GetDiagonalSideFootprintRule(ActorKind::Npc, actor);
 
-    return pathing.CanMoveIgnoringActorOccupancy(
+    return actorMovement.CanMoveIgnoringActorOccupancy(
                current,
                destination,
                actor.speed,
@@ -1638,7 +1638,7 @@ bool World::TryResolveMovementDelta(
     const int stepY = Sign(requestedDy);
     const int absRequestedDx = Abs(requestedDx);
     const int absRequestedDy = Abs(requestedDy);
-    Pathing pathing(scene);
+    ActorMovement actorMovement(scene);
     const DiagonalSideFootprintRule diagonalSideFootprintRule =
         GetDiagonalSideFootprintRule(actorKind, actor);
     const bool canUseLargeNpcDiagonalSqueeze =
@@ -1666,7 +1666,7 @@ bool World::TryResolveMovementDelta(
                 current.y + candidateDy,
                 current.plane};
 
-            if (!pathing.CanMoveIgnoringActorOccupancy(
+            if (!actorMovement.CanMoveIgnoringActorOccupancy(
                     current,
                     candidate,
                     actor.speed,
