@@ -414,133 +414,6 @@ public:
     }
 };
 
-nlohmann::json CreateValidPlaybackRecording()
-{
-    return {
-        {"version", 1},
-        {"metadata",
-         {{"encounterName", "Validation Fixture"}, {"secondsPerTick", 0.6}}},
-        {"initialState",
-         {{"tick", 0},
-          {"actors",
-           nlohmann::json::array(
-               {{{"id", 2},
-                 {"kind", "Npc"},
-                 {"present", true},
-                 {"npcIndex", 0},
-                 {"sceneMembership",
-                  {{"sceneId", 1},
-                   {"coordinate", {{"x", 12}, {"y", 12}, {"plane", 0}}}}},
-                 {"size", 1},
-                 {"speed", 1},
-                 {"combatComposition",
-                  {{"stats",
-                    {{"attack", 1},
-                     {"strength", 1},
-                     {"defence", 1},
-                     {"ranged", 1},
-                     {"magic", 1},
-                     {"hitpoints", 20}}},
-                   {"baseStats",
-                    {{"attack", 1},
-                     {"strength", 1},
-                     {"defence", 1},
-                     {"ranged", 1},
-                     {"magic", 1},
-                     {"hitpoints", 20}}},
-                   {"bonuses", nlohmann::json::object()},
-                   {"attackType", "Slash"},
-                   {"magicBaseMaximumHit", 0},
-                   {"weapon",
-                    {{"id", 0},
-                     {"range", 1},
-                     {"speed", 4},
-                     {"projectileId", 0}}},
-                   {"equipmentProvenance",
-                    nlohmann::json::array(
-                        {{{"slot", "Weapon"}, {"pieceId", 2002}}})}}},
-                 {"debug",
-                  {{"movementTarget", nullptr}, {"attackTimer", 0}}}},
-                {{"id", 1},
-                 {"kind", "Player"},
-                 {"present", true},
-                 {"playerIndex", 0},
-                 {"sceneMembership",
-                  {{"sceneId", 1},
-                   {"coordinate", {{"x", 10}, {"y", 10}, {"plane", 0}}}}},
-                 {"size", 1},
-                 {"speed", 2},
-                 {"combatComposition",
-                  {{"stats",
-                    {{"attack", 70},
-                     {"strength", 71},
-                     {"defence", 72},
-                     {"ranged", 73},
-                     {"magic", 74},
-                     {"hitpoints", 82}}},
-                   {"baseStats",
-                    {{"attack", 70},
-                     {"strength", 71},
-                     {"defence", 72},
-                     {"ranged", 73},
-                     {"magic", 74},
-                     {"hitpoints", 99}}},
-                   {"bonuses", nlohmann::json::object()},
-                   {"attackType", "Slash"},
-                   {"magicBaseMaximumHit", 9},
-                   {"weapon",
-                    {{"id", 12},
-                     {"range", 4},
-                     {"speed", 6},
-                     {"projectileId", 88}}}}},
-                 {"debug",
-                  {{"movementTarget", nullptr}, {"attackTimer", 0}}}}})},
-          {"sceneEntities", nlohmann::json::array()},
-          {"projectiles", nlohmann::json::array()}}},
-        {"ticks",
-         nlohmann::json::array(
-             {{{"tick", 1},
-               {"actors",
-                nlohmann::json::array(
-                    {{{"id", 1},
-                      {"currentHitpoints", 77},
-                      {"debug", {{"attackTimer", 6}}}}})},
-               {"attacks",
-                nlohmann::json::array(
-                    {{{"id", 1},
-                      {"tick", 1},
-                      {"attackerId", 1},
-                      {"targetId", 2},
-                      {"callback", "standard_attack"},
-                      {"queuedDamageEvents",
-                       nlohmann::json::array(
-                           {{{"id", 1},
-                             {"attackId", 1},
-                             {"targetId", 2},
-                             {"damage", 7},
-                             {"delayTicks", 1}}})}}})},
-               {"damageApplications", nlohmann::json::array()},
-               {"sceneChanges", nlohmann::json::array()},
-               {"projectiles", nlohmann::json::array()}},
-              {{"tick", 2},
-               {"actors",
-                nlohmann::json::array(
-                    {{{"id", 1},
-                      {"currentHitpoints", 75},
-                      {"debug", {{"attackTimer", 5}}}}})},
-               {"attacks", nlohmann::json::array()},
-               {"damageApplications",
-                nlohmann::json::array(
-                    {{{"damageEventId", 1},
-                      {"attackId", 1},
-                      {"tick", 2},
-                      {"targetId", 2},
-                      {"queuedDamage", 7},
-                      {"appliedDamage", 7}}})},
-               {"sceneChanges", nlohmann::json::array()},
-               {"projectiles", nlohmann::json::array()}}})}};
-}
-
 nlohmann::json CreateVersion2ActorFact(int actorId)
 {
     return {
@@ -857,6 +730,32 @@ bool PlaybackLoadThrowsWithMessage(
 
     return false;
 }
+
+nlohmann::json CurrentSnapshot(
+    const osrssim::recording::RecordingPlayback& playback)
+{
+    return nlohmann::json::parse(playback.GetCurrentSnapshotJson());
+}
+
+bool AdvancePlaybackToTick(
+    osrssim::recording::RecordingPlayback& playback,
+    int tick)
+{
+    if (tick < playback.GetCurrentTick())
+    {
+        playback.Reset();
+    }
+
+    while (playback.GetCurrentTick() < tick)
+    {
+        if (!playback.Advance())
+        {
+            return false;
+        }
+    }
+
+    return playback.GetCurrentTick() == tick;
+}
 }  // namespace
 
 int main()
@@ -1058,7 +957,7 @@ int main()
         assert(snapshot.at("tick") == 4);
         assert(snapshot.at("visibleProjectiles").size() == 1);
         assert(snapshot.at("visibleProjectiles").at(0).at("projectileId") == 88);
-        assert(nlohmann::json::parse(playback.GetProjectilesJson()) ==
+        assert(CurrentSnapshot(playback).at("visibleProjectiles") ==
                snapshot.at("visibleProjectiles"));
 
         assert(playback.Advance());
@@ -1184,7 +1083,7 @@ int main()
                 .at("queuedDamageEvents")
                 .size() == 2);
         assert(snapshot.at("damageApplications").empty());
-        assert(nlohmann::json::parse(playback.GetAttacksJson()) ==
+        assert(CurrentSnapshot(playback).at("attacks") ==
                snapshot.at("attacks"));
 
         assert(playback.Advance());
@@ -1194,7 +1093,7 @@ int main()
         assert(snapshot.at("damageApplications").size() == 2);
         assert(
             snapshot.at("damageApplications").at(0).at("damageEventId") == 10);
-        assert(nlohmann::json::parse(playback.GetDamageApplicationsJson()) ==
+        assert(CurrentSnapshot(playback).at("damageApplications") ==
                snapshot.at("damageApplications"));
 
         playback.Reset();
@@ -1226,7 +1125,7 @@ int main()
         assert(snapshot.at("sceneEntities").at(0).at("direction") == "east");
         assert(snapshot.at("sceneEntities").at(1).at("kind") == "wall_object");
         assert(snapshot.at("sceneEntities").at(1).at("directions").size() == 2);
-        assert(nlohmann::json::parse(playback.GetSceneEntitiesJson()) ==
+        assert(CurrentSnapshot(playback).at("sceneEntities") ==
                snapshot.at("sceneEntities"));
 
         assert(playback.Advance());
@@ -1263,21 +1162,30 @@ int main()
         const nlohmann::json recording =
             nlohmann::json::parse(recorder.ExportJson());
 
-        assert(recording.at("version") == 1);
+        assert(recording.at("version") == 2);
         assert(recording.at("metadata").at("encounterName") == "Minimal Sample");
         assert(recording.at("metadata").at("secondsPerTick") == 0.6);
-        assert(recording.at("initialState").at("tick") == 0);
-        assert(recording.at("initialState").at("actors").empty());
-        assert(recording.at("initialState").at("sceneEntities").empty());
-        assert(recording.at("initialState").at("projectiles").empty());
-        assert(recording.at("ticks").size() == 2);
-        assert(recording.at("ticks").at(0).at("tick") == 1);
-        assert(recording.at("ticks").at(1).at("tick") == 2);
-        assert(recording.at("ticks").at(0).at("actors").empty());
-        assert(recording.at("ticks").at(0).at("attacks").empty());
-        assert(recording.at("ticks").at(0).at("damageApplications").empty());
-        assert(recording.at("ticks").at(0).at("sceneChanges").empty());
-        assert(recording.at("ticks").at(0).at("projectiles").empty());
+        assert(recording.at("initialTick") == 0);
+        assert(recording.at("initialFacts").at("actorFacts").empty());
+        assert(recording.at("initialFacts").at("sceneEntityFacts").empty());
+        assert(recording.at("initialFacts").at("visibleProjectiles").empty());
+        assert(recording.at("completedTicks").size() == 2);
+        assert(recording.at("completedTicks").at(0).at("tick") == 1);
+        assert(recording.at("completedTicks").at(1).at("tick") == 2);
+        assert(recording.at("completedTicks").at(0).at("actorFacts").empty());
+        assert(recording.at("completedTicks").at(0).at("attacks").empty());
+        assert(recording.at("completedTicks")
+                   .at(0)
+                   .at("damageApplications")
+                   .empty());
+        assert(recording.at("completedTicks")
+                   .at(0)
+                   .at("sceneEntityFacts")
+                   .empty());
+        assert(recording.at("completedTicks")
+                   .at(0)
+                   .at("visibleProjectiles")
+                   .empty());
 
         osrssim::recording::RecordingPlayback playback =
             osrssim::recording::RecordingPlayback::LoadFromJson(
@@ -1288,12 +1196,11 @@ int main()
         assert(playback.GetInitialTick() == 0);
         assert(playback.GetCurrentTick() == 0);
         assert(playback.GetLastTick() == 2);
-        assert(!playback.PreviousTick());
-        assert(playback.NextTick());
+        assert(playback.Advance());
         assert(playback.GetCurrentTick() == 1);
-        assert(playback.GoToTick(2));
+        assert(AdvancePlaybackToTick(playback, 2));
         assert(playback.GetCurrentTick() == 2);
-        assert(!playback.NextTick());
+        assert(!playback.Advance());
     }
 
     {
@@ -1309,7 +1216,7 @@ int main()
         assert(runner.Step());
 
         const nlohmann::json versionTwoRecording =
-            nlohmann::json::parse(recorder.ExportVersion2Json());
+            nlohmann::json::parse(recorder.ExportJson());
         assert(versionTwoRecording.at("completedTicks")
                    .at(0)
                    .at("attacks")
@@ -1326,7 +1233,7 @@ int main()
         try
         {
             osrssim::recording::RecordingPlayback::LoadFromJson(
-                R"({"version":2,"metadata":{"encounterName":"Bad","secondsPerTick":0.6},"initialState":{"tick":0},"ticks":[]})");
+                R"({"version":1,"metadata":{"encounterName":"Bad","secondsPerTick":0.6}})");
         }
         catch (const std::invalid_argument&)
         {
@@ -1339,49 +1246,50 @@ int main()
     {
         assert(PlaybackLoadThrows(std::string("{")));
 
-        nlohmann::json recording = CreateValidPlaybackRecording();
+        nlohmann::json recording = CreateVersion2CombatRecording();
         recording.erase("metadata");
         assert(PlaybackLoadThrows(recording));
 
-        recording = CreateValidPlaybackRecording();
-        recording["initialState"]["actors"][0]["id"] = "2";
+        recording = CreateVersion2CombatRecording();
+        recording["initialFacts"]["actorFacts"][0]["id"] = "2";
         assert(PlaybackLoadThrows(recording));
 
-        recording = CreateValidPlaybackRecording();
-        recording["initialState"]["actors"][0]["kind"] = "Goblin";
+        recording = CreateVersion2CombatRecording();
+        recording["initialFacts"]["actorFacts"][0]["kind"] = "goblin";
         assert(PlaybackLoadThrows(recording));
 
-        recording = CreateValidPlaybackRecording();
-        recording["initialState"]["actors"][1]["combatComposition"]
+        recording = CreateVersion2CombatRecording();
+        recording["initialFacts"]["actorFacts"][1]["combatComposition"]
                  ["attackType"] = "RangedRapid";
         assert(PlaybackLoadThrows(recording));
 
-        recording = CreateValidPlaybackRecording();
-        recording["initialState"]["actors"][0]["combatComposition"]
-                 ["equipmentProvenance"][0]["slot"] = "Pocket";
+        recording = CreateVersion2CombatRecording();
+        recording["initialFacts"]["actorFacts"][0]["combatComposition"]
+                 ["equipmentProvenance"] =
+            nlohmann::json::array({{{"slot", "Pocket"}, {"pieceId", 1}}});
         assert(PlaybackLoadThrows(recording));
 
-        recording = CreateValidPlaybackRecording();
-        recording["ticks"][0]["attacks"][0]["queuedDamageEvents"][0]["damage"] =
+        recording = CreateVersion2CombatRecording();
+        recording["completedTicks"][0]["attacks"][0]["queuedDamageEvents"][0]["damage"] =
             "7";
         assert(PlaybackLoadThrows(recording));
 
-        recording = CreateValidPlaybackRecording();
-        recording["ticks"][1]["tick"] = 1;
+        recording = CreateVersion2CombatRecording();
+        recording["completedTicks"][1]["tick"] = 5;
         assert(PlaybackLoadThrows(recording));
 
-        recording = CreateValidPlaybackRecording();
-        recording["ticks"][1]["tick"] = 3;
+        recording = CreateVersion2CombatRecording();
+        recording["completedTicks"][1]["tick"] = 7;
         assert(PlaybackLoadThrows(recording));
 
-        recording = CreateValidPlaybackRecording();
-        recording["initialState"]["actors"][1]["sceneMembership"]["coordinate"]
+        recording = CreateVersion2CombatRecording();
+        recording["initialFacts"]["actorFacts"][1]["sceneMembership"]["coordinate"]
                  ["x"] = 104;
         assert(PlaybackLoadThrows(recording));
 
-        recording = CreateValidPlaybackRecording();
-        recording["initialState"]["actors"][1]["size"] = 2;
-        recording["initialState"]["actors"][1]["sceneMembership"]["coordinate"]
+        recording = CreateVersion2CombatRecording();
+        recording["initialFacts"]["actorFacts"][1]["size"] = 2;
+        recording["initialFacts"]["actorFacts"][1]["sceneMembership"]["coordinate"]
                  ["x"] = 103;
         assert(PlaybackLoadThrows(recording));
     }
@@ -1389,39 +1297,39 @@ int main()
     {
         osrssim::recording::RecordingPlayback playback =
             osrssim::recording::RecordingPlayback::LoadFromJson(
-                CreateValidPlaybackRecording().dump());
+                CreateVersion2CombatRecording().dump());
 
         nlohmann::json actors =
-            nlohmann::json::parse(playback.GetActorsJson());
+            CurrentSnapshot(playback).at("actors");
         assert(actors.at(0).at("id") == 1);
         assert(actors.at(1).at("id") == 2);
         assert(actors.at(0).at("combatComposition").at("stats").at(
                    "hitpoints") == 82);
 
-        assert(playback.GoToTick(2));
-        actors = nlohmann::json::parse(playback.GetActorsJson());
+        assert(AdvancePlaybackToTick(playback, 6));
+        actors = CurrentSnapshot(playback).at("actors");
         assert(actors.at(0).at("combatComposition").at("stats").at(
-                   "hitpoints") == 75);
-        assert(nlohmann::json::parse(playback.GetDamageApplicationsJson())
+                   "hitpoints") == 76);
+        assert(CurrentSnapshot(playback).at("damageApplications")
                    .at(0)
-                   .at("damageEventId") == 1);
+                   .at("damageEventId") == 10);
 
-        assert(playback.GoToTick(1));
-        actors = nlohmann::json::parse(playback.GetActorsJson());
+        assert(AdvancePlaybackToTick(playback, 5));
+        actors = CurrentSnapshot(playback).at("actors");
         assert(actors.at(0).at("combatComposition").at("stats").at(
                    "hitpoints") == 77);
-        assert(nlohmann::json::parse(playback.GetAttacksJson())
+        assert(CurrentSnapshot(playback).at("attacks")
                    .at(0)
                    .at("id") == 1);
-        assert(nlohmann::json::parse(playback.GetDamageApplicationsJson())
+        assert(CurrentSnapshot(playback).at("damageApplications")
                    .empty());
 
-        assert(playback.GoToTick(0));
-        actors = nlohmann::json::parse(playback.GetActorsJson());
+        assert(AdvancePlaybackToTick(playback, 4));
+        actors = CurrentSnapshot(playback).at("actors");
         assert(actors.at(0).at("combatComposition").at("stats").at(
                    "hitpoints") == 82);
-        assert(!playback.GoToTick(3));
-        assert(playback.GetCurrentTick() == 0);
+        assert(!AdvancePlaybackToTick(playback, 8));
+        assert(playback.GetCurrentTick() == 7);
     }
 
     {
@@ -1437,11 +1345,11 @@ int main()
         const nlohmann::json recording =
             nlohmann::json::parse(recorder.ExportJson());
         const nlohmann::json& initialActors =
-            recording.at("initialState").at("actors");
+            recording.at("initialFacts").at("actorFacts");
 
         assert(initialActors.size() == 1);
         assert(initialActors.at(0).at("id") == encounterPtr->GetPlayerId());
-        assert(initialActors.at(0).at("kind") == "Player");
+        assert(initialActors.at(0).at("kind") == "player");
         assert(initialActors.at(0).at("present") == true);
         assert(initialActors.at(0).at("sceneMembership").at("sceneId") == 1);
         assert(
@@ -1475,8 +1383,8 @@ int main()
             !initialActors.at(0)
                  .at("combatComposition")
                  .contains("equipmentProvenance"));
-        assert(initialActors.at(0).at("debug").at("movementTarget").is_null());
-        assert(initialActors.at(0).at("debug").at("attackTimer") == 0);
+        assert(initialActors.at(0).at("movementTarget").is_null());
+        assert(initialActors.at(0).at("attackTimer") == 0);
 
         for (const nlohmann::json& actor : initialActors)
         {
@@ -1487,12 +1395,12 @@ int main()
             osrssim::recording::RecordingPlayback::LoadFromJson(
                 recorder.ExportJson());
         const nlohmann::json playbackActors =
-            nlohmann::json::parse(playback.GetActorsJson());
+            CurrentSnapshot(playback).at("actors");
 
         assert(playbackActors == initialActors);
 
         const nlohmann::json versionTwoRecording =
-            nlohmann::json::parse(recorder.ExportVersion2Json());
+            nlohmann::json::parse(recorder.ExportJson());
         const nlohmann::json& initialActorFacts =
             versionTwoRecording.at("initialFacts").at("actorFacts");
         assert(versionTwoRecording.at("version") == 2);
@@ -1507,7 +1415,7 @@ int main()
 
         osrssim::recording::RecordingPlayback versionTwoPlayback =
             osrssim::recording::RecordingPlayback::LoadFromJson(
-                recorder.ExportVersion2Json());
+                recorder.ExportJson());
         const nlohmann::json versionTwoSnapshot =
             nlohmann::json::parse(versionTwoPlayback.GetCurrentSnapshotJson());
         assert(versionTwoSnapshot.at("actors") == initialActorFacts);
@@ -1527,7 +1435,7 @@ int main()
         const nlohmann::json recording =
             nlohmann::json::parse(recorder.ExportJson());
         const nlohmann::json& initialActor =
-            recording.at("initialState").at("actors").at(0);
+            recording.at("initialFacts").at("actorFacts").at(0);
         const nlohmann::json& provenance =
             initialActor.at("combatComposition").at("equipmentProvenance");
 
@@ -1544,7 +1452,7 @@ int main()
             osrssim::recording::RecordingPlayback::LoadFromJson(
                 recorder.ExportJson());
         const nlohmann::json playbackActors =
-            nlohmann::json::parse(playback.GetActorsJson());
+            CurrentSnapshot(playback).at("actors");
 
         assert(
             playbackActors.at(0)
@@ -1567,10 +1475,10 @@ int main()
         const nlohmann::json recording =
             nlohmann::json::parse(recorder.ExportJson());
         const nlohmann::json versionTwoRecording =
-            nlohmann::json::parse(recorder.ExportVersion2Json());
+            nlohmann::json::parse(recorder.ExportJson());
 
         const nlohmann::json& tickOneActors =
-            recording.at("ticks").at(0).at("actors");
+            recording.at("completedTicks").at(0).at("actorFacts");
         assert(tickOneActors.size() == 2);
         assert(tickOneActors.at(0).at("id") == encounterPtr->GetPlayerId());
         assert(!tickOneActors.at(0).contains("combatComposition"));
@@ -1581,26 +1489,21 @@ int main()
                 .at("coordinate")
                 .at("x") == 12);
         assert(
-            tickOneActors.at(0)
-                .at("debug")
-                .at("movementTarget")
-                .at("kind") == "Actor");
+            tickOneActors.at(0).at("movementTarget").at("kind") == "actor");
         assert(
-            tickOneActors.at(0)
-                .at("debug")
-                .at("movementTarget")
-                .at("actorId") == encounterPtr->GetNpcId());
-        assert(tickOneActors.at(0).at("debug").at("attackTimer") == 6);
+            tickOneActors.at(0).at("movementTarget").at("actorId") ==
+            encounterPtr->GetNpcId());
+        assert(tickOneActors.at(0).at("attackTimer") == 6);
         assert(tickOneActors.at(1).at("id") == encounterPtr->GetNpcId());
         assert(tickOneActors.at(1).at("present") == true);
-        assert(tickOneActors.at(1).at("kind") == "Npc");
-        assert(tickOneActors.at(1).at("debug").at("attackTimer") == -1);
+        assert(tickOneActors.at(1).at("kind") == "npc");
+        assert(tickOneActors.at(1).at("attackTimer") == -1);
 
         const nlohmann::json& tickTwoActors =
-            recording.at("ticks").at(1).at("actors");
+            recording.at("completedTicks").at(1).at("actorFacts");
         assert(tickTwoActors.size() == 1);
         assert(tickTwoActors.at(0).at("id") == encounterPtr->GetPlayerId());
-        assert(!tickTwoActors.at(0).contains("currentHitpoints"));
+        assert(tickTwoActors.at(0).at("currentHitpoints") == 76);
         assert(
             tickTwoActors.at(0)
                 .at("combatComposition")
@@ -1611,10 +1514,10 @@ int main()
                 .at("combatComposition")
                 .at("stats")
                 .at("hitpoints") == 76);
-        assert(tickTwoActors.at(0).at("debug").at("attackTimer") == 5);
+        assert(tickTwoActors.at(0).at("attackTimer") == 5);
 
         const nlohmann::json& tickThreeActors =
-            recording.at("ticks").at(2).at("actors");
+            recording.at("completedTicks").at(2).at("actorFacts");
         assert(tickThreeActors.size() == 1);
         assert(tickThreeActors.at(0).at("id") == encounterPtr->GetPlayerId());
         assert(tickThreeActors.at(0).at("present") == false);
@@ -1639,9 +1542,9 @@ int main()
             osrssim::recording::RecordingPlayback::LoadFromJson(
                 recorder.ExportJson());
 
-        assert(playback.GoToTick(1));
+        assert(AdvancePlaybackToTick(playback, 1));
         nlohmann::json playbackActors =
-            nlohmann::json::parse(playback.GetActorsJson());
+            CurrentSnapshot(playback).at("actors");
         assert(playbackActors.size() == 2);
         assert(playbackActors.at(0).at("id") == encounterPtr->GetPlayerId());
         assert(
@@ -1655,8 +1558,8 @@ int main()
                 .at("coordinate")
                 .at("x") == 12);
 
-        assert(playback.GoToTick(2));
-        playbackActors = nlohmann::json::parse(playback.GetActorsJson());
+        assert(AdvancePlaybackToTick(playback, 2));
+        playbackActors = CurrentSnapshot(playback).at("actors");
         assert(
             playbackActors.at(0)
                 .at("combatComposition")
@@ -1668,10 +1571,10 @@ int main()
                 .at("stats")
                 .at("hitpoints") == 76);
         assert(playbackActors.at(1).at("id") == encounterPtr->GetNpcId());
-        assert(playbackActors.at(1).at("debug").at("attackTimer") == -1);
+        assert(playbackActors.at(1).at("attackTimer") == -1);
 
-        assert(playback.GoToTick(3));
-        playbackActors = nlohmann::json::parse(playback.GetActorsJson());
+        assert(AdvancePlaybackToTick(playback, 3));
+        playbackActors = CurrentSnapshot(playback).at("actors");
         assert(playbackActors.size() == 1);
         assert(playbackActors.at(0).at("id") == encounterPtr->GetNpcId());
     }
@@ -1689,16 +1592,16 @@ int main()
         const nlohmann::json recording =
             nlohmann::json::parse(recorder.ExportJson());
         const nlohmann::json& initialSceneEntities =
-            recording.at("initialState").at("sceneEntities");
+            recording.at("initialFacts").at("sceneEntityFacts");
 
         assert(initialSceneEntities.size() == 3);
-        assert(initialSceneEntities.at(0).at("kind") == "GameObject");
+        assert(initialSceneEntities.at(0).at("kind") == "game_object");
         assert(initialSceneEntities.at(0).at("sceneId") == 1);
         assert(initialSceneEntities.at(0).at("id") == 2001);
         assert(initialSceneEntities.at(0).at("coordinate").at("x") == 30);
         assert(initialSceneEntities.at(0).at("coordinate").at("y") == 31);
         assert(initialSceneEntities.at(0).at("coordinate").at("plane") == 0);
-        assert(initialSceneEntities.at(0).at("direction") == "East");
+        assert(initialSceneEntities.at(0).at("direction") == "east");
         assert(initialSceneEntities.at(0).at("sizeX") == 2);
         assert(initialSceneEntities.at(0).at("sizeY") == 1);
         assert(
@@ -1709,33 +1612,33 @@ int main()
                 .at("collision")
                 .at("blocksLineOfSight") == true);
         assert(!initialSceneEntities.at(0).contains("flags"));
-        assert(initialSceneEntities.at(1).at("kind") == "WallObject");
+        assert(initialSceneEntities.at(1).at("kind") == "wall_object");
         assert(initialSceneEntities.at(1).at("id") == 3001);
-        assert(initialSceneEntities.at(1).at("direction") == "North");
-        assert(initialSceneEntities.at(2).at("kind") == "WallObject");
+        assert(initialSceneEntities.at(1).at("direction") == "north");
+        assert(initialSceneEntities.at(2).at("kind") == "wall_object");
         assert(initialSceneEntities.at(2).at("id") == 3002);
         assert(initialSceneEntities.at(2).at("directions").size() == 2);
         assert(
             initialSceneEntities.at(2)
                 .at("directions")
                 .at(1)
-                .at("direction") == "East");
+                .at("direction") == "east");
 
         const nlohmann::json& tickOneChanges =
-            recording.at("ticks").at(0).at("sceneChanges");
+            recording.at("completedTicks").at(0).at("sceneEntityFacts");
         assert(tickOneChanges.size() == 2);
         assert(tickOneChanges.at(0).at("present") == false);
-        assert(tickOneChanges.at(0).at("kind") == "GameObject");
+        assert(tickOneChanges.at(0).at("kind") == "game_object");
         assert(tickOneChanges.at(0).at("id") == 2001);
         assert(tickOneChanges.at(1).at("present") == true);
-        assert(tickOneChanges.at(1).at("kind") == "GameObject");
+        assert(tickOneChanges.at(1).at("kind") == "game_object");
         assert(tickOneChanges.at(1).at("id") == 2002);
 
         const nlohmann::json& tickTwoChanges =
-            recording.at("ticks").at(1).at("sceneChanges");
+            recording.at("completedTicks").at(1).at("sceneEntityFacts");
         assert(tickTwoChanges.size() == 2);
         assert(tickTwoChanges.at(0).at("present") == false);
-        assert(tickTwoChanges.at(0).at("kind") == "WallObject");
+        assert(tickTwoChanges.at(0).at("kind") == "wall_object");
         assert(tickTwoChanges.at(0).at("id") == 3001);
         assert(tickTwoChanges.at(1).at("present") == false);
         assert(tickTwoChanges.at(1).at("id") == 3002);
@@ -1744,26 +1647,26 @@ int main()
             osrssim::recording::RecordingPlayback::LoadFromJson(
                 recorder.ExportJson());
         nlohmann::json playbackSceneEntities =
-            nlohmann::json::parse(playback.GetSceneEntitiesJson());
+            CurrentSnapshot(playback).at("sceneEntities");
 
         assert(playbackSceneEntities == initialSceneEntities);
 
-        assert(playback.GoToTick(1));
+        assert(AdvancePlaybackToTick(playback, 1));
         playbackSceneEntities =
-            nlohmann::json::parse(playback.GetSceneEntitiesJson());
+            CurrentSnapshot(playback).at("sceneEntities");
         assert(playbackSceneEntities.size() == 3);
         assert(playbackSceneEntities.at(0).at("id") == 3001);
         assert(playbackSceneEntities.at(1).at("id") == 3002);
         assert(playbackSceneEntities.at(2).at("id") == 2002);
 
-        assert(playback.GoToTick(2));
+        assert(AdvancePlaybackToTick(playback, 2));
         playbackSceneEntities =
-            nlohmann::json::parse(playback.GetSceneEntitiesJson());
+            CurrentSnapshot(playback).at("sceneEntities");
         assert(playbackSceneEntities.size() == 1);
         assert(playbackSceneEntities.at(0).at("id") == 2002);
 
         const nlohmann::json versionTwoRecording =
-            nlohmann::json::parse(recorder.ExportVersion2Json());
+            nlohmann::json::parse(recorder.ExportJson());
         const nlohmann::json& initialSceneEntityFacts =
             versionTwoRecording.at("initialFacts").at("sceneEntityFacts");
         assert(versionTwoRecording.at("version") == 2);
@@ -1790,74 +1693,20 @@ int main()
 
         osrssim::recording::RecordingPlayback versionTwoPlayback =
             osrssim::recording::RecordingPlayback::LoadFromJson(
-                recorder.ExportVersion2Json());
+                recorder.ExportJson());
         nlohmann::json versionTwoSceneEntities =
-            nlohmann::json::parse(versionTwoPlayback.GetSceneEntitiesJson());
+            CurrentSnapshot(versionTwoPlayback).at("sceneEntities");
         assert(versionTwoSceneEntities == initialSceneEntityFacts);
 
         assert(versionTwoPlayback.Advance());
         versionTwoSceneEntities =
-            nlohmann::json::parse(versionTwoPlayback.GetSceneEntitiesJson());
+            CurrentSnapshot(versionTwoPlayback).at("sceneEntities");
         assert(versionTwoSceneEntities.size() == 3);
         assert(versionTwoSceneEntities.at(0).at("id") == 3001);
         assert(versionTwoSceneEntities.at(1).at("id") == 3002);
         assert(versionTwoSceneEntities.at(2).at("id") == 2002);
     }
 
-    {
-        bool threw = false;
-
-        try
-        {
-            osrssim::recording::RecordingPlayback::LoadFromJson(R"({
-                "version": 1,
-                "metadata": {
-                    "encounterName": "Invalid Scene Entity",
-                    "secondsPerTick": 0.6
-                },
-                "initialState": {
-                    "tick": 0,
-                    "actors": [],
-                    "sceneEntities": [
-                        {
-                            "kind": "GameObject",
-                            "sceneId": 1,
-                            "id": 1,
-                            "coordinate": { "x": 10, "y": 10, "plane": 0 },
-                            "direction": "North",
-                            "sizeX": 1,
-                            "sizeY": 1,
-                            "collision": {
-                                "blocksMovement": true,
-                                "blocksLineOfSight": false
-                            }
-                        },
-                        {
-                            "kind": "GameObject",
-                            "sceneId": 1,
-                            "id": 2,
-                            "coordinate": { "x": 10, "y": 10, "plane": 0 },
-                            "direction": "North",
-                            "sizeX": 1,
-                            "sizeY": 1,
-                            "collision": {
-                                "blocksMovement": true,
-                                "blocksLineOfSight": false
-                            }
-                        }
-                    ],
-                    "projectiles": []
-                },
-                "ticks": []
-            })");
-        }
-        catch (const std::invalid_argument&)
-        {
-            threw = true;
-        }
-
-        assert(threw);
-    }
 
     {
         auto encounter = std::make_unique<StandardAttackRecordingEncounter>();
@@ -1874,8 +1723,8 @@ int main()
 
         const nlohmann::json recording =
             nlohmann::json::parse(recorder.ExportJson());
-        const nlohmann::json& tickOne = recording.at("ticks").at(0);
-        const nlohmann::json& tickTwo = recording.at("ticks").at(1);
+        const nlohmann::json& tickOne = recording.at("completedTicks").at(0);
+        const nlohmann::json& tickTwo = recording.at("completedTicks").at(1);
 
         assert(tickOne.at("attacks").size() == 1);
         const nlohmann::json& attack = tickOne.at("attacks").at(0);
@@ -1894,10 +1743,10 @@ int main()
             attack.at("queuedDamageEvents").at(0).at("damage").get<int>() <= 50);
         assert(attack.at("projectile").at("projectileId") == 88);
         assert(attack.at("projectile").at("targetActorId") == encounterPtr->GetNpcId());
-        assert(tickOne.at("projectiles").size() == 1);
-        assert(tickOne.at("projectiles").at(0).at("projectileId") == 88);
-        assert(tickOne.at("projectiles").at(0).at("elapsedTicks") == 0);
-        assert(tickOne.at("projectiles").at(0).at("totalTicks") == 1);
+        assert(tickOne.at("visibleProjectiles").size() == 1);
+        assert(tickOne.at("visibleProjectiles").at(0).at("projectileId") == 88);
+        assert(tickOne.at("visibleProjectiles").at(0).at("elapsedTicks") == 0);
+        assert(tickOne.at("visibleProjectiles").at(0).at("totalTicks") == 1);
 
         assert(tickTwo.at("damageApplications").size() == 1);
         const nlohmann::json& damageApplication =
@@ -1909,29 +1758,29 @@ int main()
                attack.at("queuedDamageEvents").at(0).at("damage"));
         assert(damageApplication.at("appliedDamage") ==
                attack.at("queuedDamageEvents").at(0).at("damage"));
-        assert(tickTwo.at("projectiles").empty());
+        assert(tickTwo.at("visibleProjectiles").empty());
 
         osrssim::recording::RecordingPlayback playback =
             osrssim::recording::RecordingPlayback::LoadFromJson(
                 recorder.ExportJson());
 
-        assert(playback.GoToTick(1));
-        assert(nlohmann::json::parse(playback.GetAttacksJson()) ==
+        assert(AdvancePlaybackToTick(playback, 1));
+        assert(CurrentSnapshot(playback).at("attacks") ==
                tickOne.at("attacks"));
         assert(
-            nlohmann::json::parse(playback.GetDamageApplicationsJson())
+            CurrentSnapshot(playback).at("damageApplications")
                 .empty());
-        assert(nlohmann::json::parse(playback.GetProjectilesJson()) ==
-               tickOne.at("projectiles"));
+        assert(CurrentSnapshot(playback).at("visibleProjectiles") ==
+               tickOne.at("visibleProjectiles"));
 
-        assert(playback.GoToTick(2));
-        assert(nlohmann::json::parse(playback.GetAttacksJson()).empty());
-        assert(nlohmann::json::parse(playback.GetDamageApplicationsJson()) ==
+        assert(AdvancePlaybackToTick(playback, 2));
+        assert(CurrentSnapshot(playback).at("attacks").empty());
+        assert(CurrentSnapshot(playback).at("damageApplications") ==
                tickTwo.at("damageApplications"));
-        assert(nlohmann::json::parse(playback.GetProjectilesJson()).empty());
+        assert(CurrentSnapshot(playback).at("visibleProjectiles").empty());
 
         const nlohmann::json versionTwoRecording =
-            nlohmann::json::parse(recorder.ExportVersion2Json());
+            nlohmann::json::parse(recorder.ExportJson());
         assert(!versionTwoRecording.at("initialFacts").contains("attacks"));
         assert(!versionTwoRecording.at("initialFacts")
                     .contains("damageApplications"));
@@ -1965,7 +1814,7 @@ int main()
 
         osrssim::recording::RecordingPlayback versionTwoPlayback =
             osrssim::recording::RecordingPlayback::LoadFromJson(
-                recorder.ExportVersion2Json());
+                recorder.ExportJson());
         nlohmann::json versionTwoSnapshot =
             nlohmann::json::parse(versionTwoPlayback.GetCurrentSnapshotJson());
         assert(versionTwoSnapshot.at("attacks").empty());
@@ -1975,7 +1824,7 @@ int main()
             nlohmann::json::parse(versionTwoPlayback.GetCurrentSnapshotJson());
         assert(versionTwoSnapshot.at("attacks") == tickOne.at("attacks"));
         assert(versionTwoSnapshot.at("damageApplications").empty());
-        assert(nlohmann::json::parse(versionTwoPlayback.GetProjectilesJson()) ==
+        assert(CurrentSnapshot(versionTwoPlayback).at("visibleProjectiles") ==
                tickOneProjectiles);
         assert(versionTwoPlayback.Advance());
         versionTwoSnapshot =
@@ -1983,7 +1832,7 @@ int main()
         assert(versionTwoSnapshot.at("attacks").empty());
         assert(versionTwoSnapshot.at("damageApplications") ==
                tickTwo.at("damageApplications"));
-        assert(nlohmann::json::parse(versionTwoPlayback.GetProjectilesJson())
+        assert(CurrentSnapshot(versionTwoPlayback).at("visibleProjectiles")
                    .empty());
     }
 
@@ -2037,7 +1886,7 @@ int main()
 
         const nlohmann::json recording =
             nlohmann::json::parse(recorder.ExportJson());
-        const nlohmann::json& tickOne = recording.at("ticks").at(0);
+        const nlohmann::json& tickOne = recording.at("completedTicks").at(0);
         const nlohmann::json& attack = tickOne.at("attacks").at(0);
 
         assert(tickOne.at("attacks").size() == 1);
@@ -2055,7 +1904,7 @@ int main()
         assert(!attack.contains("projectile"));
 
         const nlohmann::json& damageApplications =
-            recording.at("ticks").at(1).at("damageApplications");
+            recording.at("completedTicks").at(1).at("damageApplications");
         assert(damageApplications.size() == 2);
         assert(damageApplications.at(0).at("damageEventId") == 1);
         assert(damageApplications.at(0).at("attackId") == 1);
@@ -2096,13 +1945,16 @@ int main()
         const nlohmann::json recording =
             nlohmann::json::parse(recorder.ExportJson());
         const nlohmann::json& attacks =
-            recording.at("ticks").at(0).at("attacks");
+            recording.at("completedTicks").at(0).at("attacks");
 
         assert(attacks.size() == 1);
         assert(attacks.at(0).at("attackerId") == encounterPtr->GetPlayerId());
         assert(attacks.at(0).at("targetId") == encounterPtr->GetNpcId());
         assert(attacks.at(0).at("callback") == "anonymous_attack_callback");
         assert(attacks.at(0).at("queuedDamageEvents").empty());
-        assert(recording.at("ticks").at(0).at("damageApplications").empty());
+        assert(recording.at("completedTicks")
+                   .at(0)
+                   .at("damageApplications")
+                   .empty());
     }
 }

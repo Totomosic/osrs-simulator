@@ -1,15 +1,15 @@
 {
-  "version": 1,
+  "version": 2,
   "metadata": {
     "encounterName": "Minimal Encounter Recording",
     "secondsPerTick": 0.6
   },
-  "initialState": {
-    "tick": 0,
-    "actors": [
+  "initialTick": 0,
+  "initialFacts": {
+    "actorFacts": [
       {
         "id": 1,
-        "kind": "Player",
+        "kind": "player",
         "present": true,
         "playerIndex": 0,
         "sceneMembership": {
@@ -56,7 +56,7 @@
             "rangedStrength": 0,
             "magicDamagePercent": 0
           },
-          "attackType": "Slash",
+          "attackType": "slash",
           "magicBaseMaximumHit": 9,
           "weapon": {
             "id": 12,
@@ -75,15 +75,14 @@
             }
           ]
         },
-        "debug": {
-          "movementTarget": null,
-          "attackTimer": 0
-        }
+        "currentHitpoints": 82,
+        "movementTarget": null,
+        "attackTimer": 0
       }
     ],
-    "sceneEntities": [
+    "sceneEntityFacts": [
       {
-        "kind": "GameObject",
+        "kind": "game_object",
         "sceneId": 1,
         "id": 5001,
         "coordinate": {
@@ -91,21 +90,22 @@
           "y": 12,
           "plane": 0
         },
-        "direction": "North",
+        "direction": "north",
         "sizeX": 1,
         "sizeY": 1,
         "collision": {
           "blocksMovement": true,
           "blocksLineOfSight": true
-        }
+        },
+        "present": true
       }
     ],
-    "projectiles": []
+    "visibleProjectiles": []
   },
-  "ticks": [
+  "completedTicks": [
     {
       "tick": 1,
-      "actors": [
+      "actorFacts": [
         {
           "id": 1,
           "sceneMembership": {
@@ -117,14 +117,13 @@
             }
           },
           "currentHitpoints": 77,
-          "debug": {
-            "movementTarget": null,
-            "attackTimer": 6
-          }
+          "present": true,
+          "movementTarget": null,
+          "attackTimer": 6
         },
         {
           "id": 2,
-          "kind": "Npc",
+          "kind": "npc",
           "present": true,
           "npcIndex": 0,
           "sceneMembership": {
@@ -171,7 +170,7 @@
               "rangedStrength": 0,
               "magicDamagePercent": 0
             },
-            "attackType": "Slash",
+            "attackType": "slash",
             "magicBaseMaximumHit": 9,
             "weapon": {
               "id": 12,
@@ -190,10 +189,27 @@
               }
             ]
           },
-          "debug": {
-            "movementTarget": null,
-            "attackTimer": -1
-          }
+          "currentHitpoints": 50,
+          "movementTarget": null,
+          "attackTimer": -1
+        }
+      ],
+      "sceneEntityFacts": [
+        {
+          "kind": "wall_object",
+          "sceneId": 1,
+          "id": 6001,
+          "coordinate": {
+            "x": 13,
+            "y": 13,
+            "plane": 0
+          },
+          "direction": "east",
+          "collision": {
+            "blocksMovement": true,
+            "blocksLineOfSight": false
+          },
+          "present": true
         }
       ],
       "attacks": [
@@ -230,25 +246,7 @@
         }
       ],
       "damageApplications": [],
-      "sceneChanges": [
-        {
-          "kind": "WallObject",
-          "sceneId": 1,
-          "id": 6001,
-          "coordinate": {
-            "x": 13,
-            "y": 13,
-            "plane": 0
-          },
-          "direction": "East",
-          "collision": {
-            "blocksMovement": true,
-            "blocksLineOfSight": false
-          },
-          "present": true
-        }
-      ],
-      "projectiles": [
+      "visibleProjectiles": [
         {
           "projectileId": 88,
           "source": {
@@ -269,7 +267,7 @@
     },
     {
       "tick": 2,
-      "actors": [
+      "actorFacts": [
         {
           "id": 1,
           "combatComposition": {
@@ -306,7 +304,7 @@
               "rangedStrength": 0,
               "magicDamagePercent": 0
             },
-            "attackType": "Slash",
+            "attackType": "slash",
             "magicBaseMaximumHit": 9,
             "weapon": {
               "id": 12,
@@ -325,11 +323,12 @@
               }
             ]
           },
-          "debug": {
-            "attackTimer": 5
-          }
+          "present": true,
+          "currentHitpoints": 76,
+          "attackTimer": 5
         }
       ],
+      "sceneEntityFacts": [],
       "attacks": [],
       "damageApplications": [
         {
@@ -341,8 +340,7 @@
           "appliedDamage": 7
         }
       ],
-      "sceneChanges": [],
-      "projectiles": []
+      "visibleProjectiles": []
     }
   ]
 }

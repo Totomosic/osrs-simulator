@@ -558,15 +558,15 @@ std::vector<std::string> GetSortedSceneEntityKeys(
 }
 }  // namespace
 
-nlohmann::json EncounterRecorder::CreateEmptyTick(int tick)
+nlohmann::json EncounterRecorder::CreateEmptyCompletedTick(int tick)
 {
     return nlohmann::json{
         {"tick", tick},
-        {"actors", nlohmann::json::array()},
+        {"actorFacts", nlohmann::json::array()},
+        {"sceneEntityFacts", nlohmann::json::array()},
         {"attacks", nlohmann::json::array()},
         {"damageApplications", nlohmann::json::array()},
-        {"sceneChanges", nlohmann::json::array()},
-        {"projectiles", nlohmann::json::array()}};
+        {"visibleProjectiles", nlohmann::json::array()}};
 }
 
 nlohmann::json EncounterRecorder::CreateActorSnapshot(
@@ -868,16 +868,16 @@ void EncounterRecorder::RecordInitialState(const Engine& engine)
     }
 
     m_Recording = nlohmann::json{
-        {"version", 1},
+        {"version", 2},
         {"metadata",
          {{"encounterName", m_EncounterName},
           {"secondsPerTick", m_SecondsPerTick}}},
-        {"initialState",
-         {{"tick", static_cast<int>(engine.GetCurrentTick())},
-          {"actors", actors},
-          {"sceneEntities", sceneEntities},
-          {"projectiles", CreateProjectileSnapshots(engine.GetWorld())}}},
-        {"ticks", nlohmann::json::array()}};
+        {"initialTick", static_cast<int>(engine.GetCurrentTick())},
+        {"initialFacts",
+         {{"actorFacts", CreateVersion2ActorFacts(actors)},
+          {"sceneEntityFacts", CreateVersion2SceneEntityFacts(sceneEntities)},
+          {"visibleProjectiles", CreateProjectileSnapshots(engine.GetWorld())}}},
+        {"completedTicks", nlohmann::json::array()}};
 }
 
 void EncounterRecorder::RecordCompletedTick(const Engine& engine)
@@ -892,18 +892,23 @@ void EncounterRecorder::RecordCompletedTick(const Engine& engine)
         CreatePlacedActors(engine.GetWorld());
     const std::unordered_map<std::string, nlohmann::json> currentSceneEntities =
         CreateSceneEntities(engine.GetWorld());
-    nlohmann::json tick = CreateEmptyTick(static_cast<int>(engine.GetCurrentTick()));
-    tick["actors"] = CreateActorChanges(m_PreviousActors, currentActors);
+    const nlohmann::json actorChanges =
+        CreateActorChanges(m_PreviousActors, currentActors);
+    const nlohmann::json sceneEntityChanges =
+        CreateSceneEntityChanges(m_PreviousSceneEntities, currentSceneEntities);
+    nlohmann::json tick =
+        CreateEmptyCompletedTick(static_cast<int>(engine.GetCurrentTick()));
+    tick["actorFacts"] = CreateVersion2ActorFacts(actorChanges);
     tick["attacks"] = m_PendingAttacks;
     tick["damageApplications"] = m_PendingDamageApplications;
-    tick["sceneChanges"] =
-        CreateSceneEntityChanges(m_PreviousSceneEntities, currentSceneEntities);
-    tick["projectiles"] = CreateProjectileSnapshots(engine.GetWorld());
+    tick["sceneEntityFacts"] = CreateVersion2SceneEntityFacts(
+        sceneEntityChanges);
+    tick["visibleProjectiles"] = CreateProjectileSnapshots(engine.GetWorld());
     m_PreviousActors = currentActors;
     m_PreviousSceneEntities = currentSceneEntities;
     m_PendingAttacks = nlohmann::json::array();
     m_PendingDamageApplications = nlohmann::json::array();
-    m_Recording["ticks"].push_back(tick);
+    m_Recording["completedTicks"].push_back(tick);
 }
 
 std::string EncounterRecorder::ExportJson() const
@@ -915,45 +920,6 @@ std::string EncounterRecorder::ExportJson() const
     }
 
     return m_Recording.dump();
-}
-
-std::string EncounterRecorder::ExportVersion2Json() const
-{
-    if (m_Recording.is_null())
-    {
-        throw std::logic_error(
-            "Encounter Recording cannot export before initial state");
-    }
-
-    nlohmann::json completedTicks = nlohmann::json::array();
-
-    for (const nlohmann::json& tick : m_Recording.at("ticks"))
-    {
-        completedTicks.push_back(
-            {{"tick", tick.at("tick")},
-             {"actorFacts", CreateVersion2ActorFacts(tick.at("actors"))},
-             {"sceneEntityFacts",
-              CreateVersion2SceneEntityFacts(tick.at("sceneChanges"))},
-             {"attacks", tick.at("attacks")},
-             {"damageApplications", tick.at("damageApplications")},
-             {"visibleProjectiles", tick.at("projectiles")}});
-    }
-
-    return nlohmann::json{
-        {"version", 2},
-        {"metadata", m_Recording.at("metadata")},
-        {"initialTick", m_Recording.at("initialState").at("tick")},
-        {"initialFacts",
-         {{"actorFacts",
-           CreateVersion2ActorFacts(
-               m_Recording.at("initialState").at("actors"))},
-          {"sceneEntityFacts",
-           CreateVersion2SceneEntityFacts(
-               m_Recording.at("initialState").at("sceneEntities"))},
-          {"visibleProjectiles",
-           m_Recording.at("initialState").at("projectiles")}}},
-        {"completedTicks", completedTicks}}
-        .dump();
 }
 
 void EncounterRecorder::OnAttackQueued(

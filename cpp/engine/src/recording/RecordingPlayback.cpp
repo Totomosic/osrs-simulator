@@ -7,6 +7,7 @@
 #include <tuple>
 #include <unordered_map>
 #include <unordered_set>
+#include <utility>
 #include <vector>
 
 namespace osrssim::recording
@@ -1187,173 +1188,7 @@ nlohmann::json SceneEntitiesObjectToSortedArray(
 }
 }  // namespace
 
-void RecordingPlayback::Validate(const nlohmann::json& recording)
-{
-    if (!recording.is_object())
-    {
-        throw std::invalid_argument("Recording root must be an object");
-    }
-
-    RequireObjectField(recording, "version", RequiredJsonKind::Integer);
-
-    if (recording.at("version").get<int>() != 1)
-    {
-        throw std::invalid_argument("Unsupported Encounter Recording version");
-    }
-
-    RequireObjectField(recording, "metadata", RequiredJsonKind::Object);
-    RequireObjectField(
-        recording.at("metadata"),
-        "encounterName",
-        RequiredJsonKind::String);
-    RequireObjectField(
-        recording.at("metadata"),
-        "secondsPerTick",
-        RequiredJsonKind::Number);
-    RequireObjectField(recording, "initialState", RequiredJsonKind::Object);
-    RequireObjectField(
-        recording.at("initialState"),
-        "tick",
-        RequiredJsonKind::Integer);
-    RequireObjectField(
-        recording.at("initialState"),
-        "actors",
-        RequiredJsonKind::Array);
-    RequireObjectField(
-        recording.at("initialState"),
-        "sceneEntities",
-        RequiredJsonKind::Array);
-    RequireObjectField(
-        recording.at("initialState"),
-        "projectiles",
-        RequiredJsonKind::Array);
-    RequireObjectField(recording, "ticks", RequiredJsonKind::Array);
-
-    for (const nlohmann::json& actor :
-         recording.at("initialState").at("actors"))
-    {
-        ValidateActorShape(actor);
-    }
-
-    for (const nlohmann::json& sceneEntity :
-         recording.at("initialState").at("sceneEntities"))
-    {
-        ValidateSceneEntityShape(sceneEntity);
-    }
-
-    for (const nlohmann::json& projectile :
-         recording.at("initialState").at("projectiles"))
-    {
-        ValidateProjectileShape(projectile);
-    }
-
-    int expectedTick = recording.at("initialState").at("tick").get<int>() + 1;
-
-    for (const nlohmann::json& tick : recording.at("ticks"))
-    {
-        RequireObjectField(tick, "tick", RequiredJsonKind::Integer);
-        RequireObjectField(tick, "actors", RequiredJsonKind::Array);
-        RequireObjectField(tick, "attacks", RequiredJsonKind::Array);
-        RequireObjectField(
-            tick,
-            "damageApplications",
-            RequiredJsonKind::Array);
-        RequireObjectField(tick, "sceneChanges", RequiredJsonKind::Array);
-        RequireObjectField(tick, "projectiles", RequiredJsonKind::Array);
-
-        for (const nlohmann::json& actor : tick.at("actors"))
-        {
-            ValidateActorShape(actor);
-        }
-
-        for (const nlohmann::json& attack : tick.at("attacks"))
-        {
-            ValidateAttackShape(attack);
-        }
-
-        for (const nlohmann::json& damageApplication :
-             tick.at("damageApplications"))
-        {
-            ValidateDamageApplicationShape(damageApplication);
-        }
-
-        for (const nlohmann::json& sceneChange : tick.at("sceneChanges"))
-        {
-            ValidateSceneEntityShape(sceneChange);
-            RequireObjectField(
-                sceneChange,
-                "present",
-                RequiredJsonKind::Boolean);
-        }
-
-        for (const nlohmann::json& projectile : tick.at("projectiles"))
-        {
-            ValidateProjectileShape(projectile);
-        }
-
-        if (tick.at("tick").get<int>() != expectedTick)
-        {
-            throw std::invalid_argument(
-                "Encounter Recording Ticks must be contiguous");
-        }
-
-        ++expectedTick;
-    }
-}
-
 void RecordingPlayback::RebuildToCurrentTick()
-{
-    if (m_Version2Recording.has_value())
-    {
-        RebuildVersion2Snapshot();
-        return;
-    }
-
-    m_Actors = nlohmann::json::object();
-    m_SceneEntities = nlohmann::json::object();
-    m_Attacks = nlohmann::json::array();
-    m_DamageApplications = nlohmann::json::array();
-    m_Projectiles = m_Recording.at("initialState").at("projectiles");
-    std::unordered_map<SceneId, Scene> scenes;
-
-    for (const nlohmann::json& actor : m_Recording.at("initialState").at("actors"))
-    {
-        ApplyActorChange(m_Actors, actor);
-    }
-
-    for (const nlohmann::json& sceneEntity :
-         m_Recording.at("initialState").at("sceneEntities"))
-    {
-        ApplySceneEntityChange(m_SceneEntities, scenes, sceneEntity);
-    }
-
-    for (const nlohmann::json& tick : m_Recording.at("ticks"))
-    {
-        if (tick.at("tick").get<int>() > m_CurrentTick)
-        {
-            break;
-        }
-
-        for (const nlohmann::json& actorChange : tick.at("actors"))
-        {
-            ApplyActorChange(m_Actors, actorChange);
-        }
-
-        for (const nlohmann::json& sceneChange : tick.at("sceneChanges"))
-        {
-            ApplySceneEntityChange(m_SceneEntities, scenes, sceneChange);
-        }
-
-        if (tick.at("tick").get<int>() == m_CurrentTick)
-        {
-            m_Attacks = tick.at("attacks");
-            m_DamageApplications = tick.at("damageApplications");
-            m_Projectiles = tick.at("projectiles");
-        }
-    }
-}
-
-void RecordingPlayback::RebuildVersion2Snapshot()
 {
     m_Actors = nlohmann::json::object();
     m_SceneEntities = nlohmann::json::object();
@@ -1361,34 +1196,27 @@ void RecordingPlayback::RebuildVersion2Snapshot()
     m_DamageApplications = nlohmann::json::array();
     m_Projectiles = nlohmann::json::array();
 
-    if (!m_Version2Recording.has_value())
-    {
-        return;
-    }
-
-    const EncounterRecording& recording = m_Version2Recording.value();
-
     for (const nlohmann::json& actorFact :
-         recording.GetInitialFacts().at("actorFacts"))
+         m_Recording.GetInitialFacts().at("actorFacts"))
     {
         ApplyRecordedActorFact(m_Actors, actorFact);
     }
 
     for (const nlohmann::json& sceneEntityFact :
-         recording.GetInitialFacts().at("sceneEntityFacts"))
+         m_Recording.GetInitialFacts().at("sceneEntityFacts"))
     {
         ApplyRecordedSceneEntityFact(m_SceneEntities, sceneEntityFact);
     }
 
-    if (m_CurrentTick == recording.GetInitialTick())
+    if (m_CurrentTick == m_Recording.GetInitialTick())
     {
         m_Projectiles =
-            recording.GetInitialFacts().at("visibleProjectiles");
+            m_Recording.GetInitialFacts().at("visibleProjectiles");
     }
     else
     {
         for (const CompletedRecordingTick& completedTick :
-             recording.GetCompletedTicks())
+             m_Recording.GetCompletedTicks())
         {
             if (completedTick.tick > m_CurrentTick)
             {
@@ -1428,64 +1256,35 @@ void RecordingPlayback::RebuildVersion2Snapshot()
         {"visibleProjectiles", m_Projectiles}};
 }
 
+RecordingPlayback::RecordingPlayback(EncounterRecording recording)
+    : m_Recording(std::move(recording)),
+      m_CurrentTick(m_Recording.GetInitialTick())
+{
+    RebuildToCurrentTick();
+}
+
 RecordingPlayback RecordingPlayback::LoadFromJson(const std::string& jsonText)
 {
-    RecordingPlayback playback;
-    playback.m_Recording = nlohmann::json::parse(jsonText);
-
-    if (playback.m_Recording.is_object() &&
-        playback.m_Recording.contains("version") &&
-        playback.m_Recording.at("version").is_number_integer() &&
-        playback.m_Recording.at("version").get<int>() == 2)
-    {
-        playback.m_Version2Recording =
-            EncounterRecording::LoadFromJson(playback.m_Recording);
-        ValidateVersion2ActorProjection(playback.m_Version2Recording.value());
-        ValidateVersion2SceneEntityProjection(
-            playback.m_Version2Recording.value());
-        ValidateVersion2CombatProjection(
-            playback.m_Version2Recording.value());
-        playback.m_CurrentTick =
-            playback.m_Version2Recording->GetInitialTick();
-        playback.RebuildVersion2Snapshot();
-        return playback;
-    }
-
-    Validate(playback.m_Recording);
-    playback.m_CurrentTick =
-        playback.m_Recording.at("initialState").at("tick").get<int>();
-    playback.RebuildToCurrentTick();
-    return playback;
+    EncounterRecording recording = EncounterRecording::LoadFromJson(jsonText);
+    ValidateVersion2ActorProjection(recording);
+    ValidateVersion2SceneEntityProjection(recording);
+    ValidateVersion2CombatProjection(recording);
+    return RecordingPlayback(std::move(recording));
 }
 
 std::string RecordingPlayback::GetEncounterName() const
 {
-    if (m_Version2Recording.has_value())
-    {
-        return m_Version2Recording->GetEncounterName();
-    }
-
-    return m_Recording.at("metadata").at("encounterName").get<std::string>();
+    return m_Recording.GetEncounterName();
 }
 
 double RecordingPlayback::GetSecondsPerTick() const
 {
-    if (m_Version2Recording.has_value())
-    {
-        return m_Version2Recording->GetSecondsPerTick();
-    }
-
-    return m_Recording.at("metadata").at("secondsPerTick").get<double>();
+    return m_Recording.GetSecondsPerTick();
 }
 
 int RecordingPlayback::GetInitialTick() const
 {
-    if (m_Version2Recording.has_value())
-    {
-        return m_Version2Recording->GetInitialTick();
-    }
-
-    return m_Recording.at("initialState").at("tick").get<int>();
+    return m_Recording.GetInitialTick();
 }
 
 int RecordingPlayback::GetCurrentTick() const
@@ -1495,64 +1294,24 @@ int RecordingPlayback::GetCurrentTick() const
 
 int RecordingPlayback::GetLastTick() const
 {
-    if (m_Version2Recording.has_value())
-    {
-        return m_Version2Recording->GetLastTick();
-    }
-
-    if (m_Recording.at("ticks").empty())
-    {
-        return GetInitialTick();
-    }
-
-    return m_Recording.at("ticks").back().at("tick").get<int>();
-}
-
-std::string RecordingPlayback::GetActorsJson() const
-{
-    return ActorsObjectToSortedArray(m_Actors).dump();
-}
-
-std::string RecordingPlayback::GetSceneEntitiesJson() const
-{
-    return SceneEntitiesObjectToSortedArray(m_SceneEntities).dump();
-}
-
-std::string RecordingPlayback::GetAttacksJson() const
-{
-    return m_Attacks.dump();
-}
-
-std::string RecordingPlayback::GetDamageApplicationsJson() const
-{
-    return m_DamageApplications.dump();
-}
-
-std::string RecordingPlayback::GetProjectilesJson() const
-{
-    return m_Projectiles.dump();
+    return m_Recording.GetLastTick();
 }
 
 std::string RecordingPlayback::GetCurrentSnapshotJson() const
 {
-    if (m_Version2Recording.has_value())
-    {
-        return m_CurrentSnapshot.dump();
-    }
-
-    return nlohmann::json{
-        {"tick", m_CurrentTick},
-        {"actors", ActorsObjectToSortedArray(m_Actors)},
-        {"sceneEntities", SceneEntitiesObjectToSortedArray(m_SceneEntities)},
-        {"attacks", m_Attacks},
-        {"damageApplications", m_DamageApplications},
-        {"visibleProjectiles", m_Projectiles}}
-        .dump();
+    return m_CurrentSnapshot.dump();
 }
 
 bool RecordingPlayback::Advance()
 {
-    return GoToTick(m_CurrentTick + 1);
+    if (m_CurrentTick >= GetLastTick())
+    {
+        return false;
+    }
+
+    ++m_CurrentTick;
+    RebuildToCurrentTick();
+    return true;
 }
 
 void RecordingPlayback::Reset()
@@ -1564,28 +1323,6 @@ void RecordingPlayback::Reset()
 bool RecordingPlayback::IsComplete() const
 {
     return m_CurrentTick == GetLastTick();
-}
-
-bool RecordingPlayback::PreviousTick()
-{
-    return GoToTick(m_CurrentTick - 1);
-}
-
-bool RecordingPlayback::NextTick()
-{
-    return GoToTick(m_CurrentTick + 1);
-}
-
-bool RecordingPlayback::GoToTick(int tick)
-{
-    if (tick < GetInitialTick() || tick > GetLastTick())
-    {
-        return false;
-    }
-
-    m_CurrentTick = tick;
-    RebuildToCurrentTick();
-    return true;
 }
 
 }  // namespace osrssim::recording

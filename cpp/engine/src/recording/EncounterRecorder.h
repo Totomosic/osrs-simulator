@@ -24,7 +24,7 @@ private:
     nlohmann::json m_PendingDamageApplications = nlohmann::json::array();
     std::unordered_set<std::uint64_t> m_RecordedQueuedDamageEventIds;
 
-    static nlohmann::json CreateEmptyTick(int tick);
+    static nlohmann::json CreateEmptyCompletedTick(int tick);
     static nlohmann::json CreateActorSnapshot(
         const World& world,
         ActorId actorId);
@@ -50,7 +50,6 @@ public:
     void RecordInitialState(const Engine& engine);
     void RecordCompletedTick(const Engine& engine);
     std::string ExportJson() const;
-    std::string ExportVersion2Json() const;
     void OnAttackQueued(
         const CombatService::AttackObservation& attack) override;
     void OnDamageApplied(

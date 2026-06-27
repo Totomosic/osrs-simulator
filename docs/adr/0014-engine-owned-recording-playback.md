@@ -14,7 +14,7 @@ Recording playback should apply recorded encounter facts through engine world an
 
 ## Decision
 
-Recording Playback lives in the C++ engine and is exposed through WebAssembly. It loads versioned recording JSON, validates schema and tick ordering, applies state through low-level APIs without calling `Engine::Step`, and supports random access by rebuilding from initial state and applying tick entries up to the requested tick.
+Recording Playback lives in the C++ engine and is exposed through WebAssembly. It loads version 2 Encounter Recording JSON through the typed Recorded Fact model, validates Recording Validity and Projection Validity up front, and exposes sequential Recording Snapshots without calling `Engine::Step`.
 
 ## Consequences
 
