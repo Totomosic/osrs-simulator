@@ -8,7 +8,136 @@ int Abs(int value)
 {
     return value < 0 ? -value : value;
 }
+
+int Max(int lhs, int rhs)
+{
+    return lhs > rhs ? lhs : rhs;
+}
+
+int RemainingChebyshev(int requestedDx, int requestedDy, int dx, int dy)
+{
+    return Max(Abs(requestedDx - dx), Abs(requestedDy - dy));
+}
+
+int RemainingManhattan(int requestedDx, int requestedDy, int dx, int dy)
+{
+    return Abs(requestedDx - dx) + Abs(requestedDy - dy);
+}
+
+int RatioError(int requestedDx, int requestedDy, int dx, int dy)
+{
+    return Abs(Abs(dx) * Abs(requestedDy) - Abs(dy) * Abs(requestedDx));
+}
+
+int CardinalPriority(int dx, int dy)
+{
+    if (dx < 0 && dy == 0)
+    {
+        return 0;
+    }
+
+    if (dx > 0 && dy == 0)
+    {
+        return 1;
+    }
+
+    if (dx == 0 && dy < 0)
+    {
+        return 2;
+    }
+
+    if (dx == 0 && dy > 0)
+    {
+        return 3;
+    }
+
+    return 4;
+}
 }  // namespace
+
+ActorMovementAccess::ActorMovementAccess(
+    Scene& scene,
+    SceneCoordinate& coordinate,
+    ActorMovementKind kind,
+    int size,
+    int speed)
+    : m_Scene(scene),
+      m_Coordinate(coordinate),
+      m_Kind(kind),
+      m_Size(size),
+      m_Speed(speed)
+{
+}
+
+const Scene& ActorMovementAccess::GetScene() const
+{
+    return m_Scene;
+}
+
+ActorMovementKind ActorMovementAccess::GetKind() const
+{
+    return m_Kind;
+}
+
+SceneCoordinate ActorMovementAccess::GetCoordinate() const
+{
+    return m_Coordinate;
+}
+
+int ActorMovementAccess::GetSize() const
+{
+    return m_Size;
+}
+
+int ActorMovementAccess::GetSpeed() const
+{
+    return m_Speed;
+}
+
+void ActorMovementAccess::MoveTo(SceneCoordinate destination)
+{
+    RemoveOccupancy(m_Coordinate);
+    m_Coordinate = destination;
+    AddOccupancy(m_Coordinate);
+}
+
+void ActorMovementAccess::AddOccupancy(SceneCoordinate coordinate)
+{
+    for (int offsetX = 0; offsetX < m_Size; ++offsetX)
+    {
+        for (int offsetY = 0; offsetY < m_Size; ++offsetY)
+        {
+            Tile* tile = m_Scene.TryGetTile(
+                {coordinate.x + offsetX,
+                 coordinate.y + offsetY,
+                 coordinate.plane});
+
+            if (tile != nullptr)
+            {
+                tile->AddFlag(TileFlag::Occupied);
+            }
+        }
+    }
+}
+
+void ActorMovementAccess::RemoveOccupancy(SceneCoordinate coordinate)
+{
+    for (int offsetX = 0; offsetX < m_Size; ++offsetX)
+    {
+        for (int offsetY = 0; offsetY < m_Size; ++offsetY)
+        {
+            Tile* tile = m_Scene.TryGetTile(
+                {coordinate.x + offsetX,
+                 coordinate.y + offsetY,
+                 coordinate.plane});
+
+            if (tile != nullptr)
+            {
+                tile->RemoveFlag(TileFlag::Occupied);
+            }
+        }
+    }
+}
 
 ActorMovement::ActorMovement(const Scene& scene)
     : m_Scene(scene)
@@ -140,6 +269,39 @@ bool ActorMovement::CanMoveIgnoringActorOccupancy(
         diagonalSideFootprintRule);
 }
 
+ActorMovementResult ActorMovement::MoveByDelta(
+    ActorMovementAccess& access,
+    int requestedDx,
+    int requestedDy) const
+{
+    if (&access.GetScene() != &m_Scene)
+    {
+        return {};
+    }
+
+    int resolvedDx = 0;
+    int resolvedDy = 0;
+    const SceneCoordinate current = access.GetCoordinate();
+
+    if (!TryResolveMovementDelta(
+            access.GetKind(),
+            current,
+            access.GetSize(),
+            access.GetSpeed(),
+            requestedDx,
+            requestedDy,
+            resolvedDx,
+            resolvedDy))
+    {
+        return {};
+    }
+
+    access.MoveTo(
+        {current.x + resolvedDx, current.y + resolvedDy, current.plane});
+
+    return {true};
+}
+
 bool ActorMovement::IsAdjacentStep(int dx, int dy)
 {
     return Abs(dx) <= 1 && Abs(dy) <= 1 && (dx != 0 || dy != 0);
@@ -157,6 +319,84 @@ bool ActorMovement::IsDestinationBlocked(const Tile& tile, bool includeActorOccu
            tile.HasFlag(TileFlag::BlockMovementObject) ||
            tile.HasFlag(TileFlag::BlockMovementFloor) ||
            tile.HasFlag(TileFlag::BlockMovementFloorDecoration);
+}
+
+bool ActorMovement::CanUseLargeNpcDiagonalSqueeze(
+    ActorMovementKind kind,
+    int actorSize)
+{
+    return kind == ActorMovementKind::Npc && actorSize > 1;
+}
+
+DiagonalSideFootprintRule ActorMovement::GetDiagonalSideFootprintRule(
+    ActorMovementKind kind,
+    int actorSize)
+{
+    return CanUseLargeNpcDiagonalSqueeze(kind, actorSize)
+               ? DiagonalSideFootprintRule::AllowBlocked
+               : DiagonalSideFootprintRule::RequireClear;
+}
+
+bool ActorMovement::IsBetterResolvedDelta(
+    int requestedDx,
+    int requestedDy,
+    int candidateDx,
+    int candidateDy,
+    int bestDx,
+    int bestDy)
+{
+    const int candidateRemaining =
+        RemainingChebyshev(requestedDx, requestedDy, candidateDx, candidateDy);
+    const int bestRemaining =
+        RemainingChebyshev(requestedDx, requestedDy, bestDx, bestDy);
+
+    if (candidateRemaining != bestRemaining)
+    {
+        return candidateRemaining < bestRemaining;
+    }
+
+    const bool requestUsesBothAxes = requestedDx != 0 && requestedDy != 0;
+    const bool candidateUsesBothAxes = candidateDx != 0 && candidateDy != 0;
+    const bool bestUsesBothAxes = bestDx != 0 && bestDy != 0;
+
+    if (requestUsesBothAxes && candidateUsesBothAxes != bestUsesBothAxes)
+    {
+        return candidateUsesBothAxes;
+    }
+
+    if (requestUsesBothAxes && candidateUsesBothAxes && bestUsesBothAxes)
+    {
+        const int candidateRatioError =
+            RatioError(requestedDx, requestedDy, candidateDx, candidateDy);
+        const int bestRatioError =
+            RatioError(requestedDx, requestedDy, bestDx, bestDy);
+
+        if (candidateRatioError != bestRatioError)
+        {
+            return candidateRatioError < bestRatioError;
+        }
+    }
+
+    const int candidateManhattan =
+        RemainingManhattan(requestedDx, requestedDy, candidateDx, candidateDy);
+    const int bestManhattan =
+        RemainingManhattan(requestedDx, requestedDy, bestDx, bestDy);
+
+    if (candidateManhattan != bestManhattan)
+    {
+        return candidateManhattan < bestManhattan;
+    }
+
+    const int candidateCardinalPriority =
+        CardinalPriority(candidateDx, candidateDy);
+    const int bestCardinalPriority = CardinalPriority(bestDx, bestDy);
+
+    if (candidateCardinalPriority != bestCardinalPriority)
+    {
+        return candidateCardinalPriority < bestCardinalPriority;
+    }
+
+    return Abs(candidateDx) + Abs(candidateDy) > Abs(bestDx) + Abs(bestDy);
 }
 
 int ActorMovement::Sign(int value)
@@ -489,6 +729,162 @@ bool ActorMovement::CanMoveMonotonicRoute(
     }
 
     return false;
+}
+
+bool ActorMovement::HasFinalNpcOccupancyConflict(
+    SceneCoordinate current,
+    SceneCoordinate destination,
+    int actorSize) const
+{
+    for (int offsetX = 0; offsetX < actorSize; ++offsetX)
+    {
+        for (int offsetY = 0; offsetY < actorSize; ++offsetY)
+        {
+            SceneCoordinate coordinate{
+                destination.x + offsetX,
+                destination.y + offsetY,
+                destination.plane};
+            const Tile* tile = m_Scene.TryGetTile(coordinate);
+
+            if (tile == nullptr)
+            {
+                return true;
+            }
+
+            const bool isCurrentFootprint =
+                coordinate.plane == current.plane &&
+                coordinate.x >= current.x &&
+                coordinate.x < current.x + actorSize &&
+                coordinate.y >= current.y &&
+                coordinate.y < current.y + actorSize;
+
+            if (!isCurrentFootprint && tile->IsOccupied())
+            {
+                return true;
+            }
+        }
+    }
+
+    return false;
+}
+
+bool ActorMovement::HasNpcDiagonalSideOccupancyConflict(
+    SceneCoordinate current,
+    SceneCoordinate destination,
+    int actorSize) const
+{
+    const int dx = Sign(destination.x - current.x);
+    const int dy = Sign(destination.y - current.y);
+
+    if (dx == 0 || dy == 0)
+    {
+        return false;
+    }
+
+    SceneCoordinate horizontal{current.x + dx, current.y, current.plane};
+    SceneCoordinate vertical{current.x, current.y + dy, current.plane};
+
+    return HasFinalNpcOccupancyConflict(current, horizontal, actorSize) ||
+           HasFinalNpcOccupancyConflict(current, vertical, actorSize);
+}
+
+bool ActorMovement::TryResolveMovementDelta(
+    ActorMovementKind kind,
+    SceneCoordinate current,
+    int actorSize,
+    int actorSpeed,
+    int requestedDx,
+    int requestedDy,
+    int& resolvedDx,
+    int& resolvedDy) const
+{
+    if ((requestedDx == 0 && requestedDy == 0) ||
+        Abs(requestedDx) > actorSpeed || Abs(requestedDy) > actorSpeed)
+    {
+        return false;
+    }
+
+    const int stepX = Sign(requestedDx);
+    const int stepY = Sign(requestedDy);
+    const int absRequestedDx = Abs(requestedDx);
+    const int absRequestedDy = Abs(requestedDy);
+    const DiagonalSideFootprintRule diagonalSideFootprintRule =
+        GetDiagonalSideFootprintRule(kind, actorSize);
+    const bool canUseLargeNpcDiagonalSqueeze =
+        CanUseLargeNpcDiagonalSqueeze(kind, actorSize);
+    bool found = false;
+    int bestDx = 0;
+    int bestDy = 0;
+
+    for (int candidateAbsDx = 0; candidateAbsDx <= absRequestedDx;
+         ++candidateAbsDx)
+    {
+        for (int candidateAbsDy = 0; candidateAbsDy <= absRequestedDy;
+             ++candidateAbsDy)
+        {
+            const int candidateDx = candidateAbsDx * stepX;
+            const int candidateDy = candidateAbsDy * stepY;
+
+            if (candidateDx == 0 && candidateDy == 0)
+            {
+                continue;
+            }
+
+            SceneCoordinate candidate{
+                current.x + candidateDx,
+                current.y + candidateDy,
+                current.plane};
+
+            if (!CanMoveIgnoringActorOccupancy(
+                    current,
+                    candidate,
+                    actorSpeed,
+                    actorSize,
+                    diagonalSideFootprintRule))
+            {
+                continue;
+            }
+
+            if (kind == ActorMovementKind::Npc &&
+                !canUseLargeNpcDiagonalSqueeze &&
+                HasNpcDiagonalSideOccupancyConflict(
+                    current,
+                    candidate,
+                    actorSize))
+            {
+                continue;
+            }
+
+            if (kind == ActorMovementKind::Npc &&
+                HasFinalNpcOccupancyConflict(current, candidate, actorSize))
+            {
+                continue;
+            }
+
+            if (!found || IsBetterResolvedDelta(
+                              requestedDx,
+                              requestedDy,
+                              candidateDx,
+                              candidateDy,
+                              bestDx,
+                              bestDy))
+            {
+                found = true;
+                bestDx = candidateDx;
+                bestDy = candidateDy;
+            }
+        }
+    }
+
+    if (!found)
+    {
+        return false;
+    }
+
+    resolvedDx = bestDx;
+    resolvedDy = bestDy;
+
+    return true;
 }
 
 bool ActorMovement::CanMoveCardinal(SceneCoordinate from, SceneCoordinate to) const

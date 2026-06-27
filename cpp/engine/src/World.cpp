@@ -637,51 +637,37 @@ void World::FlushQueuedActorRemovals()
 bool World::MoveActorByDelta(ActorId actorId, int dx, int dy)
 {
     ActorCore* actor = TryGetActorCore(actorId);
-    SceneMembership* membership = nullptr;
     auto membershipIterator = m_SceneMemberships.find(actorId);
 
-    if (membershipIterator != m_SceneMemberships.end())
-    {
-        membership = &membershipIterator->second;
-    }
-
-    if (actor == nullptr || membership == nullptr || (dx == 0 && dy == 0))
+    if (actor == nullptr || membershipIterator == m_SceneMemberships.end())
     {
         return false;
     }
 
-    Scene* scene = TryGetScene(membership->sceneId);
+    SceneMembership& membership = membershipIterator->second;
+    Scene* scene = TryGetScene(membership.sceneId);
 
     if (scene == nullptr)
     {
         return false;
     }
 
-    int resolvedDx = 0;
-    int resolvedDy = 0;
     const ActorKind actorKind = GetActorKind(actorId);
+    ActorMovementAccess access(
+        *scene,
+        membership.coordinate,
+        actorKind == ActorKind::Player ? ActorMovementKind::Player
+                                       : ActorMovementKind::Npc,
+        actor->size,
+        actor->speed);
+    ActorMovement actorMovement(*scene);
+    const ActorMovementResult result = actorMovement.MoveByDelta(access, dx, dy);
 
-    if (!TryResolveMovementDelta(
-            *scene,
-            actorKind,
-            *actor,
-            membership->coordinate,
-            dx,
-            dy,
-            resolvedDx,
-            resolvedDy))
+    if (!result.moved)
     {
         return false;
     }
 
-    SceneCoordinate destination{
-        membership->coordinate.x + resolvedDx,
-        membership->coordinate.y + resolvedDy,
-        membership->coordinate.plane};
-
-    RemoveActorOccupancy(*scene, membership->coordinate, actor->size);
-    membership->coordinate = destination;
-    AddActorOccupancy(*scene, membership->coordinate, actor->size);
     UpdateProjectilesTargetingActor(actorId);
 
     return true;

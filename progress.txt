@@ -8,3 +8,14 @@ Decisions: renamed Pathing implementation/test seam to ActorMovement; kept API s
 Files changed: cpp/engine/src/ActorMovement.h; cpp/engine/src/ActorMovement.cpp; cpp/engine/tests/ActorMovementTest.cpp; cpp/engine/src/World.h; cpp/engine/src/World.cpp; cpp/engine/CMakeLists.txt; removed Pathing files; progress.txt.
 Validation: cmake --build build; ctest --test-dir build --output-on-failure; 16/16 passed.
 Notes: PRD #125 remains open because dependent feature issues #127-#130 are still open.
+
+Selected issue: #127 Move direct actor movement and occupancy into actor movement
+Parent PRD: #125 PRD: Deepen actor movement module
+Docs read: docs/architecture/simulation-model.md; docs/adr/0003-osrs-scene-model.md; docs/adr/0004-coarse-actor-occupancy.md; docs/adr/0005-world-owns-scenes-and-actors.md
+Plan: add focused ActorMovement direct-delta/occupancy tests; move direct movement delta resolution and occupancy mutation behind ActorMovement access/result; keep World public facade and projectile refresh owner; run build and full CTest.
+
+Completed: #127 / PRD #125 stories 8, 9, 11, 12, 18, 19, 20, 21
+Decisions: added ActorMovementAccess as narrow scene/coordinate actor-state handoff; MoveByDelta returns ActorMovementResult.moved for World post-move projectile refresh; kept projectiles/combat out of actor movement; duplicated direct-delta tie-breaker behavior exactly to preserve semantics while target pursuit remains in World for later slices.
+Files changed: cpp/engine/src/ActorMovement.h; cpp/engine/src/ActorMovement.cpp; cpp/engine/src/World.cpp; cpp/engine/tests/ActorMovementTest.cpp; progress.txt.
+Validation: cmake --build build; ctest --test-dir build --output-on-failure; 16/16 passed.
+Notes: #128-#130 still open; PRD #125 remains open.
