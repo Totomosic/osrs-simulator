@@ -158,43 +158,56 @@ assert.equal(playback.GetSecondsPerTick(), 0.6);
 assert.equal(playback.GetInitialTick(), 0);
 assert.equal(playback.GetCurrentTick(), 0);
 assert.equal(playback.GetLastTick(), 2);
-assert.equal(JSON.parse(playback.GetActorsJson())[0].kind, "Player");
-assert.equal(JSON.parse(playback.GetSceneEntitiesJson())[0].id, 5001);
-assert.deepEqual(JSON.parse(playback.GetAttacksJson()), []);
-assert.deepEqual(JSON.parse(playback.GetDamageApplicationsJson()), []);
-assert.deepEqual(JSON.parse(playback.GetProjectilesJson()), []);
-assert.equal(playback.NextTick(), true);
+assert.equal(typeof playback.GetActorsJson, "undefined");
+assert.equal(typeof playback.GetSceneEntitiesJson, "undefined");
+assert.equal(typeof playback.GetAttacksJson, "undefined");
+assert.equal(typeof playback.GetDamageApplicationsJson, "undefined");
+assert.equal(typeof playback.GetProjectilesJson, "undefined");
+assert.equal(typeof playback.PreviousTick, "undefined");
+assert.equal(typeof playback.NextTick, "undefined");
+assert.equal(typeof playback.GoToTick, "undefined");
+
+let currentSnapshot = JSON.parse(playback.GetCurrentSnapshotJson());
+assert.equal(currentSnapshot.tick, 0);
+assert.equal(currentSnapshot.actors[0].kind, "Player");
+assert.equal(currentSnapshot.sceneEntities[0].id, 5001);
+assert.deepEqual(currentSnapshot.attacks, []);
+assert.deepEqual(currentSnapshot.damageApplications, []);
+assert.deepEqual(currentSnapshot.visibleProjectiles, []);
+assert.equal(playback.IsComplete(), false);
+assert.equal(playback.Advance(), true);
 assert.equal(playback.GetCurrentTick(), 1);
+currentSnapshot = JSON.parse(playback.GetCurrentSnapshotJson());
 assert.equal(
-    JSON.parse(playback.GetActorsJson())[0].combatComposition.stats.hitpoints,
+    currentSnapshot.actors[0].combatComposition.stats.hitpoints,
     77,
 );
-assert.equal(JSON.parse(playback.GetActorsJson())[0].debug.attackTimer, 6);
-assert.equal(JSON.parse(playback.GetSceneEntitiesJson()).length, 2);
-assert.equal(JSON.parse(playback.GetSceneEntitiesJson())[1].id, 6001);
-assert.equal(JSON.parse(playback.GetAttacksJson())[0].callback, "standard_attack");
+assert.equal(currentSnapshot.actors[0].debug.attackTimer, 6);
+assert.equal(currentSnapshot.sceneEntities.length, 2);
+assert.equal(currentSnapshot.sceneEntities[1].id, 6001);
+assert.equal(currentSnapshot.attacks[0].callback, "standard_attack");
 assert.equal(
-    JSON.parse(playback.GetAttacksJson())[0].queuedDamageEvents[0].attackId,
+    currentSnapshot.attacks[0].queuedDamageEvents[0].attackId,
     1,
 );
-assert.equal(JSON.parse(playback.GetProjectilesJson())[0].projectileId, 88);
-assert.equal(playback.NextTick(), true);
+assert.equal(currentSnapshot.visibleProjectiles[0].projectileId, 88);
+assert.equal(playback.Advance(), true);
 assert.equal(playback.GetCurrentTick(), 2);
-assert.deepEqual(JSON.parse(playback.GetAttacksJson()), []);
-assert.equal(JSON.parse(playback.GetDamageApplicationsJson())[0].attackId, 1);
-assert.deepEqual(JSON.parse(playback.GetProjectilesJson()), []);
-assert.equal(playback.NextTick(), false);
-assert.equal(playback.GoToTick(1), true);
-assert.equal(playback.GetCurrentTick(), 1);
+assert.equal(playback.IsComplete(), true);
+currentSnapshot = JSON.parse(playback.GetCurrentSnapshotJson());
+assert.deepEqual(currentSnapshot.attacks, []);
+assert.equal(currentSnapshot.damageApplications[0].attackId, 1);
+assert.deepEqual(currentSnapshot.visibleProjectiles, []);
+assert.equal(playback.Advance(), false);
+playback.Reset();
+assert.equal(playback.GetCurrentTick(), 0);
+currentSnapshot = JSON.parse(playback.GetCurrentSnapshotJson());
 assert.equal(
-    JSON.parse(playback.GetActorsJson())[0].combatComposition.stats.hitpoints,
-    77,
-);
-assert.equal(playback.GoToTick(0), true);
-assert.equal(
-    JSON.parse(playback.GetActorsJson())[0].combatComposition.stats.hitpoints,
+    currentSnapshot.actors[0].combatComposition.stats.hitpoints,
     82,
 );
+assert.deepEqual(currentSnapshot.attacks, []);
+assert.deepEqual(currentSnapshot.damageApplications, []);
 
 playback.delete?.();
 

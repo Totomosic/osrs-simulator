@@ -18,18 +18,10 @@ export interface RecordingPlayback {
     GetInitialTick(): number;
     GetCurrentTick(): number;
     GetLastTick(): number;
-    GetActorsJson(): string;
-    GetSceneEntitiesJson(): string;
-    GetAttacksJson(): string;
-    GetDamageApplicationsJson(): string;
-    GetProjectilesJson(): string;
     GetCurrentSnapshotJson(): string;
     Advance(): boolean;
     Reset(): void;
     IsComplete(): boolean;
-    PreviousTick(): boolean;
-    NextTick(): boolean;
-    GoToTick(tick: number): boolean;
     delete?(): void;
 }
 

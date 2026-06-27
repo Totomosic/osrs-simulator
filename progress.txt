@@ -535,3 +535,12 @@
 - Decisions: keep unknown grouped-category checks in EncounterRecording because this is observation-log shape validity, not projection coherence; keep projection contradictions in RecordingPlayback cursor creation.
 - Files changed: cpp/engine/src/recording/EncounterRecording.*, cpp/engine/tests/RecordingTest.cpp, progress.txt.
 - Validation: red native recording test failed on unknown v2 fact category acceptance; cmake --build build --target osrssim_engine_recording_test && ./build/cpp/engine/osrssim_engine_recording_test; ctest --test-dir build --output-on-failure; cmake --build build. No blockers.
+
+2026-06-27 #123 Migrate Recording Playback web/WASM facade to atomic snapshots
+- Selected issue: #123, ready-for-agent; blockers #118/#119/#120/#121 closed. Parent PRD #116. #124 skipped because blocked by #123.
+- Docs read: CONTEXT.md; docs/adr/0014-engine-owned-recording-playback.md; docs/adr/0015-encounter-recording-fact-model.md; PRD #116; feature #123.
+- Plan: TDD generated WASM facade around one current snapshot payload plus Advance/Reset/IsComplete/tick metadata, remove category/random-access WASM bindings, and make RecordingView consume snapshot-shaped playback while preserving viewer workflows via client-side reset+advance. Scope guard: only #123; do not migrate samples or retire native v1 playback path (#124).
+- Completed: PRD #116 stories 5-8 and feature #123 acceptance for web/WASM one-snapshot playback facade, sequential Advance/Reset/IsComplete/tick metadata, viewer snapshot consumption, reset-to-initial behavior, last-snapshot completion, and generated/viewer tests.
+- Decisions: remove category and random-access methods from WASM binding now; keep native C++ compatibility helpers until #124 retires the v1 JSON-map playback path; preserve viewer previous/tick input by resetting and advancing sequentially on the client.
+- Files changed: cpp/engine/src/EngineBindings.cpp, web/src/wasm/EngineModule.ts, web/src/RecordingView.vue, web/test/generated-recording-playback.test.mjs, web/test/recording-view.test.mjs, progress.txt.
+- Validation: red recording-view source test failed before snapshot consumption; node web/test/recording-view.test.mjs; ./tools/build_wasm.sh; node web/test/generated-recording-playback.test.mjs; yarn --cwd web typecheck; yarn --cwd web test; cmake --build build; ctest --test-dir build --output-on-failure; yarn --cwd web build; git diff --check passed. No blockers.

@@ -108,6 +108,15 @@ interface RecordingProjectile {
     totalTicks: number;
 }
 
+interface RecordingSnapshot {
+    tick: number;
+    actors: RecordingActor[];
+    sceneEntities: RecordingSceneEntity[];
+    attacks: RecordingAttack[];
+    damageApplications: RecordingDamageApplication[];
+    visibleProjectiles: RecordingProjectile[];
+}
+
 const bundledSamples = [
     {
         label: "Minimal Encounter Recording",
@@ -120,7 +129,7 @@ const playback = shallowRef<RecordingPlayback | null>(null);
 const selectedSamplePath = ref(bundledSamples[0].path);
 const selectedActorId = ref<number | null>(null);
 const loadError = ref("");
-const actorJsonRevision = ref(0);
+const playbackRevision = ref(0);
 const selectedTick = ref(0);
 const cameraMode = ref<"follow-selected-actor" | "free-camera">(
     "follow-selected-actor",
@@ -136,53 +145,33 @@ const currentTick = computed(() => playback.value?.GetCurrentTick() ?? 0);
 const initialTick = computed(() => playback.value?.GetInitialTick() ?? 0);
 const lastTick = computed(() => playback.value?.GetLastTick() ?? 0);
 const hasPlayback = computed(() => playback.value !== null);
-const actors = computed<RecordingActor[]>(() => {
-    void actorJsonRevision.value;
+const currentSnapshot = computed<RecordingSnapshot>(() => {
+    void playbackRevision.value;
 
     if (playback.value === null) {
-        return [];
+        return {
+            tick: 0,
+            actors: [],
+            sceneEntities: [],
+            attacks: [],
+            damageApplications: [],
+            visibleProjectiles: [],
+        };
     }
 
-    return JSON.parse(playback.value.GetActorsJson()) as RecordingActor[];
+    return JSON.parse(playback.value.GetCurrentSnapshotJson()) as RecordingSnapshot;
 });
-const sceneEntities = computed<RecordingSceneEntity[]>(() => {
-    void actorJsonRevision.value;
-
-    if (playback.value === null) {
-        return [];
-    }
-
-    return JSON.parse(playback.value.GetSceneEntitiesJson()) as RecordingSceneEntity[];
-});
-const attacks = computed<RecordingAttack[]>(() => {
-    void actorJsonRevision.value;
-
-    if (playback.value === null) {
-        return [];
-    }
-
-    return JSON.parse(playback.value.GetAttacksJson()) as RecordingAttack[];
-});
-const damageApplications = computed<RecordingDamageApplication[]>(() => {
-    void actorJsonRevision.value;
-
-    if (playback.value === null) {
-        return [];
-    }
-
-    return JSON.parse(
-        playback.value.GetDamageApplicationsJson(),
-    ) as RecordingDamageApplication[];
-});
-const projectiles = computed<RecordingProjectile[]>(() => {
-    void actorJsonRevision.value;
-
-    if (playback.value === null) {
-        return [];
-    }
-
-    return JSON.parse(playback.value.GetProjectilesJson()) as RecordingProjectile[];
-});
+const actors = computed<RecordingActor[]>(() => currentSnapshot.value.actors);
+const sceneEntities = computed<RecordingSceneEntity[]>(
+    () => currentSnapshot.value.sceneEntities,
+);
+const attacks = computed<RecordingAttack[]>(() => currentSnapshot.value.attacks);
+const damageApplications = computed<RecordingDamageApplication[]>(
+    () => currentSnapshot.value.damageApplications,
+);
+const projectiles = computed<RecordingProjectile[]>(
+    () => currentSnapshot.value.visibleProjectiles,
+);
 const selectedActor = computed(
     () => actors.value.find((actor) => actor.id === selectedActorId.value) ?? null,
 );
@@ -307,7 +296,7 @@ function equipmentProvenanceText(actor: RecordingActor): string {
 }
 
 function refreshActors(): void {
-    actorJsonRevision.value += 1;
+    playbackRevision.value += 1;
     selectedTick.value = currentTick.value;
 
     if (
@@ -387,16 +376,42 @@ async function handleRecordingFileChange(event: Event): Promise<void> {
 }
 
 function previousTick(): void {
-    playback.value?.PreviousTick();
+    if (playback.value === null || currentTick.value <= initialTick.value) {
+        return;
+    }
+
+    advanceToTick(currentTick.value - 1);
+    refreshActors();
+}
+
+function resetPlayback(): void {
+    playback.value?.Reset();
+    stopPlayback();
     refreshActors();
 }
 
 function nextTick(): void {
-    if (playback.value?.NextTick() === false) {
+    if (playback.value === null || playback.value.Advance() === false) {
+        stopPlayback();
+    } else if (playback.value.IsComplete()) {
         stopPlayback();
     }
 
     refreshActors();
+}
+
+function advanceToTick(tick: number): void {
+    if (playback.value === null) {
+        return;
+    }
+
+    playback.value.Reset();
+
+    while (playback.value.GetCurrentTick() < tick) {
+        if (!playback.value.Advance()) {
+            break;
+        }
+    }
 }
 
 function goToSelectedTick(): void {
@@ -405,7 +420,7 @@ function goToSelectedTick(): void {
         Math.min(lastTick.value, Math.trunc(selectedTick.value)),
     );
 
-    playback.value?.GoToTick(tick);
+    advanceToTick(tick);
     selectedTick.value = tick;
     refreshActors();
 }
@@ -420,7 +435,7 @@ function stopPlayback(): void {
 }
 
 function startPlayback(): void {
-    if (!hasPlayback.value || isPlaying.value) {
+    if (!hasPlayback.value || isPlaying.value || playback.value?.IsComplete()) {
         return;
     }
 
@@ -491,6 +506,13 @@ onUnmounted(() => {
         @click="previousTick"
       >
         Previous
+      </button>
+      <button
+        type="button"
+        :disabled="!hasPlayback || currentTick <= initialTick"
+        @click="resetPlayback"
+      >
+        Reset
       </button>
       <button
         v-if="!isPlaying"

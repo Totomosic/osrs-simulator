@@ -784,35 +784,13 @@ EMSCRIPTEN_BINDINGS(osrssim_engine)
             "GetLastTick",
             &osrssim::recording::RecordingPlayback::GetLastTick)
         .function(
-            "GetActorsJson",
-            &osrssim::recording::RecordingPlayback::GetActorsJson)
-        .function(
-            "GetSceneEntitiesJson",
-            &osrssim::recording::RecordingPlayback::GetSceneEntitiesJson)
-        .function(
-            "GetAttacksJson",
-            &osrssim::recording::RecordingPlayback::GetAttacksJson)
-        .function(
-            "GetDamageApplicationsJson",
-            &osrssim::recording::RecordingPlayback::GetDamageApplicationsJson)
-        .function(
-            "GetProjectilesJson",
-            &osrssim::recording::RecordingPlayback::GetProjectilesJson)
-        .function(
             "GetCurrentSnapshotJson",
             &osrssim::recording::RecordingPlayback::GetCurrentSnapshotJson)
         .function("Advance", &osrssim::recording::RecordingPlayback::Advance)
         .function("Reset", &osrssim::recording::RecordingPlayback::Reset)
         .function(
             "IsComplete",
-            &osrssim::recording::RecordingPlayback::IsComplete)
-        .function(
-            "PreviousTick",
-            &osrssim::recording::RecordingPlayback::PreviousTick)
-        .function(
-            "NextTick",
-            &osrssim::recording::RecordingPlayback::NextTick)
-        .function("GoToTick", &osrssim::recording::RecordingPlayback::GoToTick);
+            &osrssim::recording::RecordingPlayback::IsComplete);
 
     emscripten::class_<osrssim::debug::DevelopmentPlayerChaseScenario>(
         "DevelopmentPlayerChaseScenario")
