@@ -351,6 +351,101 @@ ActorMovementTargetResult ActorMovement::PursueSceneCoordinateTarget(
     return {true, reachedTarget};
 }
 
+ActorMovementTargetResult ActorMovement::PursueActorTarget(
+    ActorMovementAccess& access,
+    const ActorMovementTargetActor& target,
+    ActorId actorId,
+    Tick currentTick) const
+{
+    if (&access.GetScene() != &m_Scene)
+    {
+        return {false, true};
+    }
+
+    const SceneCoordinate current = access.GetCoordinate();
+
+    if (target.coordinate.plane != current.plane)
+    {
+        return {false, true};
+    }
+
+    if (AreActorFootprintsEdgeAdjacent(
+            access.GetSize(),
+            current,
+            target.size,
+            target.coordinate))
+    {
+        return {};
+    }
+
+    int dx = 0;
+    int dy = 0;
+
+    if (AreActorFootprintsOverlapping(
+            access.GetSize(),
+            current,
+            target.size,
+            target.coordinate))
+    {
+        if (!TryGetActorTargetOverlapEscapeMovementDelta(
+                access.GetKind(),
+                current,
+                access.GetSize(),
+                actorId,
+                target.id,
+                currentTick,
+                dx,
+                dy))
+        {
+            return {};
+        }
+    }
+    else
+    {
+        dx = GetMovementDeltaForAxis(
+            current.x,
+            1,
+            target.coordinate.x,
+            access.GetSpeed());
+        dy = GetMovementDeltaForAxis(
+            current.y,
+            1,
+            target.coordinate.y,
+            access.GetSpeed());
+
+        int edgeAdjacentDx = 0;
+        int edgeAdjacentDy = 0;
+        const bool cornerContact = AreActorFootprintsCornerContact(
+            access.GetSize(),
+            current,
+            target.size,
+            target.coordinate);
+
+        if (TryGetActorTargetEdgeAdjacentMovementDelta(
+                access.GetKind(),
+                current,
+                access.GetSize(),
+                access.GetSpeed(),
+                dx,
+                dy,
+                target,
+                edgeAdjacentDx,
+                edgeAdjacentDy))
+        {
+            dx = edgeAdjacentDx;
+            dy = edgeAdjacentDy;
+        }
+        else if (cornerContact)
+        {
+            return {};
+        }
+    }
+
+    const ActorMovementResult movementResult = MoveByDelta(access, dx, dy);
+
+    return {movementResult.moved, false};
+}
+
 bool ActorMovement::IsAdjacentStep(int dx, int dy)
 {
     return Abs(dx) <= 1 && Abs(dy) <= 1 && (dx != 0 || dy != 0);
@@ -497,6 +592,15 @@ int ActorMovement::Sign(int value)
     return 0;
 }
 
+int ActorMovement::DeterministicCardinalStart(
+    ActorId actorId,
+    ActorId targetActorId,
+    Tick currentTick)
+{
+    return static_cast<int>(
+        (actorId * 31 + targetActorId * 17 + currentTick) % 4);
+}
+
 TileFlag ActorMovement::GetSourceMovementFlag(int dx, int dy)
 {
     if (dx == -1 && dy == 1)
@@ -540,6 +644,91 @@ TileFlag ActorMovement::GetSourceMovementFlag(int dx, int dy)
 TileFlag ActorMovement::GetDestinationMovementFlag(int dx, int dy)
 {
     return GetSourceMovementFlag(-dx, -dy);
+}
+
+bool ActorMovement::AreActorFootprintsEdgeAdjacent(
+    int moverSize,
+    SceneCoordinate moverCoordinate,
+    int targetSize,
+    SceneCoordinate targetCoordinate)
+{
+    if (moverCoordinate.plane != targetCoordinate.plane)
+    {
+        return false;
+    }
+
+    const int moverMinX = moverCoordinate.x;
+    const int moverMaxX = moverCoordinate.x + moverSize - 1;
+    const int moverMinY = moverCoordinate.y;
+    const int moverMaxY = moverCoordinate.y + moverSize - 1;
+    const int targetMinX = targetCoordinate.x;
+    const int targetMaxX = targetCoordinate.x + targetSize - 1;
+    const int targetMinY = targetCoordinate.y;
+    const int targetMaxY = targetCoordinate.y + targetSize - 1;
+
+    const bool overlapsOnX =
+        moverMinX <= targetMaxX && targetMinX <= moverMaxX;
+    const bool overlapsOnY =
+        moverMinY <= targetMaxY && targetMinY <= moverMaxY;
+    const bool touchesWestOrEast =
+        moverMaxX + 1 == targetMinX || targetMaxX + 1 == moverMinX;
+    const bool touchesSouthOrNorth =
+        moverMaxY + 1 == targetMinY || targetMaxY + 1 == moverMinY;
+
+    return (touchesWestOrEast && overlapsOnY) ||
+           (touchesSouthOrNorth && overlapsOnX);
+}
+
+bool ActorMovement::AreActorFootprintsOverlapping(
+    int moverSize,
+    SceneCoordinate moverCoordinate,
+    int targetSize,
+    SceneCoordinate targetCoordinate)
+{
+    if (moverCoordinate.plane != targetCoordinate.plane)
+    {
+        return false;
+    }
+
+    const int moverMinX = moverCoordinate.x;
+    const int moverMaxX = moverCoordinate.x + moverSize - 1;
+    const int moverMinY = moverCoordinate.y;
+    const int moverMaxY = moverCoordinate.y + moverSize - 1;
+    const int targetMinX = targetCoordinate.x;
+    const int targetMaxX = targetCoordinate.x + targetSize - 1;
+    const int targetMinY = targetCoordinate.y;
+    const int targetMaxY = targetCoordinate.y + targetSize - 1;
+
+    return moverMinX <= targetMaxX && targetMinX <= moverMaxX &&
+           moverMinY <= targetMaxY && targetMinY <= moverMaxY;
+}
+
+bool ActorMovement::AreActorFootprintsCornerContact(
+    int moverSize,
+    SceneCoordinate moverCoordinate,
+    int targetSize,
+    SceneCoordinate targetCoordinate)
+{
+    if (moverCoordinate.plane != targetCoordinate.plane)
+    {
+        return false;
+    }
+
+    const int moverMinX = moverCoordinate.x;
+    const int moverMaxX = moverCoordinate.x + moverSize - 1;
+    const int moverMinY = moverCoordinate.y;
+    const int moverMaxY = moverCoordinate.y + moverSize - 1;
+    const int targetMinX = targetCoordinate.x;
+    const int targetMaxX = targetCoordinate.x + targetSize - 1;
+    const int targetMinY = targetCoordinate.y;
+    const int targetMaxY = targetCoordinate.y + targetSize - 1;
+
+    const bool touchesWestOrEast =
+        moverMaxX + 1 == targetMinX || targetMaxX + 1 == moverMinX;
+    const bool touchesSouthOrNorth =
+        moverMaxY + 1 == targetMinY || targetMaxY + 1 == moverMinY;
+
+    return touchesWestOrEast && touchesSouthOrNorth;
 }
 
 bool ActorMovement::CanStand(
@@ -894,6 +1083,179 @@ bool ActorMovement::HasNpcDiagonalSideOccupancyConflict(
 
     return HasFinalNpcOccupancyConflict(current, horizontal, actorSize) ||
            HasFinalNpcOccupancyConflict(current, vertical, actorSize);
+}
+
+bool ActorMovement::TryGetActorTargetEdgeAdjacentMovementDelta(
+    ActorMovementKind kind,
+    SceneCoordinate current,
+    int actorSize,
+    int actorSpeed,
+    int requestedDx,
+    int requestedDy,
+    const ActorMovementTargetActor& target,
+    int& edgeAdjacentDx,
+    int& edgeAdjacentDy) const
+{
+    const int stepX = Sign(requestedDx);
+    const int stepY = Sign(requestedDy);
+    const int absRequestedDx = Abs(requestedDx);
+    const int absRequestedDy = Abs(requestedDy);
+    const DiagonalSideFootprintRule diagonalSideFootprintRule =
+        GetDiagonalSideFootprintRule(kind, actorSize);
+    const bool canUseLargeNpcDiagonalSqueeze =
+        CanUseLargeNpcDiagonalSqueeze(kind, actorSize);
+    const bool cornerContact = AreActorFootprintsCornerContact(
+        actorSize,
+        current,
+        target.size,
+        target.coordinate);
+    bool found = false;
+    int bestDx = 0;
+    int bestDy = 0;
+
+    for (int candidateAbsDx = 0; candidateAbsDx <= absRequestedDx;
+         ++candidateAbsDx)
+    {
+        for (int candidateAbsDy = 0; candidateAbsDy <= absRequestedDy;
+             ++candidateAbsDy)
+        {
+            const int candidateDx = candidateAbsDx * stepX;
+            const int candidateDy = candidateAbsDy * stepY;
+
+            if (candidateDx == 0 && candidateDy == 0)
+            {
+                continue;
+            }
+
+            if (cornerContact && candidateDy != 0)
+            {
+                continue;
+            }
+
+            SceneCoordinate candidate{
+                current.x + candidateDx,
+                current.y + candidateDy,
+                current.plane};
+
+            if (!AreActorFootprintsEdgeAdjacent(
+                    actorSize,
+                    candidate,
+                    target.size,
+                    target.coordinate))
+            {
+                continue;
+            }
+
+            if (!CanMoveIgnoringActorOccupancy(
+                    current,
+                    candidate,
+                    actorSpeed,
+                    actorSize,
+                    diagonalSideFootprintRule))
+            {
+                continue;
+            }
+
+            if (kind == ActorMovementKind::Npc &&
+                !canUseLargeNpcDiagonalSqueeze &&
+                HasNpcDiagonalSideOccupancyConflict(
+                    current,
+                    candidate,
+                    actorSize))
+            {
+                continue;
+            }
+
+            if (kind == ActorMovementKind::Npc &&
+                HasFinalNpcOccupancyConflict(current, candidate, actorSize))
+            {
+                continue;
+            }
+
+            const int candidateDistance = Max(Abs(candidateDx), Abs(candidateDy));
+            const int bestDistance = Max(Abs(bestDx), Abs(bestDy));
+            if (!found || candidateDistance < bestDistance ||
+                (candidateDistance == bestDistance &&
+                 IsBetterResolvedDelta(
+                     requestedDx,
+                     requestedDy,
+                     candidateDx,
+                     candidateDy,
+                     bestDx,
+                     bestDy)))
+            {
+                found = true;
+                bestDx = candidateDx;
+                bestDy = candidateDy;
+            }
+        }
+    }
+
+    if (!found)
+    {
+        return false;
+    }
+
+    edgeAdjacentDx = bestDx;
+    edgeAdjacentDy = bestDy;
+
+    return true;
+}
+
+bool ActorMovement::TryGetActorTargetOverlapEscapeMovementDelta(
+    ActorMovementKind kind,
+    SceneCoordinate current,
+    int actorSize,
+    ActorId actorId,
+    ActorId targetActorId,
+    Tick currentTick,
+    int& escapeDx,
+    int& escapeDy) const
+{
+    if (kind != ActorMovementKind::Npc)
+    {
+        return false;
+    }
+
+    struct MovementDelta
+    {
+        int dx = 0;
+        int dy = 0;
+    };
+
+    const MovementDelta cardinalDeltas[4]{
+        {-1, 0},
+        {1, 0},
+        {0, -1},
+        {0, 1}};
+    const int start =
+        DeterministicCardinalStart(actorId, targetActorId, currentTick);
+
+    for (int offset = 0; offset < 4; ++offset)
+    {
+        const MovementDelta delta = cardinalDeltas[(start + offset) % 4];
+        SceneCoordinate candidate{
+            current.x + delta.dx,
+            current.y + delta.dy,
+            current.plane};
+
+        if (!CanMoveIgnoringActorOccupancy(current, candidate, 1, actorSize))
+        {
+            continue;
+        }
+
+        if (HasFinalNpcOccupancyConflict(current, candidate, actorSize))
+        {
+            continue;
+        }
+
+        escapeDx = delta.dx;
+        escapeDy = delta.dy;
+
+        return true;
+    }
+
+    return false;
 }
 
 bool ActorMovement::TryResolveMovementDelta(

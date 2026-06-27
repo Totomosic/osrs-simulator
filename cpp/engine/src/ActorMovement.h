@@ -29,6 +29,13 @@ struct ActorMovementTargetResult
     bool clearTarget = false;
 };
 
+struct ActorMovementTargetActor
+{
+    ActorId id = 0;
+    SceneCoordinate coordinate;
+    int size = 1;
+};
+
 class ActorMovementAccess
 {
 private:
@@ -90,6 +97,11 @@ public:
     ActorMovementTargetResult PursueSceneCoordinateTarget(
         ActorMovementAccess& access,
         SceneCoordinate target) const;
+    ActorMovementTargetResult PursueActorTarget(
+        ActorMovementAccess& access,
+        const ActorMovementTargetActor& target,
+        ActorId actorId,
+        Tick currentTick) const;
 
 private:
     static bool IsAdjacentStep(int dx, int dy);
@@ -115,8 +127,27 @@ private:
         int target,
         int speed);
     static int Sign(int value);
+    static int DeterministicCardinalStart(
+        ActorId actorId,
+        ActorId targetActorId,
+        Tick currentTick);
     static TileFlag GetSourceMovementFlag(int dx, int dy);
     static TileFlag GetDestinationMovementFlag(int dx, int dy);
+    static bool AreActorFootprintsEdgeAdjacent(
+        int moverSize,
+        SceneCoordinate moverCoordinate,
+        int targetSize,
+        SceneCoordinate targetCoordinate);
+    static bool AreActorFootprintsOverlapping(
+        int moverSize,
+        SceneCoordinate moverCoordinate,
+        int targetSize,
+        SceneCoordinate targetCoordinate);
+    static bool AreActorFootprintsCornerContact(
+        int moverSize,
+        SceneCoordinate moverCoordinate,
+        int targetSize,
+        SceneCoordinate targetCoordinate);
 
     bool CanStand(
         SceneCoordinate anchor,
@@ -157,6 +188,25 @@ private:
         SceneCoordinate current,
         SceneCoordinate destination,
         int actorSize) const;
+    bool TryGetActorTargetEdgeAdjacentMovementDelta(
+        ActorMovementKind kind,
+        SceneCoordinate current,
+        int actorSize,
+        int actorSpeed,
+        int requestedDx,
+        int requestedDy,
+        const ActorMovementTargetActor& target,
+        int& edgeAdjacentDx,
+        int& edgeAdjacentDy) const;
+    bool TryGetActorTargetOverlapEscapeMovementDelta(
+        ActorMovementKind kind,
+        SceneCoordinate current,
+        int actorSize,
+        ActorId actorId,
+        ActorId targetActorId,
+        Tick currentTick,
+        int& escapeDx,
+        int& escapeDy) const;
     bool TryResolveMovementDelta(
         ActorMovementKind kind,
         SceneCoordinate current,

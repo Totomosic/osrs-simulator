@@ -1,9 +1,8 @@
 #pragma once
 
+#include "Scene.h"
 #include "CombatQueue.h"
 #include "DpsService.h"
-#include "ActorMovement.h"
-#include "Scene.h"
 #include "Types.h"
 
 #include <functional>
@@ -158,14 +157,7 @@ private:
 
     static int ClampSize(int size);
     static int ClampSpeed(int speed);
-    static int ClampDelta(int delta, int speed);
     static bool IsWholeTileMovementBlocked(const Tile& tile);
-    static bool CanUseLargeNpcDiagonalSqueeze(
-        ActorKind actorKind,
-        const ActorCore& actor);
-    static DiagonalSideFootprintRule GetDiagonalSideFootprintRule(
-        ActorKind actorKind,
-        const ActorCore& actor);
 
     Player* TryGetPlayer(ActorId actorId);
     const Player* TryGetPlayer(ActorId actorId) const;
@@ -182,65 +174,15 @@ private:
         const Scene& scene,
         SceneCoordinate coordinate,
         int actorSize) const;
-    bool AreActorFootprintsEdgeAdjacent(
-        const ActorCore& mover,
-        SceneCoordinate moverCoordinate,
-        const ActorCore& target,
-        SceneCoordinate targetCoordinate) const;
     bool AreActorFootprintsOverlapping(
         const ActorCore& mover,
         SceneCoordinate moverCoordinate,
         const ActorCore& target,
         SceneCoordinate targetCoordinate) const;
-    bool AreActorFootprintsCornerContact(
-        const ActorCore& mover,
-        SceneCoordinate moverCoordinate,
-        const ActorCore& target,
-        SceneCoordinate targetCoordinate) const;
-    int GetMovementDeltaForAxis(int anchor, int size, int target, int speed) const;
-    bool HasNpcDiagonalSideOccupancyConflict(
-        const Scene& scene,
-        SceneCoordinate current,
-        SceneCoordinate destination,
-        int actorSize) const;
-    bool TryGetActorTargetEdgeAdjacentMovementDelta(
-        const Scene& scene,
-        ActorKind actorKind,
-        const ActorCore& actor,
-        SceneCoordinate current,
-        int requestedDx,
-        int requestedDy,
-        const ActorCore& target,
-        SceneCoordinate targetCoordinate,
-        int& edgeAdjacentDx,
-        int& edgeAdjacentDy) const;
-    bool TryGetActorTargetOverlapEscapeMovementDelta(
-        const Scene& scene,
-        ActorKind actorKind,
-        const ActorCore& actor,
-        SceneCoordinate current,
-        ActorId targetActorId,
-        Tick currentTick,
-        int& escapeDx,
-        int& escapeDy) const;
     bool CanStandOnMovementBlockers(
         const Scene& scene,
         SceneCoordinate coordinate,
         int actorSize) const;
-    bool HasFinalNpcOccupancyConflict(
-        const Scene& scene,
-        SceneCoordinate current,
-        SceneCoordinate destination,
-        int actorSize) const;
-    bool TryResolveMovementDelta(
-        const Scene& scene,
-        ActorKind actorKind,
-        const ActorCore& actor,
-        SceneCoordinate current,
-        int requestedDx,
-        int requestedDy,
-        int& resolvedDx,
-        int& resolvedDy) const;
     void UpdateProjectilesTargetingActor(ActorId actorId);
     void AddActorOccupancy(
         Scene& scene,
