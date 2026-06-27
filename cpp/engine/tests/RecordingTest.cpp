@@ -823,6 +823,40 @@ bool PlaybackLoadThrows(const nlohmann::json& recording)
 {
     return PlaybackLoadThrows(recording.dump());
 }
+
+bool RecordingLoadThrowsWithMessage(
+    const nlohmann::json& recording,
+    const std::string& expectedMessage)
+{
+    try
+    {
+        osrssim::recording::EncounterRecording::LoadFromJson(recording);
+    }
+    catch (const std::exception& exception)
+    {
+        return std::string(exception.what()).find(expectedMessage) !=
+               std::string::npos;
+    }
+
+    return false;
+}
+
+bool PlaybackLoadThrowsWithMessage(
+    const nlohmann::json& recording,
+    const std::string& expectedMessage)
+{
+    try
+    {
+        osrssim::recording::RecordingPlayback::LoadFromJson(recording.dump());
+    }
+    catch (const std::exception& exception)
+    {
+        return std::string(exception.what()).find(expectedMessage) !=
+               std::string::npos;
+    }
+
+    return false;
+}
 }  // namespace
 
 int main()
@@ -961,6 +995,28 @@ int main()
                    {"visibleProjectiles", nlohmann::json::array()}}})}};
 
         assert(PlaybackLoadThrows(document));
+    }
+
+    {
+        nlohmann::json recording = CreateVersion2ActorRecording();
+        recording["initialFacts"]["unknownFactKind"] = nlohmann::json::array();
+        assert(RecordingLoadThrowsWithMessage(
+            recording,
+            "Recording Validity failed: unknown initial fact category"));
+
+        recording = CreateVersion2ActorRecording();
+        recording["completedTicks"][0]["unknownFactKind"] =
+            nlohmann::json::array();
+        assert(RecordingLoadThrowsWithMessage(
+            recording,
+            "Recording Validity failed: unknown completed tick fact category"));
+
+        recording = CreateVersion2ActorRecording();
+        recording["completedTicks"][0]["actorFacts"] =
+            nlohmann::json::array({{{"id", 2}, {"present", false}}});
+        assert(PlaybackLoadThrowsWithMessage(
+            recording,
+            "Projection Validity failed: actor absence before presence"));
     }
 
     {

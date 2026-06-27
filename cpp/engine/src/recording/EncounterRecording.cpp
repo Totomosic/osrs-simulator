@@ -1,5 +1,6 @@
 #include "recording/EncounterRecording.h"
 
+#include <algorithm>
 #include <stdexcept>
 #include <utility>
 
@@ -48,6 +49,23 @@ void RequireObjectField(
             fieldName);
     }
 }
+
+void RequireOnlyObjectFields(
+    const nlohmann::json& object,
+    const std::vector<std::string>& allowedFields,
+    const char* errorMessage)
+{
+    for (auto iterator = object.begin(); iterator != object.end(); ++iterator)
+    {
+        if (std::find(
+                allowedFields.begin(),
+                allowedFields.end(),
+                iterator.key()) == allowedFields.end())
+        {
+            throw std::invalid_argument(errorMessage);
+        }
+    }
+}
 }  // namespace
 
 EncounterRecording::EncounterRecording(
@@ -82,13 +100,35 @@ nlohmann::json EncounterRecording::CreateEmptyCompletedTickFacts()
 
 void EncounterRecording::ValidateInitialFacts(const nlohmann::json& facts)
 {
+    RequireOnlyObjectFields(
+        facts,
+        {"actorFacts", "sceneEntityFacts", "visibleProjectiles"},
+        "Recording Validity failed: unknown initial fact category");
     RequireObjectField(facts, "actorFacts", RequiredJsonKind::Array);
     RequireObjectField(facts, "sceneEntityFacts", RequiredJsonKind::Array);
     RequireObjectField(facts, "visibleProjectiles", RequiredJsonKind::Array);
 }
 
-void EncounterRecording::ValidateCompletedTickFacts(const nlohmann::json& facts)
+void EncounterRecording::ValidateCompletedTickFacts(
+    const nlohmann::json& facts,
+    bool allowTickField)
 {
+    std::vector<std::string> allowedFields = {
+        "actorFacts",
+        "sceneEntityFacts",
+        "attacks",
+        "damageApplications",
+        "visibleProjectiles"};
+
+    if (allowTickField)
+    {
+        allowedFields.push_back("tick");
+    }
+
+    RequireOnlyObjectFields(
+        facts,
+        allowedFields,
+        "Recording Validity failed: unknown completed tick fact category");
     RequireObjectField(facts, "actorFacts", RequiredJsonKind::Array);
     RequireObjectField(facts, "sceneEntityFacts", RequiredJsonKind::Array);
     RequireObjectField(facts, "attacks", RequiredJsonKind::Array);
@@ -169,7 +209,7 @@ EncounterRecording EncounterRecording::LoadFromJson(
     for (const nlohmann::json& tick : document.at("completedTicks"))
     {
         RequireObjectField(tick, "tick", RequiredJsonKind::Integer);
-        ValidateCompletedTickFacts(tick);
+        ValidateCompletedTickFacts(tick, true);
 
         if (tick.at("tick").get<int>() != expectedTick)
         {

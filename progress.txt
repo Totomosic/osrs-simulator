@@ -526,3 +526,12 @@
 - Files changed: cpp/engine/src/recording/EncounterRecorder.*, cpp/engine/src/recording/RecordingPlayback.cpp, cpp/engine/tests/RecordingTest.cpp, progress.txt.
 - Validation: red native playback lineage test failed before validation; red recorder v2 export test failed before preserving combat categories; cmake --build build --target osrssim_engine_recording_test && ./build/cpp/engine/osrssim_engine_recording_test; ./tools/build_wasm.sh; node web/test/generated-recording-playback.test.mjs; yarn --cwd web test; yarn --cwd web typecheck; cmake --build build; ctest --test-dir build --output-on-failure; yarn --cwd web build; git diff --check passed. No blockers.
 - Notes: clang-format unavailable; formatting cleaned manually.
+
+2026-06-27 #122 Harden Recording Validity and Projection Validity failure behavior
+- Selected issue: #122, ready-for-agent; blockers #118/#119/#120/#121 closed. Parent PRD #116.
+- Docs read: CONTEXT.md; docs/agents/domain.md; docs/architecture/repo-structure.md; docs/adr/0012-encounter-recordings-are-observation-logs.md; docs/adr/0014-engine-owned-recording-playback.md; docs/adr/0015-encounter-recording-fact-model.md.
+- Plan: TDD recording/projection validity through v2 loader and playback public seams. Scope guard: only #122; no web facade migration or v1 retirement.
+- Completed: PRD #116 stories 18-20, 31-36 and feature #122 acceptance for unknown fact category rejection, distinct Recording Validity vs Projection Validity failures, and upfront projection failure coverage.
+- Decisions: keep unknown grouped-category checks in EncounterRecording because this is observation-log shape validity, not projection coherence; keep projection contradictions in RecordingPlayback cursor creation.
+- Files changed: cpp/engine/src/recording/EncounterRecording.*, cpp/engine/tests/RecordingTest.cpp, progress.txt.
+- Validation: red native recording test failed on unknown v2 fact category acceptance; cmake --build build --target osrssim_engine_recording_test && ./build/cpp/engine/osrssim_engine_recording_test; ctest --test-dir build --output-on-failure; cmake --build build. No blockers.

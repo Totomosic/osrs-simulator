@@ -37,7 +37,9 @@ private:
     static nlohmann::json CreateEmptyInitialFacts();
     static nlohmann::json CreateEmptyCompletedTickFacts();
     static void ValidateInitialFacts(const nlohmann::json& facts);
-    static void ValidateCompletedTickFacts(const nlohmann::json& facts);
+    static void ValidateCompletedTickFacts(
+        const nlohmann::json& facts,
+        bool allowTickField = false);
 
 public:
     static CompletedRecordingTick CreateEmptyCompletedTick(int tick);
